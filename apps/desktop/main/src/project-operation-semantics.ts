@@ -11,6 +11,7 @@ import {
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   RECOVERY_COMMANDS,
+  RESEARCH_COMMANDS,
   RHYTHM_COMMANDS,
   SCENE_BEAT_COMMANDS,
   SEARCH_TOOLS_COMMANDS,
@@ -146,6 +147,15 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [IDEA_CAPSULE_COMMANDS.setStatus]: 'mutation',
   [IDEA_CAPSULE_COMMANDS.previewConversion]: 'query',
   [IDEA_CAPSULE_COMMANDS.applyConversion]: 'mutation',
+
+  [RESEARCH_COMMANDS.list]: 'query',
+  [RESEARCH_COMMANDS.createNote]: 'mutation',
+  [RESEARCH_COMMANDS.updateNote]: 'mutation',
+  [RESEARCH_COMMANDS.setNoteStatus]: 'mutation',
+  [RESEARCH_COMMANDS.importAttachment]: 'mutation',
+  [RESEARCH_COMMANDS.deleteAttachment]: 'mutation',
+  [RESEARCH_COMMANDS.addLink]: 'mutation',
+  [RESEARCH_COMMANDS.removeLink]: 'mutation',
 
   [DRAFT_COMMANDS.openDraft]: 'query',
   [DRAFT_COMMANDS.applyPatch]: 'mutation',

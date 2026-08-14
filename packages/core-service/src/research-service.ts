@@ -4,6 +4,8 @@ import { copyFile, lstat, mkdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  ResearchAttachmentDeleteInputSchema,
+  ResearchAttachmentImportInputSchema,
   ResearchAttachmentSchema,
   ResearchCatalogSchema,
   ResearchLinkAddInputSchema,
@@ -14,7 +16,6 @@ import {
   ResearchNoteSchema,
   ResearchNoteStatusInputSchema,
   ResearchNoteUpdateInputSchema,
-  type ResearchAttachment,
   type ResearchAttachmentDeleteInput,
   type ResearchAttachmentImportInput,
   type ResearchCatalog,
@@ -35,6 +36,7 @@ import type { ProjectWorkspaceService } from './project-workspace.js';
 const MAX_ATTACHMENT_BYTES = 268_435_456;
 const MANAGED_RESEARCH_DIRECTORY = 'artifacts/research';
 const systemClock: DatabaseClock = { now: () => new Date() };
+type ProjectDatabase = Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0];
 
 export type ResearchServiceErrorCode =
   | 'RESEARCH_NOT_FOUND'
@@ -74,7 +76,7 @@ function parseTags(value: string): string[] {
     const parsed = JSON.parse(value) as unknown;
     if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === 'string')) return parsed;
   } catch {
-    // fall through to invariant error
+    // handled below
   }
   throw new ResearchServiceError('RESEARCH_INVALID', 'Stored research tags are invalid.');
 }
@@ -110,7 +112,7 @@ async function hashFile(filePath: string): Promise<string> {
   const hash = createHash('sha256');
   await new Promise<void>((resolve, reject) => {
     const stream = createReadStream(filePath);
-    stream.on('data', (chunk: Buffer) => hash.update(chunk));
+    stream.on('data', (chunk) => hash.update(chunk));
     stream.on('error', reject);
     stream.on('end', resolve);
   });
@@ -121,8 +123,18 @@ function normalizeQuery(value: string): string {
   return value.normalize('NFKC').trim().toLocaleLowerCase('zh-CN');
 }
 
+function sourceExists(
+  database: ProjectDatabase,
+  projectId: string,
+  sourceType: ResearchSourceType,
+  sourceId: string,
+): boolean {
+  const table = sourceType === 'note' ? 'research_notes' : 'research_attachments';
+  return database.prepare(`SELECT 1 FROM ${table} WHERE id = ? AND project_id = ?`).get(sourceId, projectId) !== undefined;
+}
+
 function targetExists(
-  database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
+  database: ProjectDatabase,
   projectId: string,
   targetType: ResearchTargetType,
   targetId: string,
@@ -140,21 +152,7 @@ function targetExists(
   return database.prepare(queries[targetType]).get(targetId, projectId) !== undefined;
 }
 
-function sourceExists(
-  database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
-  projectId: string,
-  sourceType: ResearchSourceType,
-  sourceId: string,
-): boolean {
-  const table = sourceType === 'note' ? 'research_notes' : 'research_attachments';
-  return database.prepare(`SELECT 1 FROM ${table} WHERE id = ? AND project_id = ?`).get(sourceId, projectId) !== undefined;
-}
-
-function refreshResearchFts(
-  database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
-  projectId: string,
-  noteId: string,
-): void {
+function refreshResearchFts(database: ProjectDatabase, projectId: string, noteId: string): void {
   database.prepare('DELETE FROM fts_research_notes WHERE note_id = ?').run(noteId);
   const row = database
     .prepare(
@@ -162,14 +160,7 @@ function refreshResearchFts(
          FROM research_notes WHERE id = ? AND project_id = ?`,
     )
     .get(noteId, projectId) as
-    | {
-        id: string;
-        title: string;
-        body: string;
-        sourceUri: string | null;
-        tagsJson: string;
-        status: string;
-      }
+    | { id: string; title: string; body: string; sourceUri: string | null; tagsJson: string; status: string }
     | undefined;
   if (!row) return;
   database
@@ -177,15 +168,7 @@ function refreshResearchFts(
       `INSERT INTO fts_research_notes(project_id, note_id, status, title, body, tags, source_uri)
        VALUES(?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(
-      projectId,
-      row.id,
-      row.status,
-      row.title,
-      row.body,
-      parseTags(row.tagsJson).join(' '),
-      row.sourceUri ?? '',
-    );
+    .run(projectId, row.id, row.status, row.title, row.body, parseTags(row.tagsJson).join(' '), row.sourceUri ?? '');
 }
 
 export class ResearchService {
@@ -215,16 +198,7 @@ export class ResearchService {
              id, project_id, title, body, source_uri, tags_json, status, created_at, updated_at
            ) VALUES(?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
         )
-        .run(
-          noteId,
-          input.projectId,
-          input.title,
-          input.body,
-          input.sourceUri,
-          JSON.stringify(input.tags),
-          now,
-          now,
-        );
+        .run(noteId, input.projectId, input.title, input.body, input.sourceUri, JSON.stringify(input.tags), now, now);
       refreshResearchFts(database, input.projectId, noteId);
       return this.#catalog(database, { projectId: input.projectId, includeArchived: true });
     });
@@ -234,7 +208,7 @@ export class ResearchService {
     const input = ResearchNoteUpdateInputSchema.parse(raw);
     const now = this.#clock.now().toISOString();
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
-      const updated = database
+      const changed = database
         .prepare(
           `UPDATE research_notes
               SET title = ?, body = ?, source_uri = ?, tags_json = ?, updated_at = ?
@@ -250,15 +224,7 @@ export class ResearchService {
           input.projectId,
           input.expectedUpdatedAt,
         );
-      if (Number(updated.changes) !== 1) {
-        const exists = database
-          .prepare('SELECT 1 FROM research_notes WHERE id = ? AND project_id = ?')
-          .get(input.noteId, input.projectId);
-        throw new ResearchServiceError(
-          exists ? 'RESEARCH_CONFLICT' : 'RESEARCH_NOT_FOUND',
-          exists ? 'The research note changed before this update.' : 'Research note not found.',
-        );
-      }
+      if (Number(changed.changes) !== 1) this.#throwWriteConflict(database, input.projectId, input.noteId);
       refreshResearchFts(database, input.projectId, input.noteId);
       return this.#catalog(database, { projectId: input.projectId, includeArchived: true });
     });
@@ -268,21 +234,13 @@ export class ResearchService {
     const input = ResearchNoteStatusInputSchema.parse(raw);
     const now = this.#clock.now().toISOString();
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
-      const updated = database
+      const changed = database
         .prepare(
           `UPDATE research_notes SET status = ?, updated_at = ?
             WHERE id = ? AND project_id = ? AND updated_at = ?`,
         )
         .run(input.status, now, input.noteId, input.projectId, input.expectedUpdatedAt);
-      if (Number(updated.changes) !== 1) {
-        const exists = database
-          .prepare('SELECT 1 FROM research_notes WHERE id = ? AND project_id = ?')
-          .get(input.noteId, input.projectId);
-        throw new ResearchServiceError(
-          exists ? 'RESEARCH_CONFLICT' : 'RESEARCH_NOT_FOUND',
-          exists ? 'The research note changed before this status update.' : 'Research note not found.',
-        );
-      }
+      if (Number(changed.changes) !== 1) this.#throwWriteConflict(database, input.projectId, input.noteId);
       refreshResearchFts(database, input.projectId, input.noteId);
       return this.#catalog(database, { projectId: input.projectId, includeArchived: true });
     });
@@ -293,37 +251,24 @@ export class ResearchService {
     raw: ResearchAttachmentImportInput,
     sourcePath: string,
   ): Promise<ResearchCatalog> {
-    const input = ResearchListInputSchema.pick({ projectId: true }).extend({
-      noteId: ResearchAttachmentImportInputSchema.shape.noteId,
-    }).parse(raw);
+    const input = ResearchAttachmentImportInputSchema.parse(raw);
     if (!path.isAbsolute(sourcePath)) {
       throw new ResearchServiceError('RESEARCH_INVALID', 'Attachment source path must be absolute.');
     }
     const details = await lstat(sourcePath).catch((error: unknown) => {
-      throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment cannot be read.', {
-        cause: error,
-      });
+      throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment cannot be read.', { cause: error });
     });
     if (!details.isFile() || details.isSymbolicLink() || details.size > MAX_ATTACHMENT_BYTES) {
-      throw new ResearchServiceError(
-        'RESEARCH_INVALID',
-        'Attachment must be a regular file no larger than 256 MiB.',
-      );
+      throw new ResearchServiceError('RESEARCH_INVALID', 'Attachment must be a regular file no larger than 256 MiB.');
     }
-    if (input.noteId) {
-      const noteExists = this.#workspace.readProject(input.projectId, (database) =>
-        database
-          .prepare('SELECT 1 FROM research_notes WHERE id = ? AND project_id = ?')
-          .get(input.noteId, input.projectId),
-      );
-      if (!noteExists) throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Research note not found.');
+    if (input.noteId && !this.#noteExists(input.projectId, input.noteId)) {
+      throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Research note not found.');
     }
 
     const attachmentId = this.#idFactory();
     const relativePath = `${MANAGED_RESEARCH_DIRECTORY}/${attachmentId}${safeExtension(sourcePath)}`;
     const targetPath = await this.#workspace.resolveProjectPath(input.projectId, relativePath);
-    const directory = path.dirname(targetPath);
-    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
     const partialPath = `${targetPath}.partial-${this.#idFactory()}`;
     let targetCreated = false;
     try {
@@ -360,11 +305,8 @@ export class ResearchService {
       });
     } catch (error) {
       if (targetCreated) await rm(targetPath, { force: true });
-      throw error instanceof ResearchServiceError
-        ? error
-        : new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment import failed.', {
-            cause: error,
-          });
+      if (error instanceof ResearchServiceError) throw error;
+      throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment import failed.', { cause: error });
     } finally {
       await rm(partialPath, { force: true });
     }
@@ -374,7 +316,7 @@ export class ResearchService {
     requestId: string,
     raw: ResearchAttachmentDeleteInput,
   ): Promise<ResearchCatalog> {
-    const input = raw;
+    const input = ResearchAttachmentDeleteInputSchema.parse(raw);
     const attachment = this.#workspace.readProject(input.projectId, (database) =>
       database
         .prepare(
@@ -384,10 +326,7 @@ export class ResearchService {
         .get(input.attachmentId, input.projectId) as { managedRelativePath: string } | undefined,
     );
     if (!attachment) throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Attachment not found.');
-    const targetPath = await this.#workspace.resolveProjectPath(
-      input.projectId,
-      attachment.managedRelativePath,
-    );
+    const targetPath = await this.#workspace.resolveProjectPath(input.projectId, attachment.managedRelativePath);
     const stagedPath = `${targetPath}.deleting-${this.#idFactory()}`;
     let staged = false;
     try {
@@ -463,27 +402,41 @@ export class ResearchService {
     });
   }
 
-  #catalog(
-    database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
-    raw: ResearchListInput,
-  ): ResearchCatalog {
+  #noteExists(projectId: string, noteId: string): boolean {
+    return this.#workspace.readProject(
+      projectId,
+      (database) =>
+        database.prepare('SELECT 1 FROM research_notes WHERE id = ? AND project_id = ?').get(noteId, projectId) !==
+        undefined,
+    );
+  }
+
+  #throwWriteConflict(database: ProjectDatabase, projectId: string, noteId: string): never {
+    const exists = database
+      .prepare('SELECT 1 FROM research_notes WHERE id = ? AND project_id = ?')
+      .get(noteId, projectId);
+    throw new ResearchServiceError(
+      exists ? 'RESEARCH_CONFLICT' : 'RESEARCH_NOT_FOUND',
+      exists ? 'The research note changed before this update.' : 'Research note not found.',
+    );
+  }
+
+  #catalog(database: ProjectDatabase, raw: ResearchListInput): ResearchCatalog {
     const input = ResearchListInputSchema.parse(raw);
-    const rows = database
+    const notes = (database
       .prepare(
         `SELECT id, project_id AS projectId, title, body, source_uri AS sourceUri,
                 tags_json AS tagsJson, status, created_at AS createdAt, updated_at AS updatedAt
            FROM research_notes WHERE project_id = ?
           ORDER BY status = 'archived', updated_at DESC, id`,
       )
-      .all(input.projectId) as unknown as NoteRow[];
-    const query = input.query ? normalizeQuery(input.query) : null;
-    const wantedTags = new Set(input.tags ?? []);
-    const notes = rows
+      .all(input.projectId) as unknown as NoteRow[])
       .map(noteFromRow)
       .filter((note) => input.includeArchived || note.status === 'active')
-      .filter((note) => wantedTags.size === 0 || [...wantedTags].every((tag) => note.tags.includes(tag)))
+      .filter((note) => !input.tags?.length || input.tags.every((tag) => note.tags.includes(tag)))
       .filter((note) => {
-        if (!query) return true;
+        if (!input.query) return true;
+        const query = normalizeQuery(input.query);
         return normalizeQuery(`${note.title}\n${note.body}\n${note.tags.join(' ')}\n${note.sourceUri ?? ''}`).includes(query);
       });
     const noteIds = new Set(notes.map((note) => note.id));
@@ -498,7 +451,7 @@ export class ResearchService {
       .all(input.projectId) as unknown as Record<string, unknown>[])
       .map((row) => ResearchAttachmentSchema.parse({ ...row, sizeBytes: Number(row.sizeBytes) }))
       .filter((attachment) => attachment.noteId === null || noteIds.has(attachment.noteId));
-    const sourceIds = new Set<string>([...noteIds, ...attachments.map((item) => item.id)]);
+    const sourceIds = new Set([...noteIds, ...attachments.map((attachment) => attachment.id)]);
     const links = (database
       .prepare(
         `SELECT id, project_id AS projectId, source_type AS sourceType, source_id AS sourceId,

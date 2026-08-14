@@ -584,7 +584,10 @@ export class ResearchService {
     projectId: string,
     attachmentId: string,
   ): Promise<boolean> {
-    const directory = await this.#workspace.resolveProjectPath(projectId, MANAGED_RESEARCH_DIRECTORY);
+    const directory = await this.#workspace.resolveProjectPath(
+      projectId,
+      MANAGED_RESEARCH_DIRECTORY,
+    );
     let names: string[];
     try {
       names = await readdir(directory);

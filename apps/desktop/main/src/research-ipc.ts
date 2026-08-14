@@ -36,7 +36,8 @@ function trustedSender(event: IpcMainInvokeEvent, rendererUrl: string): boolean 
 async function chooseAttachmentFile(event: IpcMainInvokeEvent): Promise<string | null> {
   if (process.env.WORLDFORGE_E2E === '1' && process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT) {
     const injected = process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT;
-    if (!path.isAbsolute(injected)) throw new Error('WORLDFORGE_E2E_RESEARCH_ATTACHMENT_MUST_BE_ABSOLUTE');
+    if (!path.isAbsolute(injected))
+      throw new Error('WORLDFORGE_E2E_RESEARCH_ATTACHMENT_MUST_BE_ABSOLUTE');
     return injected;
   }
   const window = BrowserWindow.fromWebContents(event.sender);
@@ -46,7 +47,22 @@ async function chooseAttachmentFile(event: IpcMainInvokeEvent): Promise<string |
     buttonLabel: '加入资料库',
     properties: ['openFile'],
     filters: [
-      { name: '研究资料', extensions: ['pdf', 'txt', 'md', 'markdown', 'docx', 'json', 'png', 'jpg', 'jpeg', 'webp', 'gif'] },
+      {
+        name: '研究资料',
+        extensions: [
+          'pdf',
+          'txt',
+          'md',
+          'markdown',
+          'docx',
+          'json',
+          'png',
+          'jpg',
+          'jpeg',
+          'webp',
+          'gif',
+        ],
+      },
       { name: '全部文件', extensions: ['*'] },
     ],
   });
@@ -150,54 +166,58 @@ export function registerResearchIpc(options: ResearchIpcOptions): () => void {
     );
   }
 
-  registerIpcInvokeHandler(options.ipcMain, RESEARCH_IPC_CHANNELS.importAttachment, async (event, raw) => {
-    const parsed = ResearchImportAttachmentCommandSchema.safeParse(raw);
-    if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
-      return ResearchCatalogResultSchema.parse({
-        ok: false,
-        requestId: parsed.success ? parsed.data.requestId : randomUUID(),
-        error: {
-          code: 'COMMON_INVALID_INPUT_001',
-          message: '研究附件导入失败。',
-          retryable: false,
-        },
+  registerIpcInvokeHandler(
+    options.ipcMain,
+    RESEARCH_IPC_CHANNELS.importAttachment,
+    async (event, raw) => {
+      const parsed = ResearchImportAttachmentCommandSchema.safeParse(raw);
+      if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
+        return ResearchCatalogResultSchema.parse({
+          ok: false,
+          requestId: parsed.success ? parsed.data.requestId : randomUUID(),
+          error: {
+            code: 'COMMON_INVALID_INPUT_001',
+            message: '研究附件导入失败。',
+            retryable: false,
+          },
+        });
+      }
+      const sourcePath = await chooseAttachmentFile(event);
+      if (!sourcePath) {
+        return ResearchCatalogResultSchema.parse({
+          ok: false,
+          requestId: parsed.data.requestId,
+          error: {
+            code: 'COMMON_CANCELLED_004',
+            message: '已取消选择研究附件。',
+            retryable: false,
+          },
+        });
+      }
+      const operation = CoreProjectOperationSchema.parse({
+        operation: RESEARCH_COMMANDS.importAttachment,
+        input: parsed.data.payload,
+        sourcePath,
       });
-    }
-    const sourcePath = await chooseAttachmentFile(event);
-    if (!sourcePath) {
+      const result = await options.supervisor.invokeProjectOperation(parsed.data.requestId, operation);
+      if (!result.ok) {
+        const code: ErrorCode = result.errorCode;
+        return ResearchCatalogResultSchema.parse({
+          ok: false,
+          requestId: parsed.data.requestId,
+          error: {
+            code,
+            ...coreOperationFailureSemantics(code, '研究附件导入失败。', 'mutation'),
+          },
+        });
+      }
       return ResearchCatalogResultSchema.parse({
-        ok: false,
+        ok: true,
         requestId: parsed.data.requestId,
-        error: {
-          code: 'COMMON_CANCELLED_004',
-          message: '已取消选择研究附件。',
-          retryable: false,
-        },
+        data: result.data,
       });
-    }
-    const operation = CoreProjectOperationSchema.parse({
-      operation: RESEARCH_COMMANDS.importAttachment,
-      input: parsed.data.payload,
-      sourcePath,
-    });
-    const result = await options.supervisor.invokeProjectOperation(parsed.data.requestId, operation);
-    if (!result.ok) {
-      const code: ErrorCode = result.errorCode;
-      return ResearchCatalogResultSchema.parse({
-        ok: false,
-        requestId: parsed.data.requestId,
-        error: {
-          code,
-          ...coreOperationFailureSemantics(code, '研究附件导入失败。', 'mutation'),
-        },
-      });
-    }
-    return ResearchCatalogResultSchema.parse({
-      ok: true,
-      requestId: parsed.data.requestId,
-      data: result.data,
-    });
-  });
+    },
+  );
 
   return () => {
     for (const channel of Object.values(RESEARCH_IPC_CHANNELS)) options.ipcMain.removeHandler(channel);

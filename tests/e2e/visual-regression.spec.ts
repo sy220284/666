@@ -74,7 +74,7 @@ async function stabilizeSnapshot(page: Page): Promise<void> {
     });
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   });
-  await page.waitForTimeout(50);
+  await page.waitForTimeout(200);
 }
 
 async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): Promise<void> {
@@ -88,6 +88,9 @@ async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): 
   await expect(page.locator('body')).toHaveAttribute('data-theme', themeId);
   await expect(page.locator('body')).toHaveAttribute('data-visual-theme-variant', variant);
   await page.locator('[data-close-settings]').click();
+  await expect(page.locator('[data-settings-dialog]')).toBeHidden();
+  await expect(page.locator('[data-open-settings]')).toBeFocused();
+  await page.mouse.move(1, 1);
   await expect(page.locator('[data-writing-workbench]')).toBeVisible();
   await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
 }

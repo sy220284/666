@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type {
   ResearchAttachment,
+  ResearchAttachmentPreview,
   ResearchCatalog,
   ResearchLink,
   ResearchReference,
@@ -31,13 +32,16 @@ interface ResearchWorkbenchProps {
 
 const TARGET_OPTIONS: readonly [ResearchTargetType, string][] = [
   ['chapter', '章节'],
+  ['volume', '卷'],
   ['entity', '人物或设定'],
   ['relationship', '人物关系'],
   ['timeline', '时间线事件'],
   ['foreshadowing', '伏笔'],
   ['arc', '人物成长线'],
+  ['milestone', '成长里程碑'],
   ['idea', '灵感'],
 ];
+const PREVIEW_MEDIA_TYPES = new Set(['text/plain', 'text/markdown', 'application/json']);
 
 function splitTags(value: string): string[] {
   return [
@@ -58,29 +62,13 @@ function attachmentLabel(attachment: ResearchAttachment): string {
   return `${attachment.displayName} · ${size} · ${attachment.mediaType}`;
 }
 
-function linkNavigation(projectId: string, link: ResearchLink): AuthorNavigationTarget | null {
-  if (link.targetType === 'chapter') {
-    return {
-      type: 'draft-block',
-      projectId,
-      chapterId: link.targetId,
-      logicalBlockId: null,
-      query: null,
-    };
-  }
-  if (link.targetType === 'entity') {
-    return { type: 'entity', projectId, entityId: link.targetId, query: null };
-  }
-  if (link.targetType === 'foreshadowing') {
-    return {
-      type: 'foreshadowing',
-      projectId,
-      foreshadowingId: link.targetId,
-      chapterId: null,
-      query: null,
-    };
-  }
-  return null;
+function linkNavigation(projectId: string, link: ResearchLink): AuthorNavigationTarget {
+  return {
+    type: 'research-link-target',
+    projectId,
+    targetType: link.targetType,
+    targetId: link.targetId,
+  };
 }
 
 function selectedReferenceKeys(projectId: string): ReadonlySet<string> {
@@ -102,10 +90,13 @@ export function ResearchWorkbench({
   const [showArchived, setShowArchived] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [sourceType, setSourceType] = useState('');
+  const [sourceLabel, setSourceLabel] = useState('');
   const [sourceUri, setSourceUri] = useState('');
   const [tagsText, setTagsText] = useState('');
   const [targetType, setTargetType] = useState<ResearchTargetType>('chapter');
   const [targetId, setTargetId] = useState('');
+  const [preview, setPreview] = useState<ResearchAttachmentPreview | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState(
     '研究资料不会自动写入人物与世界，也不会自动进入智能上下文。',
@@ -165,15 +156,20 @@ export function ResearchWorkbench({
   }, [projectId]);
 
   useEffect(() => {
+    setPreview(null);
     if (!selected) {
       setTitle('');
       setBody('');
+      setSourceType('');
+      setSourceLabel('');
       setSourceUri('');
       setTagsText('');
       return;
     }
     setTitle(selected.title);
     setBody(selected.body);
+    setSourceType(selected.sourceType ?? '');
+    setSourceLabel(selected.sourceLabel ?? '');
     setSourceUri(selected.sourceUri ?? '');
     setTagsText(selected.tags.join('，'));
   }, [selected]);
@@ -195,6 +191,8 @@ export function ResearchWorkbench({
         projectId,
         title: '未命名研究笔记',
         body: '',
+        sourceType: null,
+        sourceLabel: null,
         sourceUri: null,
         tags: [],
       },
@@ -222,6 +220,8 @@ export function ResearchWorkbench({
         expectedUpdatedAt: selected.updatedAt,
         title: title.trim(),
         body,
+        sourceType: sourceType.trim() || null,
+        sourceLabel: sourceLabel.trim() || null,
         sourceUri: sourceUri.trim() || null,
         tags: splitTags(tagsText),
       },
@@ -257,6 +257,28 @@ export function ResearchWorkbench({
     }
   };
 
+  const deleteNote = async (): Promise<void> => {
+    if (!selected || readOnly || pending) return;
+    setPending('delete-note');
+    const outcome = await bridge.research.deleteNote(
+      {
+        projectId,
+        noteId: selected.id,
+        expectedUpdatedAt: selected.updatedAt,
+      },
+      { mode: 'reject', requestKey: `research.deleteNote:${selected.id}` },
+    );
+    setPending(null);
+    if (outcome.state === 'success') {
+      removeResearchReferenceSelection(projectId, { sourceType: 'note', sourceId: selected.id });
+      setSelectedReferenceIds(selectedReferenceKeys(projectId));
+      applyCatalog(outcome.data);
+      setNotice('研究笔记已删除；受管附件保留为独立资料。');
+    } else if (outcome.state === 'failure') {
+      setNotice(`删除失败：${authorErrorSummary(outcome.error)}`);
+    }
+  };
+
   const importAttachment = async (): Promise<void> => {
     if (!selected || readOnly || pending) return;
     setPending('attachment');
@@ -277,6 +299,23 @@ export function ResearchWorkbench({
     }
   };
 
+  const previewAttachment = async (attachmentId: string): Promise<void> => {
+    if (pending) return;
+    setPending(`preview:${attachmentId}`);
+    const outcome = await bridge.research.previewAttachment(
+      { projectId, attachmentId },
+      { mode: 'replace', laneKey: `research.preview:${projectId}` },
+    );
+    setPending(null);
+    if (outcome.state === 'success') {
+      setPreview(outcome.data);
+      setNotice(outcome.data.truncated ? '预览已按 256 KiB 安全上限截断。' : '附件预览已校验。');
+    } else if (outcome.state === 'failure') {
+      setPreview(null);
+      setNotice(`预览失败：${authorErrorSummary(outcome.error)}`);
+    }
+  };
+
   const deleteAttachment = async (attachmentId: string): Promise<void> => {
     if (readOnly || pending) return;
     setPending(`delete:${attachmentId}`);
@@ -294,6 +333,7 @@ export function ResearchWorkbench({
         sourceType: 'attachment',
         sourceId: attachmentId,
       });
+      if (preview?.attachmentId === attachmentId) setPreview(null);
       setSelectedReferenceIds(selectedReferenceKeys(projectId));
       setNotice('附件已从作品资料库移除。');
     } else if (outcome.state === 'failure') {
@@ -419,6 +459,14 @@ export function ResearchWorkbench({
               <div className="button-row button-row--end">
                 <button
                   type="button"
+                  className="text-button danger"
+                  disabled={readOnly || pending !== null}
+                  onClick={() => void deleteNote()}
+                >
+                  删除笔记
+                </button>
+                <button
+                  type="button"
                   className="button secondary"
                   disabled={readOnly || pending !== null}
                   onClick={() => void toggleArchived()}
@@ -452,12 +500,30 @@ export function ResearchWorkbench({
                 />
               </label>
               <label className="field">
-                <span>来源</span>
+                <span>来源类型</span>
+                <input
+                  value={sourceType}
+                  disabled={readOnly}
+                  onChange={(event) => setSourceType(event.target.value)}
+                  placeholder="档案、网页、书籍、访谈……"
+                />
+              </label>
+              <label className="field">
+                <span>来源名称</span>
+                <input
+                  value={sourceLabel}
+                  disabled={readOnly}
+                  onChange={(event) => setSourceLabel(event.target.value)}
+                  placeholder="书名、档案名称或资料来源"
+                />
+              </label>
+              <label className="field">
+                <span>来源地址</span>
                 <input
                   value={sourceUri}
                   disabled={readOnly}
                   onChange={(event) => setSourceUri(event.target.value)}
-                  placeholder="网址、书名、档案号或自己的来源说明"
+                  placeholder="网址、档案号或其他定位符"
                 />
               </label>
               <label className="field field--grow">
@@ -507,19 +573,38 @@ export function ResearchWorkbench({
                       </label>
                       <strong>{attachmentLabel(attachment)}</strong>
                       <span>SHA-256 {attachment.contentHash.slice(0, 12)}… · 受管本地副本</span>
-                      <button
-                        type="button"
-                        className="text-button danger"
-                        disabled={readOnly || pending !== null}
-                        onClick={() => void deleteAttachment(attachment.id)}
-                      >
-                        删除附件
-                      </button>
+                      <div className="button-row">
+                        {PREVIEW_MEDIA_TYPES.has(attachment.mediaType) ? (
+                          <button
+                            type="button"
+                            className="text-button"
+                            disabled={pending !== null}
+                            onClick={() => void previewAttachment(attachment.id)}
+                          >
+                            安全预览
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="text-button danger"
+                          disabled={readOnly || pending !== null}
+                          onClick={() => void deleteAttachment(attachment.id)}
+                        >
+                          删除附件
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
                 {selectedAttachments.length === 0 ? <p className="empty-copy">暂无附件。</p> : null}
               </div>
+              {preview ? (
+                <section className="research-attachment-preview" aria-label="附件安全预览">
+                  <strong>{preview.displayName}</strong>
+                  <pre>{preview.text}</pre>
+                  {preview.truncated ? <p className="muted-copy">预览内容已截断。</p> : null}
+                </section>
+              ) : null}
 
               <label className="inline-control research-reference-note">
                 <input
@@ -581,15 +666,13 @@ export function ResearchWorkbench({
                       </strong>
                       <span>{link.targetId}</span>
                       <div className="button-row">
-                        {navigation ? (
-                          <button
-                            type="button"
-                            className="text-button"
-                            onClick={() => onNavigate(navigation)}
-                          >
-                            打开
-                          </button>
-                        ) : null}
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => onNavigate(navigation)}
+                        >
+                          打开
+                        </button>
                         <button
                           type="button"
                           className="text-button danger"

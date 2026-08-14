@@ -223,8 +223,11 @@ describe('M11-07 long-form author settings interactions', () => {
 
     const routeFieldset = renderer.root.findAllByType('fieldset')[0]!;
     const routeSelects = routeFieldset.findAllByType('select');
-    await change(routeSelects[0]!, provider.id);
-    await change(routeSelects[2]!, 'limited');
+    await change(routeSelects[1]!, provider.id);
+    const routeAfterFallback = renderer.root.findAllByType('fieldset')[0]!.findAllByType('select');
+    await change(routeAfterFallback[0]!, provider.id);
+    const routeAfterPrimary = renderer.root.findAllByType('fieldset')[0]!.findAllByType('select');
+    await change(routeAfterPrimary[2]!, 'limited');
 
     await click(renderer, '保存长篇创作设置');
     expect(updateSettings).toHaveBeenCalledOnce();
@@ -235,6 +238,107 @@ describe('M11-07 long-form author settings interactions', () => {
     });
 
     await act(async () => renderer.unmount());
+  });
+
+  it('reports a digest refresh failure after a successful rebuild', async () => {
+    let listAttempt = 0;
+    const listDigests = vi.fn(async () => {
+      listAttempt += 1;
+      return listAttempt === 1
+        ? success({ projectId: project.projectId, digests: digestSet })
+        : failure('COMMON_INTERNAL_999');
+    });
+    const bridge = contractInput<RendererBridgeAdapter>({
+      longformAi: {
+        getSettings: vi.fn(async () => success(settings)),
+        listDigests,
+        rebuildDigests: vi.fn(async () =>
+          success({
+            projectId: project.projectId,
+            requestedScopeType: 'project' as const,
+            requestedScopeId: project.projectId,
+            rebuilt: [digest],
+            skippedUnfinalizedChapters: 0,
+          }),
+        ),
+      },
+      planning: { listStructure: vi.fn(async () => success(structure)) },
+    });
+    let renderer!: TestRenderer;
+    await act(async () => {
+      renderer = create(
+        createElement(LongformAiSettingsPanel, {
+          bridge,
+          project,
+          providers: [provider],
+          readOnly: false,
+        }),
+      );
+      await flushPromises();
+    });
+
+    await click(renderer, '根据定稿重建');
+    expect(listDigests).toHaveBeenCalledTimes(2);
+    expect(textContent(renderer.root)).toContain('长篇记忆已更新，但列表刷新失败');
+    await act(async () => renderer.unmount());
+  });
+
+  it('keeps disabled handlers inert and ignores deferred loading after unmount', async () => {
+    type SettingsOutcome = Awaited<ReturnType<RendererBridgeAdapter['longformAi']['getSettings']>>;
+    type DigestOutcome = Awaited<ReturnType<RendererBridgeAdapter['longformAi']['listDigests']>>;
+    type StructureOutcome = Awaited<ReturnType<RendererBridgeAdapter['planning']['listStructure']>>;
+    let resolveSettings!: (outcome: SettingsOutcome) => void;
+    let resolveDigests!: (outcome: DigestOutcome) => void;
+    let resolveStructure!: (outcome: StructureOutcome) => void;
+    const bridge = contractInput<RendererBridgeAdapter>({
+      longformAi: {
+        getSettings: vi.fn(
+          () => new Promise<SettingsOutcome>((resolve) => (resolveSettings = resolve)),
+        ),
+        listDigests: vi.fn(
+          () => new Promise<DigestOutcome>((resolve) => (resolveDigests = resolve)),
+        ),
+      },
+      planning: {
+        listStructure: vi.fn(
+          () => new Promise<StructureOutcome>((resolve) => (resolveStructure = resolve)),
+        ),
+      },
+    });
+    let renderer!: TestRenderer;
+    await act(async () => {
+      renderer = create(
+        createElement(LongformAiSettingsPanel, {
+          bridge,
+          project,
+          providers: [provider],
+          readOnly: true,
+        }),
+      );
+    });
+
+    await click(renderer, '保存长篇创作设置');
+    await click(renderer, '根据定稿重建');
+    await click(renderer, '使用“克制叙事”预设');
+    await click(renderer, '从已定稿正文学习');
+    const form = renderer.root
+      .findAllByType('form')
+      .find((candidate) => candidate.props.className === 'longform-style-form')!;
+    await act(async () => {
+      (form.props.onSubmit as (event: { preventDefault(): void }) => void)({
+        preventDefault: vi.fn(),
+      });
+    });
+    const routeSelect = renderer.root.findAllByType('fieldset')[0]!.findAllByType('select')[0]!;
+    await change(routeSelect, provider.id);
+
+    await act(async () => renderer.unmount());
+    await act(async () => {
+      resolveSettings(success(settings));
+      resolveDigests(success({ projectId: project.projectId, digests: [] }));
+      resolveStructure(success(structure));
+      await flushPromises();
+    });
   });
 
   it('creates and removes manual styles and explains failure/read-only states', async () => {

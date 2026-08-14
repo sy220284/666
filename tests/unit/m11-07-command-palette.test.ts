@@ -6,6 +6,7 @@ import type { createElement as createReactElement, ReactElement } from 'react';
 import type { renderToStaticMarkup as renderReactToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ProviderSummary } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import {
   COMMAND_CATALOG,
@@ -40,6 +41,7 @@ interface TestInstance {
 interface TestRenderer {
   readonly root: TestInstance;
   unmount(): void;
+  update(element: ReactElement): void;
 }
 const { act, create: createRenderer } = rendererRequire('react-test-renderer') as {
   readonly act: (callback: () => void | Promise<void>) => Promise<void>;
@@ -243,7 +245,8 @@ describe('M11-07 Ctrl+K command palette', () => {
       },
       clearTimeout: vi.fn(),
     });
-    vi.stubGlobal('document', { activeElement: null });
+    const documentState: { activeElement: object | null } = { activeElement: null };
+    vi.stubGlobal('document', documentState);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const bridge = contractInput<RendererBridgeAdapter>({
       planning: {
@@ -389,6 +392,13 @@ describe('M11-07 Ctrl+K command palette', () => {
     expect(textContent(renderer.root)).toContain('历史定稿铜铃');
     expect(textContent(renderer.root)).not.toContain('无法定位的旧稿');
 
+    const entityButton = renderer.root
+      .findAllByType('button')
+      .find((candidate) => textContent(candidate).includes('人物阿遥'))!;
+    await act(async () => {
+      (entityButton.props.onMouseEnter as () => void)();
+    });
+
     await click(renderer, '人物阿遥');
     expect(onNavigateTarget).toHaveBeenCalledWith(expect.objectContaining({ type: 'entity' }));
     await act(async () => {
@@ -408,18 +418,41 @@ describe('M11-07 Ctrl+K command palette', () => {
     expect(onClose).toHaveBeenCalled();
     expect(focus).toHaveBeenCalled();
 
+    await act(async () => {
+      (input.props.onChange as (event: { target: { value: string } }) => void)({
+        target: { value: '旧约' },
+      });
+      await flushPromises();
+    });
+    expect(textContent(renderer.root)).toContain('伏笔 · 已埋设');
+    await click(renderer, '旧约伏笔');
+    expect(onNavigateTarget).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'foreshadowing' }),
+    );
+
     const dialog = renderer.root.findAllByType('section')[0]!;
     const preventDefault = vi.fn();
     const keyDown = dialog.props.onKeyDown as (event: Record<string, unknown>) => void;
-    keyDown(keyEvent('ArrowDown', preventDefault));
-    keyDown(keyEvent('ArrowUp', preventDefault));
+    await act(async () => keyDown(keyEvent('ArrowDown', preventDefault)));
+    await act(async () => keyDown(keyEvent('ArrowUp', preventDefault)));
     keyDown(keyEvent('Escape', preventDefault));
     keyDown(keyEvent('Enter', preventDefault));
     keyDown({ ...keyEvent('x', preventDefault), nativeEvent: { isComposing: true } });
+    const firstFocusable = { focus: vi.fn() };
+    const lastFocusable = { focus: vi.fn() };
+    documentState.activeElement = firstFocusable;
     keyDown({
       ...keyEvent('Tab', preventDefault),
-      currentTarget: { querySelectorAll: () => [{ focus }, { focus }] },
+      shiftKey: true,
+      currentTarget: { querySelectorAll: () => [firstFocusable, lastFocusable] },
     });
+    documentState.activeElement = lastFocusable;
+    keyDown({
+      ...keyEvent('Tab', preventDefault),
+      currentTarget: { querySelectorAll: () => [firstFocusable, lastFocusable] },
+    });
+    expect(lastFocusable.focus).toHaveBeenCalledOnce();
+    expect(firstFocusable.focus).toHaveBeenCalledOnce();
     expect(preventDefault).toHaveBeenCalled();
 
     const backdrop = renderer.root.findAllByType('div')[0]!;
@@ -433,6 +466,156 @@ describe('M11-07 Ctrl+K command palette', () => {
       currentTarget: target,
     });
     await act(async () => renderer.unmount());
+    vi.unstubAllGlobals();
+  });
+
+  it('handles closed, unavailable, failed-search and unmounted loading states', async () => {
+    const projectId = '5a198db8-5a43-45ea-b777-7dfb63742bb7';
+    const fullAvailability = {
+      home: true,
+      planning: true,
+      writing: true,
+      canon: true,
+      checks: true,
+      settings: true,
+    };
+    vi.stubGlobal('window', {
+      requestAnimationFrame: (callback: () => void) => {
+        callback();
+        return 1;
+      },
+      setTimeout: (callback: () => void) => {
+        callback();
+        return 1;
+      },
+      clearTimeout: vi.fn(),
+    });
+    vi.stubGlobal('document', { activeElement: null });
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const props = {
+      onClose: vi.fn(),
+      onNavigate: vi.fn(),
+      onNavigateTarget: vi.fn(),
+      onTransitionToRoute: vi.fn(async () => true),
+      returnFocusRef: { current: null },
+    };
+
+    let closed!: TestRenderer;
+    await act(async () => {
+      closed = createRenderer(
+        createElement(CommandPalette, {
+          ...props,
+          availability: fullAvailability,
+          bridge: contractInput<RendererBridgeAdapter>({}),
+          open: false,
+          projectId,
+        }),
+      );
+    });
+    expect(closed.root.findAllByType('section')).toHaveLength(0);
+    await act(async () => closed.unmount());
+
+    let unavailable!: TestRenderer;
+    await act(async () => {
+      unavailable = createRenderer(
+        createElement(CommandPalette, {
+          ...props,
+          availability: {
+            home: true,
+            planning: false,
+            writing: false,
+            canon: false,
+            checks: false,
+            settings: true,
+          },
+          bridge: contractInput<RendererBridgeAdapter>({}),
+          open: true,
+          projectId,
+        }),
+      );
+      await flushPromises();
+    });
+    await act(async () => unavailable.unmount());
+
+    let projectless!: TestRenderer;
+    await act(async () => {
+      projectless = createRenderer(
+        createElement(CommandPalette, {
+          ...props,
+          availability: fullAvailability,
+          bridge: contractInput<RendererBridgeAdapter>({}),
+          open: true,
+          projectId: null,
+        }),
+      );
+      await flushPromises();
+    });
+    expect(textContent(projectless.root)).toContain('打开设置');
+    await act(async () => projectless.unmount());
+
+    const failedBridge = contractInput<RendererBridgeAdapter>({
+      planning: {
+        listStructure: vi.fn(async () => success({ projectId, volumes: [] })),
+      },
+      narrativePlanning: {
+        list: vi.fn(async () => success({ projectId, foreshadowings: [], characterArcs: [] })),
+      },
+      searchTools: { search: vi.fn(async () => failure('COMMON_INTERNAL_999')) },
+    });
+    let failed!: TestRenderer;
+    await act(async () => {
+      failed = createRenderer(
+        createElement(CommandPalette, {
+          ...props,
+          availability: fullAvailability,
+          bridge: failedBridge,
+          open: true,
+          projectId,
+        }),
+      );
+      await flushPromises();
+    });
+    const failedInput = failed.root.findAllByType('input')[0]!;
+    await act(async () => {
+      changeValue(failedInput, '会失败');
+      await flushPromises();
+    });
+    expect(textContent(failed.root)).toContain('本地服务遇到异常');
+    await act(async () => failed.unmount());
+
+    type StructureOutcome = Awaited<ReturnType<RendererBridgeAdapter['planning']['listStructure']>>;
+    type NarrativeOutcome = Awaited<ReturnType<RendererBridgeAdapter['narrativePlanning']['list']>>;
+    let resolveStructure!: (outcome: StructureOutcome) => void;
+    let resolveNarrative!: (outcome: NarrativeOutcome) => void;
+    const deferredBridge = contractInput<RendererBridgeAdapter>({
+      planning: {
+        listStructure: vi.fn(
+          () => new Promise<StructureOutcome>((resolve) => (resolveStructure = resolve)),
+        ),
+      },
+      narrativePlanning: {
+        list: vi.fn(() => new Promise<NarrativeOutcome>((resolve) => (resolveNarrative = resolve))),
+      },
+    });
+    let deferred!: TestRenderer;
+    await act(async () => {
+      deferred = createRenderer(
+        createElement(CommandPalette, {
+          ...props,
+          availability: fullAvailability,
+          bridge: deferredBridge,
+          open: true,
+          projectId,
+        }),
+      );
+      await flushPromises();
+    });
+    await act(async () => deferred.unmount());
+    await act(async () => {
+      resolveStructure(success({ projectId, volumes: [] }));
+      resolveNarrative(success({ projectId, foreshadowings: [], characterArcs: [] }));
+      await flushPromises();
+    });
     vi.unstubAllGlobals();
   });
 
@@ -530,53 +713,55 @@ describe('M11-07 Ctrl+K command palette', () => {
     const onCandidateCountChange = vi.fn();
     const onTendencyChange = vi.fn();
     const onChapterGoalChange = vi.fn();
+    const onChapterSourceChange = vi.fn();
+    const onGenerationInstructionChange = vi.fn();
     const onStartGeneration = vi.fn();
+    const onTargetCharactersChange = vi.fn();
     const onCancelGeneration = vi.fn();
+    const studioProps = {
+      activeRun: null,
+      acknowledgeStaleSkeleton: false,
+      candidateCount: 2,
+      chapterGoal: '',
+      chapterSource: 'direct_chapter_goal' as const,
+      generationInstruction: '',
+      generationMode: 'skeleton' as GenerationMode,
+      generationStatus: '尚未开始',
+      lastGenerationIntent: null,
+      mergeBeatSources: {},
+      mergeCandidateIds: new Set<string>(),
+      mergeMappingMode: 'beat' as const,
+      pending: false,
+      proseCandidates: [],
+      providers: [generationProvider],
+      providerId: '',
+      readOnly: false,
+      sceneBeats: [],
+      selectedSkeletonId: '',
+      skeletonCandidates: [],
+      targetCharacters: 3000,
+      tendency: '',
+      onAcknowledgeStaleSkeletonChange: vi.fn(),
+      onCancelGeneration,
+      onCandidateCountChange,
+      onChapterGoalChange,
+      onChapterSourceChange,
+      onDecidePartial: vi.fn(),
+      onGenerationInstructionChange,
+      onGenerationModeChange,
+      onMergeBeatSourceChange: vi.fn(),
+      onMergeCandidateChange: vi.fn(),
+      onMergeMappingModeChange: vi.fn(),
+      onProviderIdChange,
+      onRetryRewrite: vi.fn(),
+      onSelectedSkeletonChange: vi.fn(),
+      onStartGeneration,
+      onTargetCharactersChange,
+      onTendencyChange,
+    };
     let renderer!: TestRenderer;
     await act(async () => {
-      renderer = createRenderer(
-        createElement(GenerationStudio, {
-          activeRun: null,
-          acknowledgeStaleSkeleton: false,
-          candidateCount: 2,
-          chapterGoal: '',
-          chapterSource: 'direct_chapter_goal',
-          generationInstruction: '',
-          generationMode: 'skeleton',
-          generationStatus: '尚未开始',
-          lastGenerationIntent: null,
-          mergeBeatSources: {},
-          mergeCandidateIds: new Set<string>(),
-          mergeMappingMode: 'beat',
-          pending: false,
-          proseCandidates: [],
-          providers: [],
-          providerId: '',
-          readOnly: false,
-          sceneBeats: [],
-          selectedSkeletonId: '',
-          skeletonCandidates: [],
-          targetCharacters: 3000,
-          tendency: '',
-          onAcknowledgeStaleSkeletonChange: vi.fn(),
-          onCancelGeneration,
-          onCandidateCountChange,
-          onChapterGoalChange,
-          onChapterSourceChange: vi.fn(),
-          onDecidePartial: vi.fn(),
-          onGenerationInstructionChange: vi.fn(),
-          onGenerationModeChange,
-          onMergeBeatSourceChange: vi.fn(),
-          onMergeCandidateChange: vi.fn(),
-          onMergeMappingModeChange: vi.fn(),
-          onProviderIdChange,
-          onRetryRewrite: vi.fn(),
-          onSelectedSkeletonChange: vi.fn(),
-          onStartGeneration,
-          onTargetCharactersChange: vi.fn(),
-          onTendencyChange,
-        }),
-      );
+      renderer = createRenderer(createElement(GenerationStudio, studioProps));
     });
     const primaryActions = renderer.root.findByProps({ 'data-generation-primary-actions': true });
     for (const button of primaryActions.findAllByType('button')) {
@@ -596,6 +781,22 @@ describe('M11-07 Ctrl+K command palette', () => {
     expect(onChapterGoalChange).toHaveBeenCalledWith('推进旧约');
     expect(onStartGeneration).toHaveBeenCalledOnce();
     expect(onCancelGeneration).toHaveBeenCalledOnce();
+    await act(async () => {
+      renderer.update(
+        createElement(GenerationStudio, { ...studioProps, generationMode: 'chapter' }),
+      );
+    });
+    changeValue(
+      renderer.root.findByProps({ 'data-chapter-generation-source': true }),
+      'canonical_scene_beats',
+    );
+    changeValue(renderer.root.findByProps({ 'data-generation-target-characters': true }), '0');
+    changeValue(renderer.root.findByProps({ 'data-generation-target-characters': true }), '250000');
+    changeValue(renderer.root.findByProps({ 'data-generation-instruction': true }), '更克制');
+    expect(onChapterSourceChange).toHaveBeenCalledWith('canonical_scene_beats');
+    expect(onTargetCharactersChange).toHaveBeenNthCalledWith(1, 100);
+    expect(onTargetCharactersChange).toHaveBeenNthCalledWith(2, 200_000);
+    expect(onGenerationInstructionChange).toHaveBeenCalledWith('更克制');
     await act(async () => renderer.unmount());
   });
 
@@ -783,6 +984,34 @@ function success<T>(data: T) {
     data,
   };
 }
+
+function failure(code: 'COMMON_INTERNAL_999') {
+  return {
+    state: 'failure' as const,
+    generation: 1,
+    requestId: '1297f55c-68b9-4a09-bf74-c3ba6cb4a2af',
+    error: { code, message: 'internal detail', retryable: true },
+  };
+}
+
+const generationProvider: ProviderSummary = {
+  id: 'local-model',
+  name: '本机模型',
+  baseUrl: 'http://localhost:11434/',
+  model: 'writer-7b',
+  protocol: 'openai_compatible',
+  options: {},
+  credentialConfigured: true,
+  endpoint: {
+    scope: 'loopback',
+    origin: 'http://localhost:11434',
+    secureTransport: false,
+    warnings: [],
+  },
+  timeoutMs: 60_000,
+  createdAt: '2026-08-13T00:00:00.000Z',
+  updatedAt: '2026-08-13T00:00:00.000Z',
+};
 
 function searchDraftResult(title: string, chapterId: string) {
   return {

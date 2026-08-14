@@ -120,7 +120,10 @@ export async function routeContentProjectOperation(
         await services.research.importAttachment(requestId, operation.input, operation.sourcePath),
       );
     case RESEARCH_COMMANDS.previewAttachment:
-      return success(operation.operation, await services.research.previewAttachment(operation.input));
+      return success(
+        operation.operation,
+        await services.research.previewAttachment(operation.input),
+      );
     case RESEARCH_COMMANDS.deleteAttachment:
       return success(
         operation.operation,

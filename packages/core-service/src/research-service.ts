@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream, type Stats } from 'node:fs';
 import { lstat, mkdir, open, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -143,11 +143,7 @@ function ftsPhrase(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
-function sameOpenedFile(
-  before: Awaited<ReturnType<typeof lstat>>,
-  opened: Awaited<ReturnType<Awaited<ReturnType<typeof open>>['stat']>>,
-  after: Awaited<ReturnType<typeof lstat>>,
-): boolean {
+function sameOpenedFile(before: Stats, opened: Stats, after: Stats): boolean {
   return (
     before.isFile() &&
     !before.isSymbolicLink() &&
@@ -185,7 +181,7 @@ function targetExists(
 ): boolean {
   const queries: Record<ResearchTargetType, string> = {
     chapter:
-      'SELECT 1 FROM chapters c JOIN volumes v ON v.id = c.volume_id WHERE c.id = ? AND v.project_id = ?',
+      'SELECT 1 FROM chapters c JOIN volumes v ON v.id = c.volume_id WHERE c.id = ? AND v.project_id = ? AND c.deleted_at IS NULL AND v.deleted_at IS NULL',
     entity: 'SELECT 1 FROM entities WHERE id = ? AND project_id = ?',
     relationship: 'SELECT 1 FROM character_relationships WHERE id = ? AND project_id = ?',
     timeline: 'SELECT 1 FROM timeline_events WHERE id = ? AND project_id = ?',
@@ -363,10 +359,7 @@ export class ResearchService {
     try {
       const opened = await sourceHandle.stat();
       const after = await lstat(sourcePath);
-      if (
-        !sameOpenedFile(before, opened, after) ||
-        opened.size > MAX_ATTACHMENT_BYTES
-      ) {
+      if (!sameOpenedFile(before, opened, after) || opened.size > MAX_ATTACHMENT_BYTES) {
         throw new ResearchServiceError(
           'RESEARCH_INVALID',
           'Attachment changed while it was being opened.',
@@ -485,7 +478,7 @@ export class ResearchService {
         } catch (error) {
           throw new ResearchServiceError(
             'RESEARCH_ATTACHMENT_FAILED',
-            'Attachment metadata was removed, but staged file cleanup must be retried.',
+            'Attachment metadata was removed, but isolated staged-file cleanup failed.',
             { cause: error },
           );
         }

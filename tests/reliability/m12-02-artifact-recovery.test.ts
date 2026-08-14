@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import { lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -21,6 +22,17 @@ async function exists(filePath: string): Promise<boolean> {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false;
     throw error;
   }
+}
+
+async function streamHash(filePath: string): Promise<string> {
+  const hash = createHash('sha256');
+  await new Promise<void>((resolve, reject) => {
+    const stream = createReadStream(filePath);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', resolve);
+  });
+  return hash.digest('hex');
 }
 
 async function harness() {
@@ -155,9 +167,10 @@ describe('M12-02 managed artifact recovery', () => {
           contentHash: value.attachment.contentHash,
           managedRelativePath: value.attachment.managedRelativePath,
         });
-        expect(
-          Number(restoredDatabase.prepare('SELECT COUNT(*) AS count FROM fts_research_notes').get().count),
-        ).toBe(0);
+        const ftsCount = restoredDatabase
+          .prepare('SELECT COUNT(*) AS count FROM fts_research_notes')
+          .get() as { count: bigint };
+        expect(Number(ftsCount.count)).toBe(0);
         expect(
           restoredDatabase
             .prepare(
@@ -167,6 +180,61 @@ describe('M12-02 managed artifact recovery', () => {
         ).toMatchObject({ status: 'stale', lastIndexedAt: null });
       } finally {
         restoredDatabase.close();
+      }
+    } finally {
+      await value.workspace.shutdown();
+      await value.runtime.close();
+    }
+  });
+
+  it('backs up and restores many attachments including a multi-megabyte artifact with streamed hash verification', async () => {
+    const value = await harness();
+    try {
+      const additional = [];
+      const sizes = [8 * 1024 * 1024, ...Array.from({ length: 8 }, () => 256 * 1024)];
+      for (const [index, size] of sizes.entries()) {
+        const sourcePath = path.join(value.root, `bulk-${index}.txt`);
+        await writeFile(sourcePath, Buffer.alloc(size, 65 + index));
+        const catalog = await value.research.importAttachment(
+          randomUUID(),
+          { projectId: value.project.projectId, noteId: value.note.id },
+          sourcePath,
+        );
+        const imported = catalog.attachments.find(
+          (candidate) => candidate.displayName === `bulk-${index}.txt`,
+        );
+        if (!imported) throw new Error(`Bulk research attachment ${index} was not imported.`);
+        additional.push(imported);
+      }
+
+      const checkpoint = await value.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: value.project.projectId,
+        operation: 'replace',
+      });
+      const manifest = JSON.parse(
+        await readFile(
+          path.join(
+            value.backupRoot,
+            value.project.projectId,
+            `${checkpoint.backupId}.artifacts.json`,
+          ),
+          'utf8',
+        ),
+      ) as { artifacts: Array<{ managedRelativePath: string; sha256: string; sizeBytes: number }> };
+      expect(manifest.artifacts).toHaveLength(10);
+      expect(manifest.artifacts.some((item) => item.sizeBytes === 8 * 1024 * 1024)).toBe(true);
+
+      const restored = await value.recovery.restoreCheckpoint(
+        randomUUID(),
+        { projectId: value.project.projectId, backupId: checkpoint.backupId },
+        value.restoreParent,
+      );
+      for (const attachment of [value.attachment, ...additional]) {
+        const restoredPath = path.join(
+          restored.workspacePath,
+          ...attachment.managedRelativePath.split('/'),
+        );
+        expect(await streamHash(restoredPath)).toBe(attachment.contentHash);
       }
     } finally {
       await value.workspace.shutdown();

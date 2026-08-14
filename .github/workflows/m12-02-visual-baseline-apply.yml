@@ -49,7 +49,7 @@ jobs:
             local snapshot="$1"
             local expected="$2"
             local actual
-            actual="$(find "$source_dir" -type f -name "${snapshot%.png}.actual.png" -print -quit)"
+            actual="$(find "$source_dir" -type f -name "${snapshot}.actual.png" -print -quit)"
             test -n "$actual"
             local observed
             observed="$(sha256sum "$actual" | awk '{print $1}')"

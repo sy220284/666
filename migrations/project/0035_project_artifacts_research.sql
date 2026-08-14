@@ -6,11 +6,15 @@ CREATE TABLE research_notes (
   project_id TEXT NOT NULL,
   title TEXT NOT NULL CHECK(length(trim(title)) BETWEEN 1 AND 240),
   body TEXT NOT NULL DEFAULT '' CHECK(length(body) <= 500000),
+  source_type TEXT CHECK(source_type IS NULL OR length(trim(source_type)) BETWEEN 1 AND 80),
+  source_label TEXT CHECK(source_label IS NULL OR length(trim(source_label)) BETWEEN 1 AND 240),
   source_uri TEXT CHECK(source_uri IS NULL OR length(source_uri) <= 4096),
   tags_json TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(tags_json) AND json_type(tags_json) = 'array'),
   status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'archived')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
+  archived_at TEXT,
+  CHECK((status = 'active' AND archived_at IS NULL) OR (status = 'archived' AND archived_at IS NOT NULL)),
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 ) STRICT;
 
@@ -47,7 +51,7 @@ CREATE TABLE research_links (
   source_type TEXT NOT NULL CHECK(source_type IN ('note', 'attachment')),
   source_id TEXT NOT NULL,
   target_type TEXT NOT NULL CHECK(target_type IN (
-    'chapter', 'entity', 'relationship', 'timeline', 'foreshadowing', 'arc', 'idea'
+    'chapter', 'volume', 'entity', 'relationship', 'timeline', 'foreshadowing', 'arc', 'milestone', 'idea'
   )),
   target_id TEXT NOT NULL,
   created_at TEXT NOT NULL,
@@ -71,10 +75,17 @@ BEGIN
   DELETE FROM research_links WHERE target_type = 'chapter' AND target_id = NEW.id;
 END;
 
+CREATE TRIGGER cleanup_research_links_on_volume_delete
+AFTER DELETE ON volumes
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'volume' AND target_id = OLD.id;
+END;
+
 CREATE TRIGGER cleanup_research_links_on_volume_soft_delete
 AFTER UPDATE OF deleted_at ON volumes
 WHEN OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL
 BEGIN
+  DELETE FROM research_links WHERE target_type = 'volume' AND target_id = NEW.id;
   DELETE FROM research_links
    WHERE target_type = 'chapter'
      AND target_id IN (SELECT id FROM chapters WHERE volume_id = NEW.id);
@@ -108,6 +119,12 @@ CREATE TRIGGER cleanup_research_links_on_arc_delete
 AFTER DELETE ON character_arcs
 BEGIN
   DELETE FROM research_links WHERE target_type = 'arc' AND target_id = OLD.id;
+END;
+
+CREATE TRIGGER cleanup_research_links_on_milestone_delete
+AFTER DELETE ON arc_milestones
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'milestone' AND target_id = OLD.id;
 END;
 
 CREATE TRIGGER cleanup_research_links_on_idea_delete
@@ -159,6 +176,8 @@ CREATE VIRTUAL TABLE fts_research_notes USING fts5(
   title,
   body,
   tags,
+  source_type,
+  source_label,
   source_uri,
   tokenize = 'trigram'
 );

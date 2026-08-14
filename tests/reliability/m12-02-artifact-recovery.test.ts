@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { lstat, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -83,6 +84,7 @@ async function harness() {
     research,
     recovery,
     project,
+    note,
     attachment,
     setDay(day: number) {
       current = new Date(`2026-08-${String(day).padStart(2, '0')}T08:00:00.000Z`);
@@ -99,6 +101,79 @@ afterEach(async () => {
 });
 
 describe('M12-02 managed artifact recovery', () => {
+  it('restores the complete artifact set into a clone-safe project identity', async () => {
+    const value = await harness();
+    try {
+      const checkpoint = await value.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: value.project.projectId,
+        operation: 'replace',
+      });
+      const restoreRequestId = randomUUID();
+      const restored = await value.recovery.restoreCheckpoint(
+        restoreRequestId,
+        { projectId: value.project.projectId, backupId: checkpoint.backupId },
+        value.restoreParent,
+      );
+
+      expect(restored.projectId).toBe(restoreRequestId);
+      expect(restored.projectId).not.toBe(value.project.projectId);
+      const restoredArtifact = path.join(
+        restored.workspacePath,
+        ...value.attachment.managedRelativePath.split('/'),
+      );
+      expect(await readFile(restoredArtifact, 'utf8')).toBe('必须与数据库一起恢复的附件');
+
+      const restoredDatabase = new DatabaseSync(path.join(restored.workspacePath, 'project.sqlite'), {
+        readOnly: true,
+        allowExtension: false,
+        readBigInts: true,
+      });
+      try {
+        const restoredNote = restoredDatabase
+          .prepare('SELECT id, project_id AS projectId FROM research_notes WHERE id = ?')
+          .get(value.note.id) as { id: string; projectId: string } | undefined;
+        const restoredAttachment = restoredDatabase
+          .prepare(
+            `SELECT id, project_id AS projectId, note_id AS noteId, content_hash AS contentHash,
+                    managed_relative_path AS managedRelativePath
+               FROM research_attachments WHERE id = ?`,
+          )
+          .get(value.attachment.id) as
+          | {
+              id: string;
+              projectId: string;
+              noteId: string | null;
+              contentHash: string;
+              managedRelativePath: string;
+            }
+          | undefined;
+        expect(restoredNote).toEqual({ id: value.note.id, projectId: restored.projectId });
+        expect(restoredAttachment).toEqual({
+          id: value.attachment.id,
+          projectId: restored.projectId,
+          noteId: value.note.id,
+          contentHash: value.attachment.contentHash,
+          managedRelativePath: value.attachment.managedRelativePath,
+        });
+        expect(
+          Number(restoredDatabase.prepare('SELECT COUNT(*) AS count FROM fts_research_notes').get().count),
+        ).toBe(0);
+        expect(
+          restoredDatabase
+            .prepare(
+              'SELECT status, last_indexed_at AS lastIndexedAt FROM search_index_state WHERE singleton_id = 1',
+            )
+            .get(),
+        ).toMatchObject({ status: 'stale', lastIndexedAt: null });
+      } finally {
+        restoredDatabase.close();
+      }
+    } finally {
+      await value.workspace.shutdown();
+      await value.runtime.close();
+    }
+  });
+
   it('does not publish a half-restored project when a backed-up artifact is missing', async () => {
     const value = await harness();
     try {
@@ -123,6 +198,58 @@ describe('M12-02 managed artifact recovery', () => {
         ),
       ).rejects.toMatchObject({ code: 'RESTORE_SOURCE_INVALID' });
       expect(await readdir(value.restoreParent)).toEqual([]);
+    } finally {
+      await value.workspace.shutdown();
+      await value.runtime.close();
+    }
+  });
+
+  it('rejects a corrupted backed-up attachment instead of reporting a complete restore', async () => {
+    const value = await harness();
+    try {
+      const checkpoint = await value.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: value.project.projectId,
+        operation: 'replace',
+      });
+      const backedUpArtifact = path.join(
+        value.backupRoot,
+        value.project.projectId,
+        `${checkpoint.backupId}.artifacts`,
+        ...value.attachment.managedRelativePath.split('/'),
+      );
+      await writeFile(backedUpArtifact, '已被篡改的附件', 'utf8');
+
+      await expect(
+        value.recovery.restoreCheckpoint(
+          randomUUID(),
+          { projectId: value.project.projectId, backupId: checkpoint.backupId },
+          value.restoreParent,
+        ),
+      ).rejects.toMatchObject({ code: 'RESTORE_SOURCE_INVALID' });
+      expect(await readdir(value.restoreParent)).toEqual([]);
+    } finally {
+      await value.workspace.shutdown();
+      await value.runtime.close();
+    }
+  });
+
+  it('fails backup creation when managed artifact metadata escapes the project path boundary', async () => {
+    const value = await harness();
+    try {
+      await value.workspace.writeProject(randomUUID(), value.project.projectId, (database) => {
+        database
+          .prepare(
+            'UPDATE research_attachments SET managed_relative_path = ? WHERE id = ? AND project_id = ?',
+          )
+          .run('../escape.txt', value.attachment.id, value.project.projectId);
+      });
+
+      await expect(
+        value.recovery.createOperationCheckpoint(randomUUID(), {
+          projectId: value.project.projectId,
+          operation: 'replace',
+        }),
+      ).rejects.toMatchObject({ code: 'BACKUP_VERIFY_FAILED' });
     } finally {
       await value.workspace.shutdown();
       await value.runtime.close();

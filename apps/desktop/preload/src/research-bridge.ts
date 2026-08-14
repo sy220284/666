@@ -2,11 +2,14 @@ import {
   RESEARCH_COMMANDS,
   RESEARCH_IPC_CHANNELS,
   ResearchAddLinkCommandSchema,
+  ResearchAttachmentPreviewResultSchema,
   ResearchCatalogResultSchema,
   ResearchCreateNoteCommandSchema,
   ResearchDeleteAttachmentCommandSchema,
+  ResearchDeleteNoteCommandSchema,
   ResearchImportAttachmentCommandSchema,
   ResearchListCommandSchema,
+  ResearchPreviewAttachmentCommandSchema,
   ResearchRemoveLinkCommandSchema,
   ResearchSetNoteStatusCommandSchema,
   ResearchUpdateNoteCommandSchema,
@@ -49,12 +52,28 @@ const researchBridge: ResearchBridge = {
       RESEARCH_COMMANDS.setNoteStatus,
       input,
     ),
+  deleteNote: (input) =>
+    invokeCommand(
+      RESEARCH_IPC_CHANNELS.deleteNote,
+      ResearchDeleteNoteCommandSchema,
+      ResearchCatalogResultSchema,
+      RESEARCH_COMMANDS.deleteNote,
+      input,
+    ),
   importAttachment: (input) =>
     invokeCommand(
       RESEARCH_IPC_CHANNELS.importAttachment,
       ResearchImportAttachmentCommandSchema,
       ResearchCatalogResultSchema,
       RESEARCH_COMMANDS.importAttachment,
+      input,
+    ),
+  previewAttachment: (input) =>
+    invokeCommand(
+      RESEARCH_IPC_CHANNELS.previewAttachment,
+      ResearchPreviewAttachmentCommandSchema,
+      ResearchAttachmentPreviewResultSchema,
+      RESEARCH_COMMANDS.previewAttachment,
       input,
     ),
   deleteAttachment: (input) =>

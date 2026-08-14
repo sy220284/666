@@ -1,0 +1,138 @@
+name: M12-02 Stable Visual Baseline Apply
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: m12-02-stable-visual-baseline-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'work' && github.event.pull_request.draft == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: work
+          fetch-depth: 0
+      - name: Apply independently witnessed stable visual baselines
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_dir=/tmp/m12-02-stable-visual-source
+          rm -rf "$source_dir" /tmp/m12-02-stable-visual-source.zip
+          mkdir -p "$source_dir"
+
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/9234964206/zip" \
+            > /tmp/m12-02-stable-visual-source.zip
+          unzip -q /tmp/m12-02-stable-visual-source.zip -d "$source_dir"
+
+          verify_existing() {
+            local snapshot="$1"
+            local expected="$2"
+            local observed
+            observed="$(sha256sum "tests/e2e/visual-baselines/$snapshot" | awk '{print $1}')"
+            test "$observed" = "$expected"
+          }
+
+          apply_baseline() {
+            local snapshot="$1"
+            local expected="$2"
+            local actual
+            actual="$(find "$source_dir" -type f -name "${snapshot%.png}.actual.png" -print -quit)"
+            test -n "$actual"
+            local observed
+            observed="$(sha256sum "$actual" | awk '{print $1}')"
+            test "$observed" = "$expected"
+            cp "$actual" "tests/e2e/visual-baselines/$snapshot"
+          }
+
+          verify_existing 'theme-a-light-1280x800.png' '49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7'
+          apply_baseline 'theme-a-dark-1280x800.png' '01b9ee8bf53bb0ad2c941e53ffb47f95836f0352c3dd63278e768152e342de78'
+          apply_baseline 'theme-b-light-1280x800.png' 'a1bea42416911316fc703108887bcc4903dadfd9f81882dcc1f40c6850cda8ce'
+          apply_baseline 'theme-b-dark-1280x800.png' 'eb69c25d18f7bc4f129f687fd54493744b5f35d1642800ebabd3fb134d4ae774'
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+
+          expected = {
+              'theme-a-light-1280x800.png': '49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7',
+              'theme-a-dark-1280x800.png': '01b9ee8bf53bb0ad2c941e53ffb47f95836f0352c3dd63278e768152e342de78',
+              'theme-b-light-1280x800.png': 'a1bea42416911316fc703108887bcc4903dadfd9f81882dcc1f40c6850cda8ce',
+              'theme-b-dark-1280x800.png': 'eb69c25d18f7bc4f129f687fd54493744b5f35d1642800ebabd3fb134d4ae774',
+          }
+          for name in expected:
+              data = (Path('tests/e2e/visual-baselines') / name).read_bytes()
+              if data[:8] != b'\x89PNG\r\n\x1a\n':
+                  raise SystemExit(f'{name}: invalid PNG signature')
+              width, height = struct.unpack('>II', data[16:24])
+              if (width, height) != (1280, 800):
+                  raise SystemExit(f'{name}: unexpected dimensions {(width, height)}')
+          PY
+
+          cat > tests/e2e/visual-baselines/manifest.json <<'JSON'
+          {
+            "schemaVersion": 1,
+            "platform": "linux",
+            "source": {
+              "verifiedHead": "76990f503f8d0a5194e08e5c43dcd2f23e3cd1dd",
+              "qualityRunId": 31841828379,
+              "artifactId": 9234964206,
+              "artifactDigest": "sha256:4adab323c3f83d6d7e02f3e6fdf67fddb7de2b7825b162fdcd5b35c046a530bc"
+            },
+            "stabilityWitness": {
+              "verifiedHead": "d2a6abe07d032db7260300924d14dc5c804ea46a",
+              "qualityRunId": 31818830760,
+              "artifactId": 9226678057,
+              "artifactDigest": "sha256:ca6454b6dd00b126eda4d07417e6edef0249147f5a6c6d337e4a42902064078b"
+            },
+            "baselines": [
+              {
+                "snapshotName": "theme-a-light-1280x800.png",
+                "sha256": "49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7",
+                "width": 1280,
+                "height": 800
+              },
+              {
+                "snapshotName": "theme-a-dark-1280x800.png",
+                "sha256": "01b9ee8bf53bb0ad2c941e53ffb47f95836f0352c3dd63278e768152e342de78",
+                "width": 1280,
+                "height": 800
+              },
+              {
+                "snapshotName": "theme-b-light-1280x800.png",
+                "sha256": "a1bea42416911316fc703108887bcc4903dadfd9f81882dcc1f40c6850cda8ce",
+                "width": 1280,
+                "height": 800
+              },
+              {
+                "snapshotName": "theme-b-dark-1280x800.png",
+                "sha256": "eb69c25d18f7bc4f129f687fd54493744b5f35d1642800ebabd3fb134d4ae774",
+                "width": 1280,
+                "height": 800
+              }
+            ]
+          }
+          JSON
+
+          sha256sum tests/e2e/visual-baselines/*.png
+          git diff --check
+          git rm .github/workflows/m12-02-visual-baseline-apply.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/e2e/visual-baselines
+          git commit -m 'test(M12-02): accept stable final visual baselines'
+          git push origin HEAD:work

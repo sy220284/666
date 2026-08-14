@@ -24,7 +24,9 @@ CREATE TABLE research_attachments (
   display_name TEXT NOT NULL CHECK(length(trim(display_name)) BETWEEN 1 AND 240),
   media_type TEXT NOT NULL CHECK(length(media_type) BETWEEN 1 AND 255),
   size_bytes INTEGER NOT NULL CHECK(size_bytes >= 0 AND size_bytes <= 268435456),
-  content_hash TEXT NOT NULL CHECK(length(content_hash) = 64 AND content_hash GLOB '[0-9a-f]*'),
+  content_hash TEXT NOT NULL CHECK(
+    length(content_hash) = 64 AND content_hash NOT GLOB '*[^0-9a-f]*'
+  ),
   managed_relative_path TEXT NOT NULL UNIQUE CHECK(
     length(managed_relative_path) BETWEEN 1 AND 1024 AND
     managed_relative_path NOT LIKE '/%' AND
@@ -56,10 +58,54 @@ CREATE TABLE research_links (
 CREATE INDEX idx_research_links_target
 ON research_links(project_id, target_type, target_id, source_type, source_id);
 
+CREATE TRIGGER cleanup_research_links_on_chapter_delete
+AFTER DELETE ON chapters
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'chapter' AND target_id = OLD.id;
+END;
+
+CREATE TRIGGER cleanup_research_links_on_entity_delete
+AFTER DELETE ON entities
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'entity' AND target_id = OLD.id;
+END;
+
+CREATE TRIGGER cleanup_research_links_on_relationship_delete
+AFTER DELETE ON character_relationships
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'relationship' AND target_id = OLD.id;
+END;
+
+CREATE TRIGGER cleanup_research_links_on_timeline_delete
+AFTER DELETE ON timeline_events
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'timeline' AND target_id = OLD.id;
+END;
+
+CREATE TRIGGER cleanup_research_links_on_foreshadowing_delete
+AFTER DELETE ON foreshadowings
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'foreshadowing' AND target_id = OLD.id;
+END;
+
+CREATE TRIGGER cleanup_research_links_on_arc_delete
+AFTER DELETE ON character_arcs
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'arc' AND target_id = OLD.id;
+END;
+
+CREATE TRIGGER cleanup_research_links_on_idea_delete
+AFTER DELETE ON idea_cards
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'idea' AND target_id = OLD.id;
+END;
+
 CREATE TABLE generation_research_ref_sets (
   generation_run_id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL,
-  selection_hash TEXT NOT NULL CHECK(length(selection_hash) = 64 AND selection_hash GLOB '[0-9a-f]*'),
+  selection_hash TEXT NOT NULL CHECK(
+    length(selection_hash) = 64 AND selection_hash NOT GLOB '*[^0-9a-f]*'
+  ),
   added_at TEXT NOT NULL,
   FOREIGN KEY(generation_run_id) REFERENCES generation_runs(id) ON DELETE CASCADE,
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -74,7 +120,9 @@ CREATE TABLE generation_research_refs (
   source_type TEXT NOT NULL CHECK(source_type IN ('note', 'attachment')),
   source_id TEXT NOT NULL,
   source_order INTEGER NOT NULL CHECK(source_order >= 0 AND source_order < 20),
-  content_hash TEXT NOT NULL CHECK(length(content_hash) = 64 AND content_hash GLOB '[0-9a-f]*'),
+  content_hash TEXT NOT NULL CHECK(
+    length(content_hash) = 64 AND content_hash NOT GLOB '*[^0-9a-f]*'
+  ),
   snapshot_text TEXT NOT NULL CHECK(length(snapshot_text) <= 16000),
   included_chars INTEGER NOT NULL CHECK(included_chars >= 0 AND included_chars <= 16000),
   trimmed INTEGER NOT NULL CHECK(trimmed IN (0, 1)),

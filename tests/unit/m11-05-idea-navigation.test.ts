@@ -23,6 +23,7 @@ describe('M11-05 Idea conversion atomic navigation', () => {
         versionId: null,
         sceneBeatId: null,
         issueId: null,
+        researchNoteId: null,
       },
       filters: { 'navigation.projectBriefId': 'brief-1' },
     });

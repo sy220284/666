@@ -6,13 +6,13 @@
   "files": [
     {
       "path": "summary.md",
-      "bytes": 3983,
-      "sha256": "6fb77973f9818ea593dbd28dbdf5bc434cd6f94f6bf9901e7696a8d44d0f0a1d"
+      "bytes": 4468,
+      "sha256": "83ac151c7ceb3b6dce7a74612e366ba9d82259e208656bd23b29f879daa323f3"
     },
     {
       "path": "commands.txt",
-      "bytes": 744,
-      "sha256": "65e6c2f8510950f5bff9200dc54c54f31253ce3096b8462c8b7b78d7e972b516"
+      "bytes": 880,
+      "sha256": "c0485ac2af5e6ed8ae04f2a05edc60bb7b50ed3d4163af3c1826996fcf6d9109"
     },
     {
       "path": "known-risks.md",
@@ -22,12 +22,12 @@
     {
       "path": "performance.json",
       "bytes": 1744,
-      "sha256": "8cbe6eba8f0fd272e47e3a2102b1d425c4eb1d43c9672b0789c9db07282ff5f7"
+      "sha256": "3ad1945e7d1ebe7b07bba9d43a7a19b24041c0679688e106be3e8998857c9560"
     },
     {
       "path": "semantic-retrieval.json",
       "bytes": 1212,
-      "sha256": "e0a86c04756f50474bf0a6203962d09f10617dff9349873b7330fda9df2f9d1b"
+      "sha256": "69076f2323e8238671a2a20effc5784950aedb9fb655dc12f4ffec9c5aa73581"
     }
   ]
 }

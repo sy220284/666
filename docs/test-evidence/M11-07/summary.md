@@ -2,7 +2,7 @@
 
 - 任务：`M11-07` 长篇智能底座收口
 - 来源 PR：`#395`（`work → main`）
-- 实现冻结提交：`946a6e83528b9d87929dc8bbcd914f04964b2102`
+- 实现冻结提交：`fa09008b87ff977380655f231d8dbfb621a29a90`
 - 启动基线：`main/work/governance@023ae756103694082a59810fdb8fd3f249b5f3ab`
 
 ## 实现范围
@@ -16,11 +16,18 @@
 
 ## 本地验证
 
-- `pnpm test:coverage`：373 个测试文件通过；1505 个测试通过，1 个设计性跳过；核心 TypeScript 与 Renderer TSX 双轨覆盖门均通过。
+- `pnpm test:coverage`：377 个测试文件通过；1520 个测试通过，1 个设计性跳过；核心 TypeScript 与 Renderer TSX 双轨覆盖门均通过。
 - `pnpm test:reliability`：8 个文件、10 个测试通过，1 个设计性跳过；3 个变异体全部被杀死。
 - `pnpm test:eval`：3 个文件、9 个测试通过；关键召回覆盖率 100%，FTS 召回率 100%，关键语义漏检率 0，结论为不触发向量层。
 - `pnpm typecheck`、`pnpm lint`、`pnpm format:check`、`pnpm build`、语言/工作区/边界/文档/治理/许可证检查全部通过。
 - Linux 本地环境无 `DISPLAY`/Xvfb；Electron E2E 完成构建后以 `E2E_DISPLAY_UNAVAILABLE` 停止，完整桌面流程由 Ready Head 的 GitHub Actions 执行。
+
+## 冻结实现 Ready 验证
+
+- Quality `31764362941`：静态检查、产品测试、可靠性、Linux Electron E2E、Linux/macOS/Windows 作者体验、三平台打包烟测与工具链导出全部成功；实现 Head 上唯一失败步骤是旧 Evidence 的提交绑定校验，本闭包更新该绑定。
+- Security `31764362728`：成功。
+- Performance `31764362751`：成功，包含长篇性能、内存、恢复与智能输出评测。
+- PR Policy `31764361771`：成功。
 
 ## 长篇规模、恢复与内存
 

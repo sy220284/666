@@ -6,6 +6,7 @@
   "source": "docs/tasks/M11/M11-07_LONGFORM_AI_MEMORY_STYLE_ROUTING.md",
   "priority": "P0",
   "startedAt": "2026-08-13T20:34:19+08:00",
+  "implementedAt": "2026-08-14T10:59:00+08:00",
   "dependencies": ["M11-06"],
   "baseline": {
     "main": "023ae756103694082a59810fdb8fd3f249b5f3ab",

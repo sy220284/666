@@ -59,6 +59,24 @@ export function ftsHits(
       );
       continue;
     }
+    if (sourceType === 'research') {
+      hits.push(
+        ...sqliteResult<FtsHit[]>(
+          connection
+            .prepare(
+              `SELECT 'research' AS sourceType, note_id AS targetId,
+                    NULL AS anchorId, bm25(fts_research_notes) AS score
+               FROM fts_research_notes
+              WHERE fts_research_notes MATCH ? AND project_id = ?
+                AND (? = 1 OR status = 'active')
+              ORDER BY score, note_id
+              LIMIT ?`,
+            )
+            .all(ftsMatch(queryVariants), projectId, includeArchived ? 1 : 0, limit),
+        ),
+      );
+      continue;
+    }
     const definition = definitions[sourceType];
     hits.push(
       ...sqliteResult<FtsHit[]>(
@@ -162,6 +180,31 @@ export function authoritativeItem(
       chapterId: row.chapterId,
       title,
       excerpt: excerpt(anchorId === null ? title : body, query),
+      score: hit.score,
+    });
+  }
+  if (hit.sourceType === 'research') {
+    const row = connection
+      .prepare(
+        `SELECT id AS targetId, title, body, tags_json AS tagsJson,
+                source_uri AS sourceUri, status
+           FROM research_notes
+          WHERE id = ? AND project_id = ? AND (? = 1 OR status = 'active')`,
+      )
+      .get(hit.targetId, projectId, includeArchived ? 1 : 0);
+    if (!row) return null;
+    const title = text(row.title, 'researchTitle');
+    const content = `${title}\n${text(row.body, 'researchBody')}\n${parseStringArrayJson(
+      row.tagsJson,
+      'researchTags',
+    ).join(' ')}\n${row.sourceUri === null ? '' : text(row.sourceUri, 'researchSourceUri')}`;
+    return SearchResultItemSchema.parse({
+      sourceType: 'research',
+      targetId: row.targetId,
+      anchorId: null,
+      chapterId: null,
+      title,
+      excerpt: excerpt(content, query),
       score: hit.score,
     });
   }
@@ -313,6 +356,36 @@ export function authoritativeLike(
             includeArchived ? 1 : 0,
             ...queryVariants,
             ...queryVariants,
+            ...queryVariants,
+            ...queryVariants,
+            ...queryVariants,
+            ...queryVariants,
+            limit,
+          ),
+      ),
+    );
+  }
+  if (requestedSources.includes('research')) {
+    hits.push(
+      ...sqliteResult<FtsHit[]>(
+        connection
+          .prepare(
+            `SELECT 'research' AS sourceType, note.id AS targetId,
+                  NULL AS anchorId, 0 AS score
+             FROM research_notes note
+            WHERE note.project_id = ? AND (? = 1 OR note.status = 'active')
+              AND (
+                (${likeClause('note.title', queryVariants.length)}) OR
+                (${likeClause('note.body', queryVariants.length)}) OR
+                (${likeClause('note.tags_json', queryVariants.length)}) OR
+                (${likeClause("COALESCE(note.source_uri, '')", queryVariants.length)})
+              )
+            ORDER BY note.status = 'archived', note.updated_at DESC, note.id
+            LIMIT ?`,
+          )
+          .all(
+            projectId,
+            includeArchived ? 1 : 0,
             ...queryVariants,
             ...queryVariants,
             ...queryVariants,

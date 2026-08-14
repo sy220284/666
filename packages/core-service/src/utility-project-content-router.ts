@@ -3,6 +3,7 @@ import {
   CANDIDATE_COMMANDS,
   DRAFT_COMMANDS,
   RECOVERY_COMMANDS,
+  RESEARCH_COMMANDS,
   TEXT_IO_COMMANDS,
   VERSION_COMMANDS,
   CoreProjectResultSchema,
@@ -90,6 +91,53 @@ export async function routeContentProjectOperation(
       return success(
         operation.operation,
         await services.versions.restore(requestId, operation.input),
+      );
+    case RESEARCH_COMMANDS.list:
+      return success(operation.operation, services.research.list(operation.input));
+    case RESEARCH_COMMANDS.createNote:
+      return success(
+        operation.operation,
+        await services.research.createNote(requestId, operation.input),
+      );
+    case RESEARCH_COMMANDS.updateNote:
+      return success(
+        operation.operation,
+        await services.research.updateNote(requestId, operation.input),
+      );
+    case RESEARCH_COMMANDS.setNoteStatus:
+      return success(
+        operation.operation,
+        await services.research.setNoteStatus(requestId, operation.input),
+      );
+    case RESEARCH_COMMANDS.deleteNote:
+      return success(
+        operation.operation,
+        await services.research.deleteNote(requestId, operation.input),
+      );
+    case RESEARCH_COMMANDS.importAttachment:
+      return success(
+        operation.operation,
+        await services.research.importAttachment(requestId, operation.input, operation.sourcePath),
+      );
+    case RESEARCH_COMMANDS.previewAttachment:
+      return success(
+        operation.operation,
+        await services.research.previewAttachment(operation.input),
+      );
+    case RESEARCH_COMMANDS.deleteAttachment:
+      return success(
+        operation.operation,
+        await services.research.deleteAttachment(requestId, operation.input),
+      );
+    case RESEARCH_COMMANDS.addLink:
+      return success(
+        operation.operation,
+        await services.research.addLink(requestId, operation.input),
+      );
+    case RESEARCH_COMMANDS.removeLink:
+      return success(
+        operation.operation,
+        await services.research.removeLink(requestId, operation.input),
       );
     case RECOVERY_COMMANDS.createCheckpoint:
       return success(

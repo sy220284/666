@@ -6,6 +6,7 @@ import {
   IDEA_CAPSULE_IPC_CHANNELS,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
+  RESEARCH_IPC_CHANNELS,
 } from '@worldforge/contracts';
 import { registerIpcHandlers } from '../../apps/desktop/main/src/ipc-handlers.js';
 import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
@@ -206,6 +207,7 @@ const productionHandlerChannels = sorted([
     (channel) => channel !== CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
   ),
   ...Object.values(IDEA_CAPSULE_IPC_CHANNELS),
+  ...Object.values(RESEARCH_IPC_CHANNELS),
 ]);
 const removableHandlerChannels = sorted([
   ...productionHandlerChannels,

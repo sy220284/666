@@ -7,6 +7,7 @@ import {
   type GenerationModelSupportInput,
   type GenerationRun,
   type ModelSupportProfile,
+  type ResearchReference,
 } from '@worldforge/contracts';
 
 import {
@@ -15,6 +16,7 @@ import {
 } from '../bounded-idempotent-promise-cache.js';
 import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
+import { stableJson } from '../stable-json.js';
 import { finalVersion, validationSemanticIdentity } from '../validation/validation-model.js';
 import { completeProseCandidate, completeSkeletonCandidates } from './candidate-persistence.js';
 import { getModelSupport, upsertModelSupport } from './model-support-repository.js';
@@ -29,6 +31,13 @@ import {
   type IdeaGenerationCompletionInput,
 } from './idea-persistence.js';
 import { discardPartial, recordPartial, savePartial } from './partial-result-service.js';
+import {
+  persistPreparedResearchReferenceSnapshots,
+  persistedResearchSelectionHash,
+  researchReferenceMessage,
+  researchReferenceSelectionHash,
+  snapshotResearchReferences,
+} from './research-reference-context.js';
 import { generationCreateFingerprint, readGenerationRunReplay } from './run-command-identity.js';
 import {
   cancel,
@@ -83,7 +92,9 @@ export type GenerationRunCreateInput = Omit<
   PersistedGenerationRunCreateInput,
   'scopeType' | 'scopeId'
 > &
-  Partial<Pick<PersistedGenerationRunCreateInput, 'scopeType' | 'scopeId'>>;
+  Partial<Pick<PersistedGenerationRunCreateInput, 'scopeType' | 'scopeId'>> & {
+    readonly researchReferences?: readonly ResearchReference[];
+  };
 
 export interface GenerationRunCreation {
   readonly run: GenerationRun;
@@ -94,17 +105,22 @@ const systemClock: DatabaseClock = { now: () => new Date() };
 const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
 
 function normalizeCreateInput(input: GenerationRunCreateInput): PersistedGenerationRunCreateInput {
-  const scopeType = input.scopeType ?? 'chapter';
+  const { researchReferences: _researchReferences, ...persistedInput } = input;
+  const scopeType = persistedInput.scopeType ?? 'chapter';
   const scopeId =
-    input.scopeId ??
-    (scopeType === 'chapter' ? input.chapterId : scopeType === 'project' ? input.projectId : null);
+    persistedInput.scopeId ??
+    (scopeType === 'chapter'
+      ? persistedInput.chapterId
+      : scopeType === 'project'
+        ? persistedInput.projectId
+        : null);
   if (scopeId === null) {
     throw new GenerationRunServiceError(
       'GENERATION_BASE_CONFLICT',
       'A non-chapter GenerationRun requires an explicit scopeId.',
     );
   }
-  return { ...input, scopeType, scopeId };
+  return { ...persistedInput, scopeType, scopeId };
 }
 
 function withValidationSemanticIdentity(
@@ -159,6 +175,16 @@ function withValidationSemanticIdentity(
   };
 }
 
+function createFingerprint(
+  input: PersistedGenerationRunCreateInput,
+  researchReferences: readonly ResearchReference[],
+): string {
+  return stableJson({
+    generation: generationCreateFingerprint(input),
+    researchReferences,
+  });
+}
+
 export class GenerationRunService {
   readonly #context: GenerationRunServiceContext;
   readonly #creates = new BoundedIdempotentPromiseCache();
@@ -179,8 +205,9 @@ export class GenerationRunService {
     requestId: string,
     rawInput: GenerationRunCreateInput,
   ): Promise<GenerationRunCreation> {
+    const researchReferences = rawInput.researchReferences ?? [];
     const input = normalizeCreateInput(rawInput);
-    const fingerprint = generationCreateFingerprint(input);
+    const fingerprint = createFingerprint(input, researchReferences);
     const cacheKey = `${input.projectId}:${requestId}`;
     try {
       const existing = this.#creates.get<GenerationRun>(cacheKey, fingerprint);
@@ -199,7 +226,37 @@ export class GenerationRunService {
     let replayed = false;
     const operation = Promise.resolve().then(async () => {
       const persisted = readGenerationRunReplay(this.#context.workspace, requestId, input);
+      const expectedSelectionHash = researchReferenceSelectionHash(researchReferences);
       if (persisted) {
+        const persistedSelectionHash = this.#context.workspace.readProject(
+          input.projectId,
+          (database) => persistedResearchSelectionHash(database, input.projectId, persisted.runId),
+        );
+        if (persistedSelectionHash !== null && persistedSelectionHash !== expectedSelectionHash) {
+          throw new GenerationRunServiceError(
+            'GENERATION_RESULT_CONFLICT',
+            'The requestId was already used with a different research reference selection.',
+          );
+        }
+        if (persistedSelectionHash === null) {
+          const snapshots = this.#context.workspace.readProject(input.projectId, (database) =>
+            snapshotResearchReferences(database, input.projectId, researchReferences),
+          );
+          await this.#context.workspace.writeProject(
+            this.#context.idFactory(),
+            input.projectId,
+            (database) => {
+              persistPreparedResearchReferenceSnapshots(
+                database,
+                persisted.runId,
+                input.projectId,
+                researchReferences,
+                snapshots,
+                this.#context.clock.now().toISOString(),
+              );
+            },
+          );
+        }
         replayed = true;
         return persisted;
       }
@@ -211,7 +268,29 @@ export class GenerationRunService {
           chapterId: input.chapterId,
         });
       }
-      return create(this.#context, requestId, withValidationSemanticIdentity(this.#context, input));
+      const snapshots = this.#context.workspace.readProject(input.projectId, (database) =>
+        snapshotResearchReferences(database, input.projectId, researchReferences),
+      );
+      const run = await create(
+        this.#context,
+        requestId,
+        withValidationSemanticIdentity(this.#context, input),
+      );
+      await this.#context.workspace.writeProject(
+        this.#context.idFactory(),
+        input.projectId,
+        (database) => {
+          persistPreparedResearchReferenceSnapshots(
+            database,
+            run.runId,
+            input.projectId,
+            researchReferences,
+            snapshots,
+            this.#context.clock.now().toISOString(),
+          );
+        },
+      );
+      return run;
     });
     const run = await this.#creates.remember(cacheKey, fingerprint, operation);
     return { run, replayed };
@@ -221,12 +300,20 @@ export class GenerationRunService {
     return get(this.#context, raw);
   }
 
-  list(raw: GenerationListRunsInput): { readonly runs: readonly GenerationRun[] } {
+  list(raw: GenerationListRunsInput): {
+    readonly runs: readonly GenerationRun[];
+  } {
     return list(this.#context, raw);
   }
 
   getContinuationContext(input: GenerationRunIdentity): GenerationContinuationContext {
     return getContinuationContext(this.#context, input);
+  }
+
+  getResearchReferenceMessage(input: GenerationRunIdentity): string | null {
+    return this.#context.workspace.readProject(input.projectId, (database) =>
+      researchReferenceMessage(database, input.projectId, input.runId),
+    );
   }
 
   markRunning(requestId: string, input: GenerationRunIdentity): Promise<GenerationRun> {

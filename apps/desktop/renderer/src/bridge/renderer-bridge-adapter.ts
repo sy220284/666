@@ -32,13 +32,14 @@ import type {
   GenerationRun,
   KnowledgeStateInvalidateInput,
   KnowledgeStateSetInput,
+  LongformAiBridge,
   NarrativePlanningCatalog,
   NarrativePlanningListInput,
+  ResearchBridge,
   RhythmBridge,
   SearchToolsBridge,
   StateProposalBridge,
   StoryKnowledgeBridge,
-  LongformAiBridge,
   TaskStreamUpdate,
   TimelineEventArchiveInput,
   TimelineEventSaveInput,
@@ -46,6 +47,10 @@ import type {
   WorldforgeBridge,
 } from '@worldforge/contracts';
 
+import {
+  consumeResearchReferenceSelection,
+  listResearchReferenceSelection,
+} from './research-reference-selection.js';
 import {
   BridgeRequestCoordinator,
   type BridgeRequestOptions,
@@ -158,6 +163,7 @@ interface AuxiliaryRendererBridges {
   readonly rhythm?: RhythmBridge;
   readonly storyKnowledge?: StoryKnowledgeBridge;
   readonly longformAi?: LongformAiBridge;
+  readonly research?: ResearchBridge;
   readonly candidateAction?: CandidateActionBridgePort;
 }
 
@@ -207,6 +213,7 @@ export interface RendererBridgeAdapter {
   readonly rhythm: AdaptedDomain<RhythmBridge>;
   readonly storyKnowledge: AdaptedDomain<StoryKnowledgeBridge>;
   readonly longformAi: AdaptedDomain<LongformAiBridge>;
+  readonly research: AdaptedDomain<ResearchBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
   readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
@@ -287,6 +294,7 @@ export function createRendererBridgeAdapter(
       requireDomain(auxiliary.longformAi, 'longformAi'),
       coordinator,
     ),
+    research: adaptDomain('research', requireDomain(auxiliary.research, 'research'), coordinator),
     candidateAction: adaptDomain(
       'candidateAction',
       requireDomain(auxiliary.candidateAction, 'candidateAction'),
@@ -322,6 +330,7 @@ function generationStartIdentity(input: GenerationStartInput): string | null {
     providerId: input.providerId,
     continuationOfRunId: input.continuationOfRunId ?? null,
     intent: input.intent,
+    researchReferences: input.researchReferences ?? [],
   });
 }
 
@@ -336,9 +345,24 @@ function guardGenerationDomain(generation: AdaptedGenerationDomain): AdaptedGene
     get(target, property, receiver) {
       if (property !== 'start') return Reflect.get(target, property, receiver);
       return (...args: Parameters<AdaptedGenerationDomain['start']>) => {
-        const [input] = args;
-        const identity = generationStartIdentity(input);
-        if (!identity) return target.start(...args);
+        const [input, options] = args;
+        const selected = Object.hasOwn(input, 'researchReferences')
+          ? []
+          : listResearchReferenceSelection(input.projectId);
+        const effectiveInput =
+          selected.length > 0 ? { ...input, researchReferences: selected } : input;
+        const identity = generationStartIdentity(effectiveInput);
+        const consumeSelected = (): void => {
+          if (selected.length > 0) {
+            consumeResearchReferenceSelection(input.projectId, selected);
+          }
+        };
+        if (!identity) {
+          return target.start(effectiveInput, options).then((outcome) => {
+            if (outcome.state === 'success') consumeSelected();
+            return outcome;
+          });
+        }
         const pending = starts.get(identity);
         if (pending) return pending;
         const operation = (async (): Promise<GenerationStartOutcome> => {
@@ -351,6 +375,7 @@ function guardGenerationDomain(generation: AdaptedGenerationDomain): AdaptedGene
             if (current.state !== 'success') return current;
             if (generationRunIsActive(current.data)) {
               activeRuns.set(identity, current.data);
+              consumeSelected();
               return {
                 state: 'success',
                 generation: current.generation,
@@ -360,7 +385,8 @@ function guardGenerationDomain(generation: AdaptedGenerationDomain): AdaptedGene
             }
             activeRuns.delete(identity);
           }
-          const outcome = await target.start(...args);
+          const outcome = await target.start(effectiveInput, options);
+          if (outcome.state === 'success') consumeSelected();
           if (outcome.state === 'success' && generationRunIsActive(outcome.data.run)) {
             activeRuns.set(identity, outcome.data.run);
           } else if (outcome.state === 'success') {
@@ -390,6 +416,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     !window.worldforgeRhythm ||
     !window.worldforgeStoryKnowledge ||
     !window.worldforgeLongformAi ||
+    !window.worldforgeResearch ||
     !window.worldforgeCandidatePreview
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
@@ -403,6 +430,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     rhythm: window.worldforgeRhythm,
     storyKnowledge: window.worldforgeStoryKnowledge,
     longformAi: window.worldforgeLongformAi,
+    research: window.worldforgeResearch,
     candidateAction: window.worldforgeCandidatePreview,
   });
 }

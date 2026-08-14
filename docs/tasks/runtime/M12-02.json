@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 2,
+  "id": "M12-02",
+  "status": "IMPLEMENTED",
+  "executionBranch": "work",
+  "source": "docs/tasks/M12/M12-02_RESEARCH_LIBRARY_ATTACHMENTS.md",
+  "priority": "P1",
+  "startedAt": "2026-08-14T11:52:00+08:00",
+  "implementedAt": "2026-08-14T23:14:19+08:00",
+  "dependencies": ["M11-07"],
+  "baseline": {
+    "main": "4f19aeff1f3dd7f217c5fb7392cb5fb8eb8fadfb",
+    "work": "4f19aeff1f3dd7f217c5fb7392cb5fb8eb8fadfb"
+  },
+  "allowedPaths": [
+    "migrations/project/",
+    "packages/contracts/src/",
+    "packages/domain/src/",
+    "packages/core-service/src/",
+    "apps/desktop/main/src/",
+    "apps/desktop/preload/src/",
+    "apps/desktop/renderer/src/",
+    "tests/",
+    "docs/architecture/",
+    "docs/contracts/",
+    "docs/database/",
+    "docs/product/FUNCTION_CATALOG.md",
+    "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+    "docs/roadmap/V1.0_ROADMAP.md",
+    "docs/testing/",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/tasks/M12/M12-02_RESEARCH_LIBRARY_ATTACHMENTS.md",
+    "docs/tasks/runtime/M12-02.json",
+    "docs/test-evidence/M12-02/"
+  ],
+  "forbiddenPaths": [
+    "migrations/app/",
+    "docs/tasks/M12/M12-01_PROJECT_JOURNAL.md",
+    "docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md",
+    "docs/tasks/runtime/M11-07.json",
+    "docs/test-evidence/M11-07/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:language",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm check:docs",
+    "pnpm check:governance",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:reliability",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e"
+  ],
+  "verificationBinding": {
+    "sourcePr": 399,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M12-02"
+  }
+}

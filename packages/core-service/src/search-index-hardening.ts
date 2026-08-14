@@ -18,7 +18,12 @@ import {
 } from './search-index.js';
 import { sqliteResult } from './database/sqlite-result.js';
 
-const SOURCE_ORDER = ['draft', 'version', 'entity'] as const satisfies readonly SearchSourceType[];
+const SOURCE_ORDER = [
+  'draft',
+  'version',
+  'entity',
+  'research',
+] as const satisfies readonly SearchSourceType[];
 
 interface TitleRow extends Record<string, unknown> {
   readonly targetId: string;
@@ -134,7 +139,7 @@ export class HardenedSearchIndexService extends BaseSearchIndexService {
         return [] as SearchResultItem[];
       }
       return requestedSources.flatMap((sourceType) => {
-        if (sourceType === 'entity') return [];
+        if (sourceType === 'entity' || sourceType === 'research') return [];
         return titleRows(connection, input.projectId, sourceType)
           .filter((row) =>
             matchesNormalizedTitle(requiredText(row.title, 'title'), base.normalizedQuery),

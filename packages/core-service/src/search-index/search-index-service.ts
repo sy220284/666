@@ -146,6 +146,7 @@ export class SearchIndexService {
       connection.prepare('DELETE FROM fts_draft_blocks').run();
       connection.prepare('DELETE FROM fts_version_blocks').run();
       connection.prepare('DELETE FROM fts_entities').run();
+      connection.prepare('DELETE FROM fts_research_notes').run();
       connection.prepare('DELETE FROM search_index_queue').run();
       const targets: SearchIndexTarget[] = [
         ...connection
@@ -183,8 +184,16 @@ export class SearchIndexService {
             targetId: text(row.id, 'entityId'),
             operation: 'upsert' as const,
           })),
+        ...connection
+          .prepare('SELECT id FROM research_notes WHERE project_id = ? ORDER BY id')
+          .all(projectId)
+          .map((row) => ({
+            targetType: 'research' as const,
+            targetId: text(row.id, 'researchNoteId'),
+            operation: 'upsert' as const,
+          })),
       ];
-      const counts = { draft: 0, version: 0, entity: 0 };
+      const counts = { draft: 0, version: 0, entity: 0, research: 0 };
       let failedCount = 0;
       let lastErrorCode: string | null = null;
       for (const target of targets) {
@@ -195,22 +204,24 @@ export class SearchIndexService {
         } catch (error) {
           failedCount += 1;
           lastErrorCode = failureCode(error);
-          connection
-            .prepare(
-              `INSERT INTO search_index_queue(
-                 id, target_type, target_id, operation, status, attempt_count,
-                 last_error_code, created_at, updated_at
-               ) VALUES(?, ?, ?, ?, 'failed', 1, ?, ?, ?)`,
-            )
-            .run(
-              `rebuild-${target.targetType}-${target.targetId}`,
-              target.targetType,
-              target.targetId,
-              target.operation,
-              lastErrorCode,
-              now,
-              now,
-            );
+          if (target.targetType !== 'research') {
+            connection
+              .prepare(
+                `INSERT INTO search_index_queue(
+                   id, target_type, target_id, operation, status, attempt_count,
+                   last_error_code, created_at, updated_at
+                 ) VALUES(?, ?, ?, ?, 'failed', 1, ?, ?, ?)`,
+              )
+              .run(
+                `rebuild-${target.targetType}-${target.targetId}`,
+                target.targetType,
+                target.targetId,
+                target.operation,
+                lastErrorCode,
+                now,
+                now,
+              );
+          }
         }
       }
       const status = failedCount === 0 ? 'ready' : 'stale';
@@ -229,6 +240,7 @@ export class SearchIndexService {
         draftCount: counts.draft,
         versionCount: counts.version,
         entityCount: counts.entity,
+        researchCount: counts.research,
         failedCount,
         status,
       });

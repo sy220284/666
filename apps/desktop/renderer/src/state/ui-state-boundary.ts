@@ -3,6 +3,7 @@ export const RENDERER_ROUTE_IDS = [
   'project',
   'planning',
   'canon',
+  'research',
   'structure',
   'writing',
   'versions',
@@ -20,6 +21,7 @@ export interface RendererSelectionState {
   readonly volumeId: string | null;
   readonly chapterId: string | null;
   readonly entityId: string | null;
+  readonly researchNoteId: string | null;
   readonly logicalBlockId: string | null;
   readonly versionId: string | null;
   readonly sceneBeatId: string | null;
@@ -88,6 +90,18 @@ export type RendererUiAction =
   | { readonly type: 'return-to-source' }
   | { readonly type: 'reset-project-context' };
 
+const selectionKeys = [
+  'projectId',
+  'volumeId',
+  'chapterId',
+  'entityId',
+  'researchNoteId',
+  'logicalBlockId',
+  'versionId',
+  'sceneBeatId',
+  'issueId',
+] as const;
+
 export function createInitialRendererUiState(): RendererUiState {
   return {
     route: 'home',
@@ -96,6 +110,7 @@ export function createInitialRendererUiState(): RendererUiState {
       volumeId: null,
       chapterId: null,
       entityId: null,
+      researchNoteId: null,
       logicalBlockId: null,
       versionId: null,
       sceneBeatId: null,
@@ -201,16 +216,7 @@ export function assertTemporaryUiState(value: unknown): asserts value is Rendere
   if (!RENDERER_ROUTE_IDS.includes(state.route as RendererRouteId)) {
     throw new TypeError('Renderer UI state contains an invalid route.');
   }
-  assertNullableStringRecord(state.selection, [
-    'projectId',
-    'volumeId',
-    'chapterId',
-    'entityId',
-    'logicalBlockId',
-    'versionId',
-    'sceneBeatId',
-    'issueId',
-  ]);
+  assertNullableStringRecord(state.selection, selectionKeys);
   assertNullableStringRecord(state.overlays, ['drawer', 'dialog', 'popover']);
   assertReturnLocation(state.returnLocation);
   assertFeedback(state.feedback);
@@ -260,16 +266,7 @@ function assertReturnLocation(value: unknown): void {
   ) {
     throw new TypeError('Renderer return location is invalid.');
   }
-  assertNullableStringRecord(record.selection, [
-    'projectId',
-    'volumeId',
-    'chapterId',
-    'entityId',
-    'logicalBlockId',
-    'versionId',
-    'sceneBeatId',
-    'issueId',
-  ]);
+  assertNullableStringRecord(record.selection, selectionKeys);
   if (!record.filters || typeof record.filters !== 'object' || Array.isArray(record.filters)) {
     throw new TypeError('Renderer return location is invalid.');
   }

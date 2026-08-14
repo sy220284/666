@@ -50,6 +50,7 @@ const PROJECT_CLONE_POLICY = new Map<string, ProjectCloneAction>([
   ['fts_draft_blocks', 'regenerate'],
   ['fts_version_blocks', 'regenerate'],
   ['fts_entities', 'regenerate'],
+  ['fts_research_notes', 'regenerate'],
   ['project_dictionary', 'preserve'],
   ['project_settings', 'preserve'],
   ['story_digests', 'regenerate'],
@@ -57,6 +58,8 @@ const PROJECT_CLONE_POLICY = new Map<string, ProjectCloneAction>([
   ['generation_constraint_packages', 'preserve'],
   ['generation_result_refs', 'preserve'],
   ['generation_partial_buffers', 'drop'],
+  ['generation_research_ref_sets', 'clone-remap'],
+  ['generation_research_refs', 'clone-remap'],
   ['model_support_profiles', 'preserve'],
   ['candidate_skeleton_revisions', 'preserve'],
   ['generation_input_sources', 'preserve'],
@@ -69,6 +72,9 @@ const PROJECT_CLONE_POLICY = new Map<string, ProjectCloneAction>([
   ['validation_exceptions', 'clone-remap'],
   ['story_todos', 'clone-remap'],
   ['story_comments', 'clone-remap'],
+  ['research_notes', 'clone-remap'],
+  ['research_attachments', 'clone-remap'],
+  ['research_links', 'clone-remap'],
   ['replace_plans', 'drop'],
   ['replace_plan_items', 'drop'],
   ['genre_rhythm_profiles', 'clone-remap'],
@@ -139,7 +145,12 @@ export function prepareProjectClone(database: DatabaseSync, timestamp: string): 
   deleteAll(database, available, 'semantic_revision');
   deleteAll(database, available, 'story_digests');
 
-  for (const table of ['fts_draft_blocks', 'fts_version_blocks', 'fts_entities']) {
+  for (const table of [
+    'fts_draft_blocks',
+    'fts_version_blocks',
+    'fts_entities',
+    'fts_research_notes',
+  ]) {
     deleteAll(database, available, table);
   }
   deleteAll(database, available, 'search_index_queue');

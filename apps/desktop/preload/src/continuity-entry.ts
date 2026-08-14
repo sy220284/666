@@ -8,3 +8,4 @@ import './rhythm-bridge.js';
 import './story-knowledge-bridge.js';
 import './longform-ai-bridge.js';
 import './idea-capsule-bridge.js';
+import './research-bridge.js';

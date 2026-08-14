@@ -95,6 +95,7 @@ describe('M10-12 Generation取消顺序', () => {
     const runs = {
       createWithReplay: async () => ({ run: queued, replayed: false }),
       get: () => running,
+      getResearchReferenceMessage: () => null,
       markRunning: async () => running,
       markStage: async () => running,
       cancel: async () => {

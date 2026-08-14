@@ -15,6 +15,7 @@ import { ProjectPlanningError } from './project-planning.js';
 import { ProjectStructureError } from './project-structure.js';
 import { ProjectWorkspaceError } from './project-workspace.js';
 import { RecoveryServiceError } from './recovery.js';
+import { ResearchServiceError } from './research-service.js';
 import { RhythmServiceError } from './rhythm.js';
 import { SceneBeatServiceError } from './scene-beat.js';
 import { SearchToolsServiceError } from './search-tools.js';
@@ -80,6 +81,12 @@ export function projectOperationError(error: unknown): ErrorCode {
     if (error.code === 'LONGFORM_ROUTE_UNAVAILABLE') return 'LONGFORM_ROUTE_UNAVAILABLE_003';
     if (error.code === 'LONGFORM_SETTINGS_CONFLICT') return 'LONGFORM_SETTINGS_CONFLICT_004';
     if (error.code === 'LONGFORM_SCOPE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    return 'COMMON_INTERNAL_999';
+  }
+  if (error instanceof ResearchServiceError) {
+    if (error.code === 'RESEARCH_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'RESEARCH_INVALID') return 'COMMON_INVALID_INPUT_001';
+    if (error.code === 'RESEARCH_CONFLICT') return 'COMMON_CONFLICT_003';
     return 'COMMON_INTERNAL_999';
   }
   if (

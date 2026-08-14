@@ -2,39 +2,39 @@
   "schemaVersion": 1,
   "platform": "linux",
   "source": {
-    "verifiedHead": "8b0fa8724728d16403db7e3611e39ca6625f961a",
-    "qualityRunId": 31715547152,
-    "artifactId": 9187750695,
-    "artifactDigest": "sha256:c054fca8d5d2ba3d39e021dbd21a0edb2a27df2cc5a5bae977eff0dab5652ba4"
+    "verifiedHead": "d2a6abe07d032db7260300924d14dc5c804ea46a",
+    "qualityRunId": 31818830760,
+    "artifactId": 9226678057,
+    "artifactDigest": "sha256:ca6454b6dd00b126eda4d07417e6edef0249147f5a6c6d337e4a42902064078b"
   },
   "stabilityWitness": {
-    "verifiedHead": "3443826b4220105af6bd2997122f055d6757ea02",
-    "qualityRunId": 31717651830,
-    "artifactId": 9188590558,
-    "artifactDigest": "sha256:79351d0d21af22be3701c064f8028bfdbd068669b6c737a917fc8a65d1e1f279"
+    "verifiedHead": "76990f503f8d0a5194e08e5c43dcd2f23e3cd1dd",
+    "qualityRunId": 31841828379,
+    "artifactId": 9234964206,
+    "artifactDigest": "sha256:4adab323c3f83d6d7e02f3e6fdf67fddb7de2b7825b162fdcd5b35c046a530bc"
   },
   "baselines": [
     {
       "snapshotName": "theme-a-light-1280x800.png",
-      "sha256": "f34870ca8e9077a75bfc76ff73fb5bed0becc72d014e149034612abbb679db02",
+      "sha256": "49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7",
       "width": 1280,
       "height": 800
     },
     {
       "snapshotName": "theme-a-dark-1280x800.png",
-      "sha256": "bf884e343b1b7c345ab25e8ec3f3ff10599b966e73ddb4686bafb9e699b9df23",
+      "sha256": "01b9ee8bf53bb0ad2c941e53ffb47f95836f0352c3dd63278e768152e342de78",
       "width": 1280,
       "height": 800
     },
     {
       "snapshotName": "theme-b-light-1280x800.png",
-      "sha256": "3fa5018f2cbb0ab0f4b51a3716574a4ac1a197828c07c6d1cf1b63d150dcd26f",
+      "sha256": "a1bea42416911316fc703108887bcc4903dadfd9f81882dcc1f40c6850cda8ce",
       "width": 1280,
       "height": 800
     },
     {
       "snapshotName": "theme-b-dark-1280x800.png",
-      "sha256": "0fabd5c663f79d223488f98ddcd2356c46f779b22567e3a9692ee5696d7e8f1b",
+      "sha256": "eb69c25d18f7bc4f129f687fd54493744b5f35d1642800ebabd3fb134d4ae774",
       "width": 1280,
       "height": 800
     }

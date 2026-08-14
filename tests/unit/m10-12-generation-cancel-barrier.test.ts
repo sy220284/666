@@ -88,6 +88,7 @@ describe('M10-12 Candidate保存前取消屏障', () => {
     const runs = {
       createWithReplay: async () => ({ run: queued, replayed: false }),
       get: () => current,
+      getResearchReferenceMessage: () => null,
       markRunning: async () => running,
       markStage: async (_requestId: string, input: { stage: string }) => {
         if (input.stage === 'parsing_output') {

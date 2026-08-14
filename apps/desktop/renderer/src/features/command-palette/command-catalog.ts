@@ -49,6 +49,13 @@ export const COMMAND_CATALOG: readonly CommandCatalogEntry[] = [
   route('candidates', '打开智能创作', '生成并审阅智能建议稿', ['生成', '建议稿'], true),
   route('versions', '打开历史版本', '查看当前章节的只读版本', ['版本', '历史'], true),
   navigation('canon', '打开人物与设定', '查看人物、世界设定与伏笔', ['人物', '设定', '伏笔'], true),
+  route(
+    'research',
+    '打开研究资料',
+    '查看本地研究笔记、附件与故事关联',
+    ['资料', '研究', '附件', '参考'],
+    true,
+  ),
   navigation('checks', '打开检查', '搜索、校验与故事任务', ['搜索', '校验', '任务'], true),
   route('recovery', '打开恢复与导出', '备份、恢复和导入导出', ['备份', '导出'], true),
   navigation('settings', '打开设置', '管理显示与智能连接', ['偏好', '模型', '连接'], false),
@@ -111,9 +118,11 @@ function route(
         ? 'home'
         : route === 'structure'
           ? 'planning'
-          : route === 'recovery'
-            ? 'checks'
-            : 'writing',
+          : route === 'research'
+            ? 'canon'
+            : route === 'recovery'
+              ? 'checks'
+              : 'writing',
     requiresProject,
   };
 }

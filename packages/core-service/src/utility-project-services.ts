@@ -11,6 +11,7 @@ import type { ProjectContinuationService } from './project-continuation.js';
 import type { ProjectStructureService } from './project-structure.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import type { RecoveryService } from './recovery.js';
+import type { ResearchService } from './research-service.js';
 import type { SceneBeatService } from './scene-beat.js';
 import type { SearchToolsService } from './search-tools.js';
 import type { StoryKnowledgeProjectionService } from './story-knowledge-service.js';
@@ -29,6 +30,7 @@ export interface UtilityProjectServices {
   readonly storyKnowledge: StoryKnowledgeProjectionService;
   readonly ideas: IdeaCapsuleService;
   readonly longformAi: LongformAiService;
+  readonly research: ResearchService;
   readonly structureOperations: StructureOperationService;
   readonly drafts: DraftService;
   readonly candidates: CandidateService;

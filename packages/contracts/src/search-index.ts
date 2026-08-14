@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { ProjectIdSchema } from './task-protocol.js';
 
-export const SearchSourceTypeSchema = z.enum(['draft', 'version', 'entity']);
+export const SearchSourceTypeSchema = z.enum(['draft', 'version', 'entity', 'research']);
 export const SearchIndexStatusSchema = z.enum(['ready', 'stale', 'rebuilding']);
 export const SearchStrategySchema = z.enum(['fts', 'authoritative-like', 'dictionary']);
 
@@ -20,7 +20,7 @@ export const SearchIndexStateSchema = z.strictObject({
 export const SearchProjectInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   query: z.string().trim().min(1).max(500),
-  sourceTypes: z.array(SearchSourceTypeSchema).min(1).max(3).optional(),
+  sourceTypes: z.array(SearchSourceTypeSchema).min(1).max(4).optional(),
   includeArchived: z.boolean().default(false),
   limit: z.number().int().min(1).max(100).default(50),
 });
@@ -66,6 +66,7 @@ export const SearchIndexRebuildResultSchema = z.strictObject({
   draftCount: z.number().int().nonnegative(),
   versionCount: z.number().int().nonnegative(),
   entityCount: z.number().int().nonnegative(),
+  researchCount: z.number().int().nonnegative(),
   failedCount: z.number().int().nonnegative(),
   status: SearchIndexStatusSchema,
 });

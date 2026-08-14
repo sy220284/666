@@ -27,6 +27,7 @@ import {
   readBackupPolicy,
   type RecoveryRuntime,
 } from './backup-manifest.js';
+import { removeArtifactBackup } from './project-artifact-backup.js';
 
 interface CleanupJournal {
   readonly schemaVersion: 1;
@@ -375,6 +376,11 @@ export class IdempotentBackupCleanupOperations {
         rm(metadataPath, { force: true }),
         rm(stagedBackupPath, { force: true }),
         rm(stagedMetadataPath, { force: true }),
+        removeArtifactBackup(
+          this.#runtime.backupRootDirectory,
+          record.projectId,
+          record.backupId,
+        ),
       ]);
     } catch (error) {
       if (!databaseDeleted) {

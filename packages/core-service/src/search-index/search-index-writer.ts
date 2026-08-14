@@ -7,6 +7,7 @@ function deleteTarget(connection: DatabaseSync, target: SearchIndexTarget): void
     draft: 'DELETE FROM fts_draft_blocks WHERE draft_id = ?',
     version: 'DELETE FROM fts_version_blocks WHERE version_id = ?',
     entity: 'DELETE FROM fts_entities WHERE entity_id = ?',
+    research: 'DELETE FROM fts_research_notes WHERE note_id = ?',
   } as const;
   connection.prepare(statements[target.targetType]).run(target.targetId);
 }
@@ -119,6 +120,35 @@ function indexEntity(connection: DatabaseSync, projectId: string, entityId: stri
     );
 }
 
+function indexResearch(connection: DatabaseSync, projectId: string, noteId: string): void {
+  deleteTarget(connection, { targetType: 'research', targetId: noteId, operation: 'delete' });
+  const row = connection
+    .prepare(
+      `SELECT id, status, title, body, tags_json AS tagsJson, source_type AS sourceType,
+              source_label AS sourceLabel, source_uri AS sourceUri
+         FROM research_notes WHERE id = ? AND project_id = ?`,
+    )
+    .get(noteId, projectId);
+  if (!row) return;
+  connection
+    .prepare(
+      `INSERT INTO fts_research_notes(
+         project_id, note_id, status, title, body, tags, source_type, source_label, source_uri
+       ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      projectId,
+      text(row.id, 'researchNoteId'),
+      text(row.status, 'researchStatus'),
+      text(row.title, 'researchTitle'),
+      text(row.body, 'researchBody'),
+      parseStringArrayJson(row.tagsJson, 'researchTags').join(' '),
+      row.sourceType === null ? '' : text(row.sourceType, 'researchSourceType'),
+      row.sourceLabel === null ? '' : text(row.sourceLabel, 'researchSourceLabel'),
+      row.sourceUri === null ? '' : text(row.sourceUri, 'researchSourceUri'),
+    );
+}
+
 export function indexTarget(
   connection: DatabaseSync,
   projectId: string,
@@ -130,7 +160,9 @@ export function indexTarget(
     indexDraft(connection, projectId, target.targetId);
   } else if (target.targetType === 'version') {
     indexVersion(connection, projectId, target.targetId);
-  } else {
+  } else if (target.targetType === 'entity') {
     indexEntity(connection, projectId, target.targetId);
+  } else {
+    indexResearch(connection, projectId, target.targetId);
   }
 }

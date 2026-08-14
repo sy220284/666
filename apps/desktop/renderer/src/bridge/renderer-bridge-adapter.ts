@@ -32,13 +32,14 @@ import type {
   GenerationRun,
   KnowledgeStateInvalidateInput,
   KnowledgeStateSetInput,
+  LongformAiBridge,
   NarrativePlanningCatalog,
   NarrativePlanningListInput,
+  ResearchBridge,
   RhythmBridge,
   SearchToolsBridge,
   StateProposalBridge,
   StoryKnowledgeBridge,
-  LongformAiBridge,
   TaskStreamUpdate,
   TimelineEventArchiveInput,
   TimelineEventSaveInput,
@@ -158,6 +159,7 @@ interface AuxiliaryRendererBridges {
   readonly rhythm?: RhythmBridge;
   readonly storyKnowledge?: StoryKnowledgeBridge;
   readonly longformAi?: LongformAiBridge;
+  readonly research?: ResearchBridge;
   readonly candidateAction?: CandidateActionBridgePort;
 }
 
@@ -207,6 +209,7 @@ export interface RendererBridgeAdapter {
   readonly rhythm: AdaptedDomain<RhythmBridge>;
   readonly storyKnowledge: AdaptedDomain<StoryKnowledgeBridge>;
   readonly longformAi: AdaptedDomain<LongformAiBridge>;
+  readonly research: AdaptedDomain<ResearchBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
   readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
@@ -285,6 +288,11 @@ export function createRendererBridgeAdapter(
     longformAi: adaptDomain(
       'longformAi',
       requireDomain(auxiliary.longformAi, 'longformAi'),
+      coordinator,
+    ),
+    research: adaptDomain(
+      'research',
+      requireDomain(auxiliary.research, 'research'),
       coordinator,
     ),
     candidateAction: adaptDomain(
@@ -390,6 +398,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     !window.worldforgeRhythm ||
     !window.worldforgeStoryKnowledge ||
     !window.worldforgeLongformAi ||
+    !window.worldforgeResearch ||
     !window.worldforgeCandidatePreview
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
@@ -403,6 +412,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     rhythm: window.worldforgeRhythm,
     storyKnowledge: window.worldforgeStoryKnowledge,
     longformAi: window.worldforgeLongformAi,
+    research: window.worldforgeResearch,
     candidateAction: window.worldforgeCandidatePreview,
   });
 }

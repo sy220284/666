@@ -39,10 +39,14 @@ function trustedSender(event: IpcMainInvokeEvent, rendererUrl: string): boolean 
 }
 
 async function chooseAttachmentFile(event: IpcMainInvokeEvent): Promise<string | null> {
-  if (process.env.WORLDFORGE_E2E === '1' && process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT) {
+  if (
+    process.env.WORLDFORGE_E2E === '1' &&
+    process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT
+  ) {
     const injected = process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT;
-    if (!path.isAbsolute(injected))
+    if (!path.isAbsolute(injected)) {
       throw new Error('WORLDFORGE_E2E_RESEARCH_ATTACHMENT_MUST_BE_ABSOLUTE');
+    }
     return injected;
   }
   const window = BrowserWindow.fromWebContents(event.sender);
@@ -141,7 +145,10 @@ async function invoke(
     operation: registration.command,
     input: parsed.data.payload,
   });
-  const result = await options.supervisor.invokeProjectOperation(parsed.data.requestId, operation);
+  const result = await options.supervisor.invokeProjectOperation(
+    parsed.data.requestId,
+    operation,
+  );
   if (!result.ok) {
     const code: ErrorCode = result.errorCode;
     return ResearchCatalogResultSchema.parse({
@@ -204,7 +211,10 @@ export function registerResearchIpc(options: ResearchIpcOptions): () => void {
         input: parsed.data.payload,
         sourcePath,
       });
-      const result = await options.supervisor.invokeProjectOperation(parsed.data.requestId, operation);
+      const result = await options.supervisor.invokeProjectOperation(
+        parsed.data.requestId,
+        operation,
+      );
       if (!result.ok) {
         const code: ErrorCode = result.errorCode;
         return ResearchCatalogResultSchema.parse({
@@ -225,6 +235,8 @@ export function registerResearchIpc(options: ResearchIpcOptions): () => void {
   );
 
   return () => {
-    for (const channel of Object.values(RESEARCH_IPC_CHANNELS)) options.ipcMain.removeHandler(channel);
+    for (const channel of Object.values(RESEARCH_IPC_CHANNELS)) {
+      options.ipcMain.removeHandler(channel);
+    }
   };
 }

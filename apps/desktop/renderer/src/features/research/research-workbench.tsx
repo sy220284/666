@@ -138,8 +138,8 @@ export function ResearchWorkbench({
         ...(query.trim() ? { query: query.trim() } : {}),
       },
       {
-        mode: 'share',
-        requestKey: `research.list:${projectId}:${showArchived}:${query.trim()}`,
+        mode: 'replace',
+        laneKey: `research.list:${projectId}`,
       },
     );
     if (outcome.state !== 'success') {
@@ -187,7 +187,8 @@ export function ResearchWorkbench({
   };
 
   const createNote = async (): Promise<void> => {
-    if (readOnly || pending) return;
+    if (readOnly || pending || !catalog) return;
+    const existingNoteIds = new Set(catalog.notes.map((note) => note.id));
     setPending('create');
     const outcome = await bridge.research.createNote(
       {
@@ -201,8 +202,9 @@ export function ResearchWorkbench({
     );
     setPending(null);
     if (outcome.state === 'success') {
-      const created =
-        outcome.data.notes.find((note) => note.title === '未命名研究笔记') ?? outcome.data.notes[0];
+      const created = outcome.data.notes
+        .filter((note) => !existingNoteIds.has(note.id))
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
       applyCatalog(outcome.data, created?.id);
       setNotice('研究笔记已创建。');
     } else if (outcome.state === 'failure') {
@@ -360,7 +362,7 @@ export function ResearchWorkbench({
           <button
             type="button"
             className="button primary"
-            disabled={readOnly || pending !== null}
+            disabled={readOnly || pending !== null || catalog === null}
             onClick={() => void createNote()}
           >
             新建笔记
@@ -531,7 +533,7 @@ export function ResearchWorkbench({
               </label>
               <p className="muted-copy">
                 已选择 {selectedReferenceIds.size}/20
-                项。选择只在当前界面会话保留，生成时仍由本地服务 重新校验项目归属。
+                项。选择只在当前界面会话保留，生成时仍由本地服务重新校验项目归属。
               </p>
 
               <div className="research-link-form">

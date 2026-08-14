@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "platform": "linux",
   "source": {
-    "verifiedHead": "07b9484a7a8ab7f2b02af6aff0572a17b7fd4720",
-    "qualityRunId": 31794884165,
-    "artifactId": 9217434664,
-    "artifactDigest": "sha256:380f368582b02552f480974414eba7530c2750ed299bf164d042230c64457277"
+    "verifiedHead": "d2a6abe07d032db7260300924d14dc5c804ea46a",
+    "qualityRunId": 31818830760,
+    "artifactId": 9226678057,
+    "artifactDigest": "sha256:ca6454b6dd00b126eda4d07417e6edef0249147f5a6c6d337e4a42902064078b"
   },
   "stabilityWitness": {
-    "verifiedHead": "3e6f77c02ebc36d8b670788f92c8e04ce669da20",
-    "qualityRunId": 31803014918,
-    "artifactId": 9220558006,
-    "artifactDigest": "sha256:62ad1f69f5d5beb49b53f6eca5d164db42de820929e5a0ddfed34897b12748c9"
+    "verifiedHead": "76990f503f8d0a5194e08e5c43dcd2f23e3cd1dd",
+    "qualityRunId": 31841828379,
+    "artifactId": 9234964206,
+    "artifactDigest": "sha256:4adab323c3f83d6d7e02f3e6fdf67fddb7de2b7825b162fdcd5b35c046a530bc"
   },
   "baselines": [
     {
@@ -22,19 +22,19 @@
     },
     {
       "snapshotName": "theme-a-dark-1280x800.png",
-      "sha256": "2de849bccc172050f450eee3f45f9cd2202d401eaa7a91acbc4ab6ee09c4c544",
+      "sha256": "01b9ee8bf53bb0ad2c941e53ffb47f95836f0352c3dd63278e768152e342de78",
       "width": 1280,
       "height": 800
     },
     {
       "snapshotName": "theme-b-light-1280x800.png",
-      "sha256": "2d5dbddc39d1b44d8e8945bb9b55e9b98ad727e10a193c61688962e8be0af6bc",
+      "sha256": "a1bea42416911316fc703108887bcc4903dadfd9f81882dcc1f40c6850cda8ce",
       "width": 1280,
       "height": 800
     },
     {
       "snapshotName": "theme-b-dark-1280x800.png",
-      "sha256": "790ff5da93ae555c0a9313721f35483fec2107cd52cf7b98b6b1d47299232e89",
+      "sha256": "eb69c25d18f7bc4f129f687fd54493744b5f35d1642800ebabd3fb134d4ae774",
       "width": 1280,
       "height": 800
     }

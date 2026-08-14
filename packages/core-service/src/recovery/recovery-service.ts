@@ -188,15 +188,9 @@ export class RecoveryService {
   ): Promise<RecoveryCleanupResult> {
     const input = RecoveryCleanupApplyInputSchema.parse(raw);
     this.#assertCleanupPolicyReadable(input.projectId);
-    return this.#share('apply-cleanup', requestId, input, 'BACKUP_CLEANUP_STALE', async () => {
-      const result = await this.#cleanup.applyCleanup(requestId, input);
-      await Promise.allSettled(
-        result.deletedBackupIds.map((backupId) =>
-          removeArtifactBackup(this.#backupRootDirectory, input.projectId, backupId),
-        ),
-      );
-      return result;
-    });
+    return this.#share('apply-cleanup', requestId, input, 'BACKUP_CLEANUP_STALE', () =>
+      this.#cleanup.applyCleanup(requestId, input),
+    );
   }
 
   restoreCheckpoint(
@@ -217,19 +211,24 @@ export class RecoveryService {
         if (!metadata) {
           throw new RecoveryServiceError('BACKUP_NOT_FOUND', 'The checkpoint was not found.');
         }
-        const restored = await this.#restore.restoreCheckpoint(requestId, raw, targetParentDirectory);
-        try {
-          await restoreArtifactBackup(this.#runtime, metadata, restored.workspacePath);
-          return restored;
-        } catch (error) {
-          throw error instanceof RecoveryServiceError
-            ? error
-            : new RecoveryServiceError(
-                'RESTORE_VERIFY_FAILED',
-                'Managed project artifacts could not be restored completely.',
-                { cause: error },
-              );
-        }
+        return this.#restore.restoreCheckpoint(
+          requestId,
+          raw,
+          targetParentDirectory,
+          async (stagingWorkspacePath) => {
+            try {
+              await restoreArtifactBackup(this.#runtime, metadata, stagingWorkspacePath);
+            } catch (error) {
+              throw error instanceof RecoveryServiceError
+                ? error
+                : new RecoveryServiceError(
+                    'RESTORE_VERIFY_FAILED',
+                    'Managed project artifacts could not be restored completely.',
+                    { cause: error },
+                  );
+            }
+          },
+        );
       },
     );
   }

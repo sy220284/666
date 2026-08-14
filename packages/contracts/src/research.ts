@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { ErrorCodeSchema } from './error-codes.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
-import type { CommandResult } from './app-runtime-contracts.js';
 
 export const RESEARCH_IPC_CHANNELS = {
   list: 'worldforge:research:list',
@@ -240,15 +239,17 @@ export const CoreResearchResultSchema = z.union([
   }),
 ]);
 
+export type ResearchCatalogResult = z.infer<typeof ResearchCatalogResultSchema>;
+
 export interface ResearchBridge {
-  readonly list: (input: ResearchListInput) => Promise<CommandResult<ResearchCatalog>>;
-  readonly createNote: (input: ResearchNoteCreateInput) => Promise<CommandResult<ResearchCatalog>>;
-  readonly updateNote: (input: ResearchNoteUpdateInput) => Promise<CommandResult<ResearchCatalog>>;
-  readonly setNoteStatus: (input: ResearchNoteStatusInput) => Promise<CommandResult<ResearchCatalog>>;
-  readonly importAttachment: (input: ResearchAttachmentImportInput) => Promise<CommandResult<ResearchCatalog>>;
-  readonly deleteAttachment: (input: ResearchAttachmentDeleteInput) => Promise<CommandResult<ResearchCatalog>>;
-  readonly addLink: (input: ResearchLinkAddInput) => Promise<CommandResult<ResearchCatalog>>;
-  readonly removeLink: (input: ResearchLinkRemoveInput) => Promise<CommandResult<ResearchCatalog>>;
+  readonly list: (input: ResearchListInput) => Promise<ResearchCatalogResult>;
+  readonly createNote: (input: ResearchNoteCreateInput) => Promise<ResearchCatalogResult>;
+  readonly updateNote: (input: ResearchNoteUpdateInput) => Promise<ResearchCatalogResult>;
+  readonly setNoteStatus: (input: ResearchNoteStatusInput) => Promise<ResearchCatalogResult>;
+  readonly importAttachment: (input: ResearchAttachmentImportInput) => Promise<ResearchCatalogResult>;
+  readonly deleteAttachment: (input: ResearchAttachmentDeleteInput) => Promise<ResearchCatalogResult>;
+  readonly addLink: (input: ResearchLinkAddInput) => Promise<ResearchCatalogResult>;
+  readonly removeLink: (input: ResearchLinkRemoveInput) => Promise<ResearchCatalogResult>;
 }
 
 export type ResearchNoteStatus = z.infer<typeof ResearchNoteStatusSchema>;

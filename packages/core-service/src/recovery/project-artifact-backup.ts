@@ -2,10 +2,10 @@ import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { copyFile, lstat, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
-import { type BackupRecord, BackupRecordSchema } from '@worldforge/contracts';
+import { BackupRecordSchema, type BackupRecord } from '@worldforge/contracts';
 
-import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { RecoveryServiceError, rewriteBackupMetadata, type RecoveryRuntime } from './backup-manifest.js';
 
 interface ArtifactManifestEntry {
@@ -46,7 +46,7 @@ async function hashFile(filePath: string): Promise<string> {
   const hash = createHash('sha256');
   await new Promise<void>((resolve, reject) => {
     const stream = createReadStream(filePath);
-    stream.on('data', (chunk: Buffer) => hash.update(chunk));
+    stream.on('data', (chunk) => hash.update(chunk));
     stream.on('error', reject);
     stream.on('end', resolve);
   });
@@ -93,51 +93,62 @@ function parseManifest(raw: unknown): ArtifactBackupManifest {
   return { schemaVersion: 1, projectId: value.projectId, backupId: value.backupId, files };
 }
 
-async function collectAuthoritativeArtifacts(
-  workspace: ProjectWorkspaceService,
-  projectId: string,
-): Promise<ArtifactManifestEntry[]> {
-  const rows = workspace.readProject(projectId, (database) =>
-    database
+function readSnapshotArtifacts(databasePath: string, projectId: string): ArtifactManifestEntry[] {
+  const database = new DatabaseSync(databasePath, {
+    readOnly: true,
+    timeout: 5_000,
+    enableForeignKeyConstraints: true,
+    allowExtension: false,
+    readBigInts: true,
+  });
+  try {
+    const rows = database
       .prepare(
         `SELECT managed_relative_path AS relativePath, size_bytes AS sizeBytes,
                 content_hash AS sha256
            FROM research_attachments WHERE project_id = ?
           ORDER BY managed_relative_path, id`,
       )
-      .all(projectId)
-      .map((row) => ({
-        relativePath: safeRelativePath(String(row.relativePath)),
-        sizeBytes: Number(row.sizeBytes),
-        sha256: String(row.sha256),
-      })),
-  );
-  const entries: ArtifactManifestEntry[] = [];
-  for (const row of rows) {
-    if (!Number.isSafeInteger(row.sizeBytes) || row.sizeBytes < 0 || !/^[0-9a-f]{64}$/u.test(row.sha256)) {
-      throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Managed artifact metadata is invalid.');
-    }
-    const filePath = await workspace.resolveProjectPath(projectId, row.relativePath);
-    const details = await lstat(filePath).catch((error: unknown) => {
-      throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Managed artifact is missing.', { cause: error });
+      .all(projectId);
+    return rows.map((row) => {
+      const relativePath = safeRelativePath(String(row.relativePath));
+      const sizeBytes = Number(row.sizeBytes);
+      const sha256 = String(row.sha256);
+      if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 0 || !/^[0-9a-f]{64}$/u.test(sha256)) {
+        throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Snapshot artifact metadata is invalid.');
+      }
+      return { relativePath, sizeBytes, sha256 };
     });
-    if (!details.isFile() || details.isSymbolicLink() || details.size !== row.sizeBytes) {
-      throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Managed artifact size or type is invalid.');
-    }
-    if ((await hashFile(filePath)) !== row.sha256) {
-      throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Managed artifact hash does not match.');
-    }
-    entries.push(row);
+  } finally {
+    database.close();
   }
-  return entries;
+}
+
+async function verifyLiveArtifact(
+  runtime: RecoveryRuntime,
+  projectId: string,
+  entry: ArtifactManifestEntry,
+): Promise<string> {
+  const filePath = await runtime.workspace.resolveProjectPath(projectId, entry.relativePath);
+  const details = await lstat(filePath).catch((error: unknown) => {
+    throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Managed artifact is missing.', { cause: error });
+  });
+  if (!details.isFile() || details.isSymbolicLink() || details.size !== entry.sizeBytes) {
+    throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Managed artifact no longer matches the database snapshot.');
+  }
+  if ((await hashFile(filePath)) !== entry.sha256) {
+    throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Managed artifact changed during backup creation.');
+  }
+  return filePath;
 }
 
 export async function finalizeArtifactBackup(
   runtime: RecoveryRuntime,
   record: BackupRecord,
 ): Promise<BackupRecord> {
-  const files = await collectAuthoritativeArtifacts(runtime.workspace, record.projectId);
   const projectDirectory = path.join(runtime.backupRootDirectory, record.projectId);
+  const databaseBackupPath = path.join(projectDirectory, record.backupFileName);
+  const files = readSnapshotArtifacts(databaseBackupPath, record.projectId);
   const finalBundle = bundleDirectory(runtime.backupRootDirectory, record.projectId, record.backupId);
   const finalManifest = manifestPath(runtime.backupRootDirectory, record.projectId, record.backupId);
   const partialBundle = `${finalBundle}.partial-${runtime.idFactory()}`;
@@ -148,15 +159,16 @@ export async function finalizeArtifactBackup(
     await rm(partialBundle, { recursive: true, force: true });
     await mkdir(partialBundle, { recursive: true, mode: 0o700 });
     for (const entry of files) {
-      const source = await runtime.workspace.resolveProjectPath(record.projectId, entry.relativePath);
+      const source = await verifyLiveArtifact(runtime, record.projectId, entry);
       const destination = path.join(partialBundle, ...entry.relativePath.split('/'));
       await mkdir(path.dirname(destination), { recursive: true, mode: 0o700 });
       await copyFile(source, destination);
-      const details = await stat(destination);
-      if (details.size !== entry.sizeBytes || (await hashFile(destination)) !== entry.sha256) {
+      const copied = await stat(destination);
+      if (copied.size !== entry.sizeBytes || (await hashFile(destination)) !== entry.sha256) {
         throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Copied managed artifact failed verification.');
       }
     }
+
     const manifest: ArtifactBackupManifest = {
       schemaVersion: 1,
       projectId: record.projectId,

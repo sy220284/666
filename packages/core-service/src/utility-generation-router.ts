@@ -208,6 +208,7 @@ function runSettings(
     supportStatus: support.status,
     constraintPackage: constraints,
     inputSources,
+    researchReferences: input.researchReferences,
   };
 }
 
@@ -790,6 +791,7 @@ async function ideaExploreWorkflow({ services, requestId, operation }: Generatio
       supportStatus: profile.status,
       constraintPackage: null,
       inputSources: resolved.inputSources,
+      researchReferences: input.researchReferences,
     },
     provider,
     requestFor: (runId) =>

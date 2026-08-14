@@ -151,14 +151,20 @@ describe('M12-02 research IPC coverage', () => {
     });
 
     value.unregister();
-    expect(value.ipcMain.removeHandler).toHaveBeenCalledTimes(Object.keys(RESEARCH_IPC_CHANNELS).length);
+    expect(value.ipcMain.removeHandler).toHaveBeenCalledTimes(
+      Object.keys(RESEARCH_IPC_CHANNELS).length,
+    );
     expect(value.handlers.size).toBe(0);
   });
 
   it('covers every ordinary research mutation registration with valid project operations', async () => {
     const value = harness();
     const commands = [
-      [RESEARCH_IPC_CHANNELS.createNote, RESEARCH_COMMANDS.createNote, { projectId, title: '资料' }],
+      [
+        RESEARCH_IPC_CHANNELS.createNote,
+        RESEARCH_COMMANDS.createNote,
+        { projectId, title: '资料' },
+      ],
       [
         RESEARCH_IPC_CHANNELS.updateNote,
         RESEARCH_COMMANDS.updateNote,
@@ -198,7 +204,9 @@ describe('M12-02 research IPC coverage', () => {
     ] as const;
 
     for (const [channel, command, payload] of commands) {
-      await expect(value.handlers.get(channel)!(event(), envelope(command, payload))).resolves.toMatchObject({
+      await expect(
+        value.handlers.get(channel)!(event(), envelope(command, payload)),
+      ).resolves.toMatchObject({
         ok: true,
         requestId,
         data: { projectId },
@@ -220,10 +228,7 @@ describe('M12-02 research IPC coverage', () => {
       ),
     ).resolves.toMatchObject({ ok: false, requestId });
     await expect(
-      preview(
-        event(),
-        envelope(RESEARCH_COMMANDS.previewAttachment, { projectId, attachmentId }),
-      ),
+      preview(event(), envelope(RESEARCH_COMMANDS.previewAttachment, { projectId, attachmentId })),
     ).resolves.toMatchObject({
       ok: true,
       data: { projectId, attachmentId, text: '正文' },
@@ -254,7 +259,9 @@ describe('M12-02 research IPC coverage', () => {
       ok: false,
       error: { code: 'COMMON_INVALID_INPUT_001' },
     });
-    await expect(importAttachment(event('https://untrusted.example'), command)).resolves.toMatchObject({
+    await expect(
+      importAttachment(event('https://untrusted.example'), command),
+    ).resolves.toMatchObject({
       ok: false,
       requestId,
     });
@@ -282,8 +289,14 @@ describe('M12-02 research IPC coverage', () => {
       ok: false,
       error: { code: 'COMMON_CANCELLED_004' },
     });
-    electron.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/tmp/research.txt'] });
-    await expect(importAttachment(event(), command)).resolves.toMatchObject({ ok: true, requestId });
+    electron.showOpenDialog.mockResolvedValue({
+      canceled: false,
+      filePaths: ['/tmp/research.txt'],
+    });
+    await expect(importAttachment(event(), command)).resolves.toMatchObject({
+      ok: true,
+      requestId,
+    });
 
     process.env.WORLDFORGE_E2E = '1';
     process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT = 'relative.txt';
@@ -291,7 +304,10 @@ describe('M12-02 research IPC coverage', () => {
       'WORLDFORGE_E2E_RESEARCH_ATTACHMENT_MUST_BE_ABSOLUTE',
     );
     process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT = '/tmp/injected.txt';
-    await expect(importAttachment(event(), command)).resolves.toMatchObject({ ok: true, requestId });
+    await expect(importAttachment(event(), command)).resolves.toMatchObject({
+      ok: true,
+      requestId,
+    });
 
     const failed = harness(() => ({
       ok: false,

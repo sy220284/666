@@ -32,7 +32,7 @@ describe('Electron window state unit and regression coverage', () => {
     expect(restoreWindowPreferences(null, displays)).toEqual({
       ...appearance,
       displayId: 'primary',
-      boundsDip: { x: 160, y: 40, width: 1600, height: 1000 },
+      boundsDip: { x: 320, y: 140, width: 1280, height: 800 },
       scaleFactor: 2,
       maximized: false,
     });

@@ -15,8 +15,8 @@ export interface DisplaySnapshot {
 
 const minimumWindowWidth = 720;
 const minimumWindowHeight = 520;
-const defaultWindowWidth = 1_600;
-const defaultWindowHeight = 1_000;
+const defaultWindowWidth = 1_280;
+const defaultWindowHeight = 800;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));

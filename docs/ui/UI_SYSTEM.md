@@ -157,5 +157,5 @@ EditorStatusGutter ArcMilestoneList RhythmSuggestionPanel
 - Token集中定义并通过CSS变量暴露。
 - Radix等只作为行为底座。
 - 业务页面不得复制新按钮、对话框或状态系统。
-- 视觉回归覆盖Theme A浅/深/护眼/高对比、Theme B浅/深、1280×800、2K 125%和21:9。
+- 视觉回归覆盖Theme A/B关键状态；严格像素基线使用QHD 2560×1440，体验矩阵覆盖QHD 100/125/150/200%、QHD+、UWQHD、4K与混合DPI。
 - 视觉回归之外必须验证主题切换不改变业务结果。

@@ -1,3 +1,4 @@
+-- migration-policy: allow-unscoped-write
 -- M12-02: managed project artifacts and author-owned research library.
 -- Research remains advisory material and never becomes Canon implicitly.
 

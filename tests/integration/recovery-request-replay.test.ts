@@ -71,9 +71,13 @@ describe('M10-11 Recovery request replay', () => {
         (name) => name.endsWith('.sqlite') || name.endsWith('.json'),
       );
       expect(backupFiles).toEqual(
-        expect.arrayContaining([first.backupFileName, `${backupRequestId}.json`]),
+        expect.arrayContaining([
+          first.backupFileName,
+          `${backupRequestId}.json`,
+          `${backupRequestId}.artifacts.json`,
+        ]),
       );
-      expect(backupFiles).toHaveLength(2);
+      expect(backupFiles).toHaveLength(3);
 
       const restoreRequestId = randomUUID();
       const restored = await recovery.restoreCheckpoint(

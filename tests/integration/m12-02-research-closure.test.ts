@@ -190,26 +190,30 @@ describe('M12-02 research closure boundaries', () => {
           attachmentId: attachment.id,
         });
         const rows = MAX_RESEARCH_PROJECT_ATTACHMENT_BYTES / MAX_RESEARCH_ATTACHMENT_BYTES;
-        await value.workspace.writeProject(randomUUID(), value.project.projectId, (database) => {
-          for (let index = 0; index < rows; index += 1) {
-            database
-              .prepare(
-                `INSERT INTO research_attachments(
-                   id, project_id, note_id, display_name, media_type, size_bytes,
-                   content_hash, managed_relative_path, created_at
-                 ) VALUES(?, ?, NULL, ?, 'application/pdf', ?, ?, ?, ?)`,
-              )
-              .run(
-                randomUUID(),
-                value.project.projectId,
-                `quota-${index}.pdf`,
-                MAX_RESEARCH_ATTACHMENT_BYTES,
-                index.toString(16).padStart(64, '0'),
-                `artifacts/research/quota-${index}.pdf`,
-                clock.now().toISOString(),
-              );
-          }
-        });
+        await value.workspace.writeProject(
+          randomUUID(),
+          value.project.projectId,
+          (database) => {
+            for (let index = 0; index < rows; index += 1) {
+              database
+                .prepare(
+                  `INSERT INTO research_attachments(
+                     id, project_id, note_id, display_name, media_type, size_bytes,
+                     content_hash, managed_relative_path, created_at
+                   ) VALUES(?, ?, NULL, ?, 'application/pdf', ?, ?, ?, ?)`,
+                )
+                .run(
+                  randomUUID(),
+                  value.project.projectId,
+                  `quota-${index}.pdf`,
+                  MAX_RESEARCH_ATTACHMENT_BYTES,
+                  index.toString(16).padStart(64, '0'),
+                  `artifacts/research/quota-${index}.pdf`,
+                  clock.now().toISOString(),
+                );
+            }
+          },
+        );
         const overQuota = path.join(value.root, 'over.txt');
         await writeFile(overQuota, 'x', 'utf8');
         await expect(

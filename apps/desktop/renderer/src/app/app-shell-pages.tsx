@@ -21,6 +21,7 @@ import {
 import { RecoveryOverviewGate } from '../features/data-tools/recovery-overview-gate.js';
 import { HomePage, type OnboardingProjectPlan } from '../features/home/home-page.js';
 import { PlanningWorkbench } from '../features/planning/planning-workbench.js';
+import { ResearchWorkbench } from '../features/research/research-workbench.js';
 import { SettingsPage } from '../features/settings/settings-page.js';
 import { WritingWorkbench, type WritingPanel } from '../features/writing/writing-workbench.js';
 import type { AiReadiness } from '../runtime/ai-readiness.js';
@@ -173,6 +174,27 @@ export function AppShellPages(props: AppShellPagesProps) {
           onNavigate={props.onNavigateToAuthorTarget}
           onSectionChange={props.onCanonSectionChange}
           onReturn={() => void props.onReturnToAuthorSource()}
+        />
+      ) : null}
+
+      {props.route === 'research' && props.activeProject ? (
+        <ResearchWorkbench
+          bridge={props.bridge}
+          projectId={props.activeProject.projectId}
+          readOnly={readOnly}
+          selectedNoteId={props.selection.researchNoteId}
+          navigationQuery={props.navigationQuery}
+          onNavigate={props.onNavigateToAuthorTarget}
+          onSelectNote={(noteId) => {
+            if (!noteId) return;
+            props.onNavigateToAuthorTarget({
+              type: 'research-note',
+              projectId: props.activeProject!.projectId,
+              noteId,
+              query: null,
+            });
+          }}
+          onClose={() => void props.onTransitionToRoute('writing')}
         />
       ) : null}
 

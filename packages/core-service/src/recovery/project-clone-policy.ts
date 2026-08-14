@@ -58,6 +58,7 @@ const PROJECT_CLONE_POLICY = new Map<string, ProjectCloneAction>([
   ['generation_constraint_packages', 'preserve'],
   ['generation_result_refs', 'preserve'],
   ['generation_partial_buffers', 'drop'],
+  ['generation_research_ref_sets', 'clone-remap'],
   ['generation_research_refs', 'clone-remap'],
   ['model_support_profiles', 'preserve'],
   ['candidate_skeleton_revisions', 'preserve'],

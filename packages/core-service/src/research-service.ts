@@ -389,13 +389,18 @@ export class ResearchService {
     const input = ResearchNoteDeleteInputSchema.parse(raw);
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
       const current = database
-        .prepare('SELECT updated_at AS updatedAt FROM research_notes WHERE id = ? AND project_id = ?')
+        .prepare(
+          'SELECT updated_at AS updatedAt FROM research_notes WHERE id = ? AND project_id = ?',
+        )
         .get(input.noteId, input.projectId) as { updatedAt?: string } | undefined;
       if (!current) {
         throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Research note not found.');
       }
       if (current.updatedAt !== input.expectedUpdatedAt) {
-        throw new ResearchServiceError('RESEARCH_CONFLICT', 'Research note changed before deletion.');
+        throw new ResearchServiceError(
+          'RESEARCH_CONFLICT',
+          'Research note changed before deletion.',
+        );
       }
       database
         .prepare(
@@ -408,7 +413,10 @@ export class ResearchService {
         .prepare('DELETE FROM research_notes WHERE id = ? AND project_id = ? AND updated_at = ?')
         .run(input.noteId, input.projectId, input.expectedUpdatedAt);
       if (Number(deleted.changes) !== 1) {
-        throw new ResearchServiceError('RESEARCH_CONFLICT', 'Research note changed before deletion.');
+        throw new ResearchServiceError(
+          'RESEARCH_CONFLICT',
+          'Research note changed before deletion.',
+        );
       }
       return this.#catalog(database, {
         projectId: input.projectId,
@@ -881,7 +889,9 @@ export class ResearchService {
     let notes = sqliteResult<NoteRow[]>(database.prepare(noteSql).all(...noteParameters))
       .map(noteFromRow)
       .filter((note) => !input.tags?.length || input.tags.every((tag) => note.tags.includes(tag)))
-      .filter((note) => input.noteSourceType === undefined || note.sourceType === input.noteSourceType);
+      .filter(
+        (note) => input.noteSourceType === undefined || note.sourceType === input.noteSourceType,
+      );
     const noteIds = new Set(notes.map((note) => note.id));
     let attachments = sqliteResult<Record<string, unknown>[]>(
       database

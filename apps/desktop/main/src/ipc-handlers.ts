@@ -13,6 +13,7 @@ import { registerCanonIpcHandlers } from './canon-ipc-handlers.js';
 import { registerStructureIpcHandlers } from './structure-ipc-handlers.js';
 import { registerWritingIpcHandlers } from './writing-ipc-handlers.js';
 import { registerIdeaCapsuleIpcHandlers } from './idea-ipc-handlers.js';
+import { registerResearchIpc } from './research-ipc.js';
 import { registerTaskIpcHandlers } from './task-ipc-handlers.js';
 
 export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
@@ -29,6 +30,11 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     rendererUrl: options.rendererUrl,
     logger: options.logger,
   });
+  const disposeResearchHandlers = registerResearchIpc({
+    ipcMain: options.ipcMain,
+    supervisor: options.supervisor,
+    rendererUrl: options.rendererUrl,
+  });
 
   registerAppIpcHandlers(context);
   registerProjectIpcHandlers(context);
@@ -42,6 +48,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
 
   return () => {
     disposeProviderHandlers();
+    disposeResearchHandlers();
     context.disposeInvokeHandlers();
     disposeTaskHandlers();
     uninstallInvokeGuard();

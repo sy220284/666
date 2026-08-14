@@ -13,6 +13,11 @@ async function seedIssue(
   harness: Awaited<ReturnType<typeof createContinuityHarness>>,
   seeded: Awaited<ReturnType<typeof seedContinuity>>,
 ): Promise<string> {
+  await harness.versions.setFinal(randomUUID(), {
+    projectId: seeded.project.projectId,
+    chapterId: seeded.chapter1.id,
+    versionId: seeded.version.versionId,
+  });
   const batchId = randomUUID();
   const issueId = randomUUID();
   const now = '2026-08-14T00:00:00.000Z';

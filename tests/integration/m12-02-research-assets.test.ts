@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -129,7 +129,7 @@ describe('M12-02 research assets', () => {
     }
   });
 
-  it('keeps managed attachment DB and filesystem lifecycle aligned', async () => {
+  it('keeps attachment deletion replayable across filesystem and database interruption points', async () => {
     const value = await harness();
     try {
       const catalog = await value.research.createNote(randomUUID(), {
@@ -157,13 +157,55 @@ describe('M12-02 research assets', () => {
         attachment!.managedRelativePath,
       );
       expect(await readFile(managedPath, 'utf8')).toBe('受管附件正文');
-
       const deleted = await value.research.deleteAttachment(randomUUID(), {
         projectId: value.project.projectId,
         attachmentId: attachment!.id,
       });
       expect(deleted.attachments).toHaveLength(0);
       expect(await missing(managedPath)).toBe(true);
+
+      const beforeDatabaseCommit = await value.research.importAttachment(
+        randomUUID(),
+        { projectId: value.project.projectId, noteId: note!.id },
+        sourcePath,
+      );
+      const stagedAttachment = beforeDatabaseCommit.attachments[0]!;
+      const stagedManagedPath = await value.workspace.resolveProjectPath(
+        value.project.projectId,
+        stagedAttachment.managedRelativePath,
+      );
+      const stagedPath = `${stagedManagedPath}.deleting-${stagedAttachment.id}`;
+      await rename(stagedManagedPath, stagedPath);
+      const resumed = await value.research.deleteAttachment(randomUUID(), {
+        projectId: value.project.projectId,
+        attachmentId: stagedAttachment.id,
+      });
+      expect(resumed.attachments).toHaveLength(0);
+      expect(await missing(stagedPath)).toBe(true);
+
+      const afterDatabaseCommit = await value.research.importAttachment(
+        randomUUID(),
+        { projectId: value.project.projectId, noteId: note!.id },
+        sourcePath,
+      );
+      const detachedAttachment = afterDatabaseCommit.attachments[0]!;
+      const detachedManagedPath = await value.workspace.resolveProjectPath(
+        value.project.projectId,
+        detachedAttachment.managedRelativePath,
+      );
+      const detachedStagedPath = `${detachedManagedPath}.deleting-${detachedAttachment.id}`;
+      await rename(detachedManagedPath, detachedStagedPath);
+      await value.workspace.writeProject(randomUUID(), value.project.projectId, (database) => {
+        database
+          .prepare('DELETE FROM research_attachments WHERE id = ? AND project_id = ?')
+          .run(detachedAttachment.id, value.project.projectId);
+      });
+      const completed = await value.research.deleteAttachment(randomUUID(), {
+        projectId: value.project.projectId,
+        attachmentId: detachedAttachment.id,
+      });
+      expect(completed.attachments).toHaveLength(0);
+      expect(await missing(detachedStagedPath)).toBe(true);
     } finally {
       await value.workspace.shutdown();
       await value.runtime.close();

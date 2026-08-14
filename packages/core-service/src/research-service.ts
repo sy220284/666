@@ -472,10 +472,7 @@ export class ResearchService {
     try {
       const opened = await sourceHandle.stat();
       const after = await lstat(sourcePath);
-      if (
-        !sameOpenedFile(before, opened, after) ||
-        opened.size > MAX_RESEARCH_ATTACHMENT_BYTES
-      ) {
+      if (!sameOpenedFile(before, opened, after) || opened.size > MAX_RESEARCH_ATTACHMENT_BYTES) {
         throw new ResearchServiceError(
           'RESEARCH_INVALID',
           'Attachment changed while it was being opened.',

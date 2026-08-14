@@ -117,7 +117,19 @@ describe('Provider SSE fragmentation hardening', () => {
     ].join('');
     const encoded = new TextEncoder().encode(payload);
 
-    const events = await collect('anthropic', payload, [2, 5, 11, 17, 31, 47, 71, 103, 131, 173, encoded.length - 1]);
+    const events = await collect('anthropic', payload, [
+      2,
+      5,
+      11,
+      17,
+      31,
+      47,
+      71,
+      103,
+      131,
+      173,
+      encoded.length - 1,
+    ]);
 
     expect(events).toEqual([
       { type: 'connected' },
@@ -136,7 +148,13 @@ describe('Provider SSE fragmentation hardening', () => {
 
     const defensivePayload = [
       `data: ${JSON.stringify({
-        choices: [{ delta: { content: 42 }, finish_reason: 'stop', extra: { nested: true } }],
+        choices: [
+          {
+            delta: { content: 42 },
+            finish_reason: 'stop',
+            extra: { nested: true },
+          },
+        ],
         usage: { prompt_tokens: '2', completion_tokens: -1 },
         ignored: ['future-provider-field'],
       })}\n\n`,
@@ -144,9 +162,6 @@ describe('Provider SSE fragmentation hardening', () => {
     ].join('');
     const events = await collect('openai_compatible', defensivePayload, [4, 9, 15, 27]);
 
-    expect(events).toEqual([
-      { type: 'connected' },
-      { type: 'completed', finishReason: 'stop' },
-    ]);
+    expect(events).toEqual([{ type: 'connected' }, { type: 'completed', finishReason: 'stop' }]);
   });
 });

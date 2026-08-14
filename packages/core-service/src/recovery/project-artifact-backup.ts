@@ -9,7 +9,10 @@ import { BackupRecordSchema, type BackupRecord } from '@worldforge/contracts';
 import { RecoveryServiceError, rewriteBackupMetadata, type RecoveryRuntime } from './backup-manifest.js';
 
 interface ArtifactManifestEntry {
+  readonly artifactId: string;
+  readonly artifactType: 'research_attachment';
   readonly relativePath: string;
+  readonly mediaType: string;
   readonly sizeBytes: number;
   readonly sha256: string;
 }
@@ -72,7 +75,13 @@ function parseManifest(raw: unknown): ArtifactBackupManifest {
     }
     const item = entry as Record<string, unknown>;
     if (
+      typeof item.artifactId !== 'string' ||
+      item.artifactId.length === 0 ||
+      item.artifactType !== 'research_attachment' ||
       typeof item.relativePath !== 'string' ||
+      typeof item.mediaType !== 'string' ||
+      item.mediaType.length === 0 ||
+      item.mediaType.length > 255 ||
       typeof item.sizeBytes !== 'number' ||
       !Number.isSafeInteger(item.sizeBytes) ||
       item.sizeBytes < 0 ||
@@ -82,12 +91,18 @@ function parseManifest(raw: unknown): ArtifactBackupManifest {
       throw new RecoveryServiceError('RESTORE_SOURCE_INVALID', 'Artifact manifest entry is invalid.');
     }
     return {
+      artifactId: item.artifactId,
+      artifactType: 'research_attachment' as const,
       relativePath: safeRelativePath(item.relativePath),
+      mediaType: item.mediaType,
       sizeBytes: item.sizeBytes,
       sha256: item.sha256,
     };
   });
-  if (new Set(files.map((entry) => entry.relativePath)).size !== files.length) {
+  if (
+    new Set(files.map((entry) => entry.relativePath)).size !== files.length ||
+    new Set(files.map((entry) => entry.artifactId)).size !== files.length
+  ) {
     throw new RecoveryServiceError('RESTORE_SOURCE_INVALID', 'Artifact manifest contains duplicates.');
   }
   return { schemaVersion: 1, projectId: value.projectId, backupId: value.backupId, files };
@@ -104,20 +119,36 @@ function readSnapshotArtifacts(databasePath: string, projectId: string): Artifac
   try {
     const rows = database
       .prepare(
-        `SELECT managed_relative_path AS relativePath, size_bytes AS sizeBytes,
-                content_hash AS sha256
+        `SELECT id AS artifactId, managed_relative_path AS relativePath,
+                media_type AS mediaType, size_bytes AS sizeBytes, content_hash AS sha256
            FROM research_attachments WHERE project_id = ?
           ORDER BY managed_relative_path, id`,
       )
       .all(projectId);
     return rows.map((row) => {
+      const artifactId = String(row.artifactId);
       const relativePath = safeRelativePath(String(row.relativePath));
+      const mediaType = String(row.mediaType);
       const sizeBytes = Number(row.sizeBytes);
       const sha256 = String(row.sha256);
-      if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 0 || !/^[0-9a-f]{64}$/u.test(sha256)) {
+      if (
+        artifactId.length === 0 ||
+        mediaType.length === 0 ||
+        mediaType.length > 255 ||
+        !Number.isSafeInteger(sizeBytes) ||
+        sizeBytes < 0 ||
+        !/^[0-9a-f]{64}$/u.test(sha256)
+      ) {
         throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'Snapshot artifact metadata is invalid.');
       }
-      return { relativePath, sizeBytes, sha256 };
+      return {
+        artifactId,
+        artifactType: 'research_attachment' as const,
+        relativePath,
+        mediaType,
+        sizeBytes,
+        sha256,
+      };
     });
   } finally {
     database.close();

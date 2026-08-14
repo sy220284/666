@@ -99,6 +99,7 @@ describe('M10-19 lifecycle, Renderer and Recovery governance', () => {
     const runs = {
       createWithReplay: async () => ({ run: queued, replayed: false }),
       get: () => current,
+      getResearchReferenceMessage: () => null,
       markRunning: async () => running,
       markStage: async (_requestId: string, input: { stage: string }) => {
         if (input.stage === 'parsing_output') {

@@ -1,0 +1,41 @@
+name: M12-02 Formatter Artifact
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m12-02-formatter-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    if: github.event.pull_request.head.ref == 'work'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Format M12-02 source with locked Prettier
+        run: |
+          pnpm exec prettier --write packages/core-service/src/research-service.ts
+          pnpm exec prettier --check packages/core-service/src/research-service.ts
+          pnpm exec prettier --version
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: m12-02-formatted-research-${{ github.event.pull_request.head.sha }}
+          path: packages/core-service/src/research-service.ts
+          if-no-files-found: error
+          retention-days: 1

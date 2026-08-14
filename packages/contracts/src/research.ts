@@ -201,7 +201,11 @@ const researchFailureSchema = z.strictObject({
 });
 
 export const ResearchCatalogResultSchema = z.union([
-  z.strictObject({ ok: z.literal(true), requestId: z.uuid(), data: ResearchCatalogSchema }),
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: ResearchCatalogSchema,
+  }),
   researchFailureSchema,
 ]);
 

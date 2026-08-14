@@ -7,8 +7,8 @@ export function researchReferenceKey(reference: ResearchReference): string {
   return `${reference.sourceType}:${reference.sourceId}`;
 }
 
-export function listResearchReferenceSelection(projectId: string): readonly ResearchReference[] {
-  return selections.get(projectId) ?? [];
+export function listResearchReferenceSelection(projectId: string): ResearchReference[] {
+  return [...(selections.get(projectId) ?? [])];
 }
 
 export function setResearchReferenceSelected(
@@ -19,9 +19,7 @@ export function setResearchReferenceSelected(
   const current = selections.get(projectId) ?? [];
   const key = researchReferenceKey(reference);
   const withoutReference = current.filter((item) => researchReferenceKey(item) !== key);
-  const next = selected
-    ? [...withoutReference, reference].slice(-MAX_REFERENCES)
-    : withoutReference;
+  const next = selected ? [...withoutReference, reference].slice(-MAX_REFERENCES) : withoutReference;
   if (next.length === 0) selections.delete(projectId);
   else selections.set(projectId, next);
   return next;

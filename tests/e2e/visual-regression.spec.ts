@@ -65,7 +65,16 @@ async function setViewport(application: ElectronApplication): Promise<void> {
   });
 }
 
-async function stabilizeSnapshot(page: Page): Promise<void> {
+async function waitForPaint(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+}
+
+async function normalizeSnapshotState(page: Page): Promise<void> {
   await page.evaluate(() => {
     window.scrollTo(0, 0);
     document.querySelectorAll<HTMLElement>('*').forEach((element) => {
@@ -74,7 +83,36 @@ async function stabilizeSnapshot(page: Page): Promise<void> {
     });
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   });
-  await page.waitForTimeout(200);
+
+  const workbench = page.locator('[data-writing-workbench]');
+  const box = await workbench.boundingBox();
+  if (!box) throw new Error('VISUAL_REGRESSION_WORKBENCH_MISSING');
+  await page.mouse.move(box.x + box.width / 2, box.y + Math.min(180, box.height / 2));
+  await waitForPaint(page);
+}
+
+async function captureStableScreenshot(page: Page): Promise<Buffer> {
+  await normalizeSnapshotState(page);
+  await expect(page.locator('.react-top-bar')).toBeVisible();
+  await expect(page.locator('.react-brand')).toBeVisible();
+  await expect(page.locator('[data-open-command-palette]')).toBeVisible();
+  await expect(page.locator('[data-open-context-help]')).toBeVisible();
+  await expect(page.locator('[data-open-settings]')).toBeVisible();
+
+  let previous: Buffer | null = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await page.waitForTimeout(100);
+    await waitForPaint(page);
+    const image = await page.screenshot({
+      animations: 'disabled',
+      fullPage: false,
+      scale: 'device',
+    });
+    if (previous?.equals(image)) return image;
+    previous = image;
+  }
+
+  throw new Error('VISUAL_SNAPSHOT_DID_NOT_STABILIZE');
 }
 
 async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): Promise<void> {
@@ -90,7 +128,6 @@ async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): 
   await page.locator('[data-close-settings]').click();
   await expect(page.locator('[data-settings-dialog]')).toBeHidden();
   await expect(page.locator('[data-open-settings]')).toBeFocused();
-  await page.mouse.move(1, 1);
   await expect(page.locator('[data-writing-workbench]')).toBeVisible();
   await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
 }
@@ -100,12 +137,7 @@ async function expectBaseline(
   manifest: VisualBaselineManifest,
   snapshotName: string,
 ): Promise<VisualMismatch | null> {
-  await stabilizeSnapshot(page);
-  const image = await page.screenshot({
-    animations: 'disabled',
-    fullPage: false,
-    scale: 'device',
-  });
+  const image = await captureStableScreenshot(page);
   try {
     verifyVisualSnapshot(manifest, snapshotName, image);
     return null;

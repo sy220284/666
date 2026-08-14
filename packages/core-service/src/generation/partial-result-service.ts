@@ -19,9 +19,13 @@ export function recordPartial(
     readonly text: string;
   },
 ): Promise<GenerationRun> {
-  if (!input.text) return Promise.resolve(get(context, input));
+  const identity: GenerationRunIdentity = {
+    projectId: input.projectId,
+    runId: input.runId,
+  };
+  if (!input.text) return Promise.resolve(get(context, identity));
   return context.workspace.writeProject(requestId, input.projectId, (database) => {
-    const run = readRun(database, input);
+    const run = readRun(database, identity);
     assertActive(run);
     const now = context.clock.now().toISOString();
     database
@@ -39,7 +43,7 @@ export function recordPartial(
     database
       .prepare(`UPDATE generation_runs SET partial_status = 'available' WHERE id = ?`)
       .run(input.runId);
-    return readRun(database, input);
+    return readRun(database, identity);
   });
 }
 

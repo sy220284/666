@@ -26,6 +26,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sed -i 's/[[:space:]]\+$//' docs/ui/DISPLAY_SUPPORT_MAINTENANCE.md
           git rm .github/workflows/display-support-maintenance.yml scripts/display-support-maintenance.py
           git add apps/desktop/main/src/window-state.ts docs/process/PLATFORM_EXPERIENCE_MATRIX.json docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md docs/testing/PERFORMANCE_BUDGETS.md docs/testing/TEST_STRATEGY.md docs/ui/DISPLAY_SUPPORT_MAINTENANCE.md docs/ui/README.md docs/ui/RESPONSIVE_AND_DPI.md docs/ui/UI_ACCEPTANCE_CHECKLIST.md docs/ui/VISUAL_REFERENCE_BASELINE.md scripts/governance-self-check.mjs tests/e2e/electron-shell.spec.ts tests/e2e/platform-experience.spec.ts tests/e2e/visual-regression.spec.ts tests/performance/display-layout.test.ts tests/unit/electron-window-state-coverage.test.ts tests/unit/quality-system-v2.test.ts
           git diff --cached --check

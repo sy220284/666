@@ -355,10 +355,7 @@ describe('M12-02 research workbench render and interaction coverage', () => {
     if (!attachmentReference) throw new Error('Missing attachment reference control.');
     await act(async () => {
       invoke(attachmentReference.findAll((node) => node.type === 'input')[0]!, 'onChange');
-      invoke(
-        controlByLabel(renderer.root, '将当前笔记列入本次智能参考'),
-        'onChange',
-      );
+      invoke(controlByLabel(renderer.root, '将当前笔记列入本次智能参考'), 'onChange');
       invoke(controlByLabel(renderer.root, '关联类型'), 'onChange', {
         target: { value: 'entity' },
       });
@@ -433,9 +430,7 @@ describe('M12-02 research workbench render and interaction coverage', () => {
     expect(buttonByText(renderer.root, '恢复').props.disabled).toBe(true);
     expect(buttonByText(renderer.root, '加入本地附件').props.disabled).toBe(true);
     expect(
-      renderer.root.findAll(
-        (node) => node.type === 'button' && textContent(node) === '安全预览',
-      ),
+      renderer.root.findAll((node) => node.type === 'button' && textContent(node) === '安全预览'),
     ).toHaveLength(1);
 
     await act(async () => {
@@ -460,7 +455,9 @@ describe('M12-02 research workbench render and interaction coverage', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const onSelectMissing = vi.fn();
     const missingRenderer = await renderWorkbench(
-      contractInput<RendererBridgeAdapter>({ research: { list: vi.fn(async () => success(catalog)) } }),
+      contractInput<RendererBridgeAdapter>({
+        research: { list: vi.fn(async () => success(catalog)) },
+      }),
       {
         selectedNoteId: '77777777-7777-4777-8777-777777777777',
         onSelectNote: onSelectMissing,
@@ -472,7 +469,9 @@ describe('M12-02 research workbench render and interaction coverage', () => {
 
     const onSelectInitial = vi.fn();
     const initialRenderer = await renderWorkbench(
-      contractInput<RendererBridgeAdapter>({ research: { list: vi.fn(async () => success(catalog)) } }),
+      contractInput<RendererBridgeAdapter>({
+        research: { list: vi.fn(async () => success(catalog)) },
+      }),
       { selectedNoteId: null, onSelectNote: onSelectInitial },
     );
     expect(onSelectInitial).toHaveBeenCalledWith(noteId);

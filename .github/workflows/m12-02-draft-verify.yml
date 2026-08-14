@@ -34,8 +34,8 @@ jobs:
           mapfile -t files < <(git diff --name-only origin/main...HEAD | grep -E '\.(ts|tsx|js|mjs|cjs|json|md|yml|yaml)$' || true)
           if (( ${#files[@]} > 0 )); then
             pnpm exec prettier --write "${files[@]}"
+            pnpm exec prettier --check "${files[@]}"
           fi
-          pnpm exec prettier --check .
           pnpm exec prettier --version
       - name: Run workspace boundaries
         run: |

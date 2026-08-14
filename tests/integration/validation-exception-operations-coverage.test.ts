@@ -180,7 +180,7 @@ describe('validation exception operations coverage', () => {
           validFromChapterId: seeded.chapter3.id,
           validUntilChapterId: seeded.chapter2.id,
         }),
-      ).rejects.toMatchObject({ code: 'CONTINUITY_CONFLICT' });
+      ).rejects.toMatchObject({ code: 'CONTINUITY_INVALID' });
     } finally {
       await closeContinuityHarness(harness);
     }

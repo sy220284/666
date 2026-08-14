@@ -342,11 +342,7 @@ export function ResearchWorkbench({
 
   const toggleReference = (reference: ResearchReference): void => {
     const key = researchReferenceKey(reference);
-    const next = setResearchReferenceSelected(
-      projectId,
-      reference,
-      !selectedReferenceIds.has(key),
-    );
+    const next = setResearchReferenceSelected(projectId, reference, !selectedReferenceIds.has(key));
     setSelectedReferenceIds(new Set(next.map(researchReferenceKey)));
   };
 
@@ -530,15 +526,13 @@ export function ResearchWorkbench({
                   checked={selectedReferenceIds.has(
                     researchReferenceKey({ sourceType: 'note', sourceId: selected.id }),
                   )}
-                  onChange={() =>
-                    toggleReference({ sourceType: 'note', sourceId: selected.id })
-                  }
+                  onChange={() => toggleReference({ sourceType: 'note', sourceId: selected.id })}
                 />
                 将当前笔记列入本次智能参考
               </label>
               <p className="muted-copy">
-                已选择 {selectedReferenceIds.size}/20 项。选择只在当前界面会话保留，生成时仍由本地服务
-                重新校验项目归属。
+                已选择 {selectedReferenceIds.size}/20
+                项。选择只在当前界面会话保留，生成时仍由本地服务 重新校验项目归属。
               </p>
 
               <div className="research-link-form">

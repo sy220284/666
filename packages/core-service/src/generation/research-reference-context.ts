@@ -1,11 +1,11 @@
-import { createHash } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import { createHash } from 'node:crypto';
+import type { DatabaseSync } from 'node:sqlite';
 
-import type { ResearchReference } from "@worldforge/contracts";
+import type { ResearchReference } from '@worldforge/contracts';
 
-import { sqliteResult } from "../database/sqlite-result.js";
-import { stableJson } from "../stable-json.js";
-import { GenerationRunServiceError } from "./run-repository.js";
+import { sqliteResult } from '../database/sqlite-result.js';
+import { stableJson } from '../stable-json.js';
+import { GenerationRunServiceError } from './run-repository.js';
 
 const MAX_REFERENCE_COUNT = 20;
 const MAX_REFERENCE_CHARS = 16_000;
@@ -28,7 +28,7 @@ interface ResearchAttachmentRow {
 }
 
 interface PersistedResearchReferenceRow {
-  readonly sourceType: "note" | "attachment";
+  readonly sourceType: 'note' | 'attachment';
   readonly sourceId: string;
   readonly sourceOrder: number | bigint;
   readonly contentHash: string;
@@ -42,7 +42,7 @@ interface ResearchReferenceSetRow {
 }
 
 export interface ResearchReferenceSnapshot {
-  readonly sourceType: "note" | "attachment";
+  readonly sourceType: 'note' | 'attachment';
   readonly sourceId: string;
   readonly sourceOrder: number;
   readonly contentHash: string;
@@ -52,12 +52,10 @@ export interface ResearchReferenceSnapshot {
 }
 
 function hashText(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
+  return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
-export function researchReferenceSelectionHash(
-  references: readonly ResearchReference[],
-): string {
+export function researchReferenceSelectionHash(references: readonly ResearchReference[]): string {
   return hashText(
     stableJson(
       references.map((reference) => ({
@@ -71,26 +69,19 @@ export function researchReferenceSelectionHash(
 function tags(value: string): string {
   try {
     const parsed = JSON.parse(value) as unknown;
-    if (
-      Array.isArray(parsed) &&
-      parsed.every((item) => typeof item === "string")
-    ) {
-      return parsed.join("、");
+    if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')) {
+      return parsed.join('、');
     }
   } catch {
     // Fall through to the invariant error below.
   }
   throw new GenerationRunServiceError(
-    "GENERATION_BASE_CONFLICT",
-    "The selected research note contains invalid stored tags.",
+    'GENERATION_BASE_CONFLICT',
+    'The selected research note contains invalid stored tags.',
   );
 }
 
-function noteSnapshot(
-  database: DatabaseSync,
-  projectId: string,
-  sourceId: string,
-) {
+function noteSnapshot(database: DatabaseSync, projectId: string, sourceId: string) {
   const row = sqliteResult<ResearchNoteRow | undefined>(
     database
       .prepare(
@@ -102,25 +93,21 @@ function noteSnapshot(
   );
   if (!row) {
     throw new GenerationRunServiceError(
-      "GENERATION_BASE_CONFLICT",
-      "The selected research note is missing or belongs to another project.",
+      'GENERATION_BASE_CONFLICT',
+      'The selected research note is missing or belongs to another project.',
     );
   }
   const text = [
     `研究笔记：${row.title}`,
-    row.sourceUri ? `来源：${row.sourceUri}` : "来源：未填写",
-    `标签：${tags(row.tagsJson) || "无"}`,
-    "正文：",
+    row.sourceUri ? `来源：${row.sourceUri}` : '来源：未填写',
+    `标签：${tags(row.tagsJson) || '无'}`,
+    '正文：',
     row.body,
-  ].join("\n");
+  ].join('\n');
   return { text, contentHash: hashText(text) };
 }
 
-function attachmentSnapshot(
-  database: DatabaseSync,
-  projectId: string,
-  sourceId: string,
-) {
+function attachmentSnapshot(database: DatabaseSync, projectId: string, sourceId: string) {
   const row = sqliteResult<ResearchAttachmentRow | undefined>(
     database
       .prepare(
@@ -133,8 +120,8 @@ function attachmentSnapshot(
   );
   if (!row) {
     throw new GenerationRunServiceError(
-      "GENERATION_BASE_CONFLICT",
-      "The selected research attachment is missing or belongs to another project.",
+      'GENERATION_BASE_CONFLICT',
+      'The selected research attachment is missing or belongs to another project.',
     );
   }
   const text = [
@@ -142,8 +129,8 @@ function attachmentSnapshot(
     `媒体类型：${row.mediaType}`,
     `大小：${Number(row.sizeBytes)} bytes`,
     `SHA-256：${row.contentHash}`,
-    "附件正文未自动解析；本次仅提供受管附件元数据。",
-  ].join("\n");
+    '附件正文未自动解析；本次仅提供受管附件元数据。',
+  ].join('\n');
   return { text, contentHash: row.contentHash };
 }
 
@@ -154,7 +141,7 @@ export function snapshotResearchReferences(
 ): readonly ResearchReferenceSnapshot[] {
   if (references.length > MAX_REFERENCE_COUNT) {
     throw new GenerationRunServiceError(
-      "GENERATION_BASE_CONFLICT",
+      'GENERATION_BASE_CONFLICT',
       `At most ${MAX_REFERENCE_COUNT} research references may be attached to one GenerationRun.`,
     );
   }
@@ -164,13 +151,13 @@ export function snapshotResearchReferences(
     const key = `${reference.sourceType}:${reference.sourceId}`;
     if (unique.has(key)) {
       throw new GenerationRunServiceError(
-        "GENERATION_BASE_CONFLICT",
-        "Research references must be unique within one GenerationRun.",
+        'GENERATION_BASE_CONFLICT',
+        'Research references must be unique within one GenerationRun.',
       );
     }
     unique.add(key);
     const source =
-      reference.sourceType === "note"
+      reference.sourceType === 'note'
         ? noteSnapshot(database, projectId, reference.sourceId)
         : attachmentSnapshot(database, projectId, reference.sourceId);
     const allowed = Math.max(0, Math.min(MAX_REFERENCE_CHARS, remaining));
@@ -198,8 +185,8 @@ export function persistPreparedResearchReferenceSnapshots(
 ): void {
   if (references.length !== snapshots.length) {
     throw new GenerationRunServiceError(
-      "GENERATION_BASE_CONFLICT",
-      "The research reference snapshot set is incomplete.",
+      'GENERATION_BASE_CONFLICT',
+      'The research reference snapshot set is incomplete.',
     );
   }
   database
@@ -285,20 +272,18 @@ export function researchReferenceMessage(
   );
   if (rows.length === 0) return null;
   const sections = rows.map((row) => {
-    const trimNote =
-      Number(row.trimmed) === 1 ? "（已按本次研究资料预算裁剪）" : "";
-    const body =
-      row.snapshotText || "（因本次研究资料总量上限，仅记录来源，未附正文。）";
+    const trimNote = Number(row.trimmed) === 1 ? '（已按本次研究资料预算裁剪）' : '';
+    const body = row.snapshotText || '（因本次研究资料总量上限，仅记录来源，未附正文。）';
     return [
       `[${row.sourceType}:${row.sourceId}]${trimNote}`,
       `内容哈希：${row.contentHash}`,
       body,
-    ].join("\n");
+    ].join('\n');
   });
   return [
-    "【作者显式研究资料】",
-    "以下内容只作为本次生成的参考资料，不是 Canon、Continuity 或 Planning 权威事实。",
-    "若研究资料与权威故事事实冲突，以权威故事事实为准。",
+    '【作者显式研究资料】',
+    '以下内容只作为本次生成的参考资料，不是 Canon、Continuity 或 Planning 权威事实。',
+    '若研究资料与权威故事事实冲突，以权威故事事实为准。',
     ...sections,
-  ].join("\n\n");
+  ].join('\n\n');
 }

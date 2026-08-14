@@ -40,6 +40,12 @@ export type AuthorNavigationTarget =
       readonly query: string | null;
     }
   | {
+      readonly type: 'research-note';
+      readonly projectId: string;
+      readonly noteId: string;
+      readonly query: string | null;
+    }
+  | {
       readonly type: 'validation-issue';
       readonly projectId: string;
       readonly issueId: string;
@@ -91,6 +97,7 @@ export function resolveAuthorNavigationTarget(
       selection: {
         projectId: target.projectId,
         entityId: null,
+        researchNoteId: null,
         logicalBlockId: null,
         versionId: null,
         sceneBeatId: null,
@@ -106,6 +113,7 @@ export function resolveAuthorNavigationTarget(
       selection: {
         projectId: target.projectId,
         entityId: null,
+        researchNoteId: null,
         chapterId: null,
         logicalBlockId: null,
         versionId: null,
@@ -122,6 +130,7 @@ export function resolveAuthorNavigationTarget(
       selection: {
         projectId: target.projectId,
         entityId: null,
+        researchNoteId: null,
         chapterId: null,
         logicalBlockId: null,
         versionId: null,
@@ -132,12 +141,30 @@ export function resolveAuthorNavigationTarget(
     };
   }
 
+  if (target.type === 'research-note') {
+    return {
+      route: 'research',
+      selection: {
+        projectId: target.projectId,
+        researchNoteId: target.noteId,
+        entityId: null,
+        chapterId: null,
+        logicalBlockId: null,
+        versionId: null,
+        sceneBeatId: null,
+        issueId: null,
+      },
+      filters: { 'navigation.query': target.query },
+    };
+  }
+
   if (target.type === 'entity') {
     return {
       route: 'canon',
       selection: {
         projectId: target.projectId,
         entityId: target.entityId,
+        researchNoteId: null,
         chapterId: null,
         logicalBlockId: null,
         versionId: null,
@@ -154,6 +181,7 @@ export function resolveAuthorNavigationTarget(
       selection: {
         projectId: target.projectId,
         entityId: null,
+        researchNoteId: null,
         chapterId: target.chapterId,
         logicalBlockId: null,
         versionId: null,
@@ -175,6 +203,7 @@ export function resolveAuthorNavigationTarget(
         chapterId: target.chapterId,
         sceneBeatId: target.sceneBeatId,
         entityId: null,
+        researchNoteId: null,
         logicalBlockId: null,
         versionId: null,
         issueId: null,
@@ -193,6 +222,7 @@ export function resolveAuthorNavigationTarget(
         logicalBlockId: target.logicalBlockId,
         versionId: null,
         entityId: null,
+        researchNoteId: null,
         issueId: null,
       },
       filters: { 'navigation.todoId': target.todoId },
@@ -207,6 +237,7 @@ export function resolveAuthorNavigationTarget(
         chapterId: target.chapterId,
         versionId: target.type === 'version' ? target.versionId : target.versionId,
         entityId: null,
+        researchNoteId: null,
         logicalBlockId: target.logicalBlockId ?? null,
         sceneBeatId: null,
         issueId: target.type === 'validation-issue' ? target.issueId : null,
@@ -223,6 +254,7 @@ export function resolveAuthorNavigationTarget(
       logicalBlockId: target.logicalBlockId,
       versionId: null,
       entityId: null,
+      researchNoteId: null,
       sceneBeatId: target.type === 'story-todo' ? target.sceneBeatId : null,
       issueId: target.type === 'validation-issue' ? target.issueId : null,
     },
@@ -243,6 +275,14 @@ export function searchResultNavigationTarget(
       type: 'entity',
       projectId,
       entityId: item.targetId,
+      query,
+    };
+  }
+  if (item.sourceType === 'research') {
+    return {
+      type: 'research-note',
+      projectId,
+      noteId: item.targetId,
       query,
     };
   }

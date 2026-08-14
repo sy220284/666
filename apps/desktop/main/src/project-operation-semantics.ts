@@ -36,7 +36,6 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [PROJECT_WORKSPACE_COMMANDS.openRecent]: 'mutation',
   [PROJECT_WORKSPACE_COMMANDS.close]: 'mutation',
   [PROJECT_WORKSPACE_COMMANDS.move]: 'mutation',
-
   [PROJECT_STRUCTURE_COMMANDS.listStructure]: 'query',
   [PROJECT_STRUCTURE_COMMANDS.createVolume]: 'mutation',
   [PROJECT_STRUCTURE_COMMANDS.updateVolume]: 'mutation',
@@ -56,7 +55,6 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [PROJECT_STRUCTURE_COMMANDS.mergeChapters]: 'mutation',
   [PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks]: 'query',
   [PROJECT_STRUCTURE_COMMANDS.moveBlocks]: 'mutation',
-
   [PROJECT_PLANNING_COMMANDS.getBrief]: 'query',
   [PROJECT_PLANNING_COMMANDS.updateBrief]: 'mutation',
   [PROJECT_PLANNING_COMMANDS.listPlotNodes]: 'query',
@@ -64,7 +62,6 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [PROJECT_PLANNING_COMMANDS.updatePlotNode]: 'mutation',
   [PROJECT_PLANNING_COMMANDS.movePlotNode]: 'mutation',
   [PROJECT_PLANNING_COMMANDS.deletePlotNode]: 'mutation',
-
   [SCENE_BEAT_COMMANDS.listSceneBeats]: 'query',
   [SCENE_BEAT_COMMANDS.createSceneBeat]: 'mutation',
   [SCENE_BEAT_COMMANDS.updateSceneBeat]: 'mutation',
@@ -75,7 +72,6 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [SCENE_BEAT_COMMANDS.restoreSceneBeat]: 'mutation',
   [SCENE_BEAT_COMMANDS.setSceneBeatBlockLinks]: 'mutation',
   [SCENE_BEAT_COMMANDS.convertBlocksToSceneBeat]: 'mutation',
-
   [ENTITY_CANON_COMMANDS.listEntities]: 'query',
   [ENTITY_CANON_COMMANDS.createEntity]: 'mutation',
   [ENTITY_CANON_COMMANDS.updateEntity]: 'mutation',
@@ -84,7 +80,6 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [ENTITY_CANON_COMMANDS.linkSceneBeatEntity]: 'mutation',
   [ENTITY_CANON_COMMANDS.previewDeleteEntity]: 'query',
   [ENTITY_CANON_COMMANDS.deleteEntity]: 'mutation',
-
   [CONTINUITY_COMMANDS.list]: 'query',
   [CONTINUITY_COMMANDS.setEntityState]: 'mutation',
   [CONTINUITY_COMMANDS.invalidateEntityState]: 'mutation',
@@ -94,21 +89,18 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [CONTINUITY_COMMANDS.invalidateKnowledgeState]: 'mutation',
   [CONTINUITY_COMMANDS.setCharacterRelationship]: 'mutation',
   [CONTINUITY_COMMANDS.invalidateCharacterRelationship]: 'mutation',
-
   [NARRATIVE_PLANNING_COMMANDS.list]: 'query',
   [NARRATIVE_PLANNING_COMMANDS.saveForeshadowing]: 'mutation',
   [NARRATIVE_PLANNING_COMMANDS.transitionForeshadowing]: 'mutation',
   [NARRATIVE_PLANNING_COMMANDS.saveCharacterArc]: 'mutation',
   [NARRATIVE_PLANNING_COMMANDS.saveArcMilestone]: 'mutation',
   [NARRATIVE_PLANNING_COMMANDS.transitionArcMilestone]: 'mutation',
-
   [STATE_PROPOSAL_COMMANDS.list]: 'query',
   [STATE_PROPOSAL_COMMANDS.generate]: 'mutation',
   [STATE_PROPOSAL_COMMANDS.resolve]: 'mutation',
   [STATE_PROPOSAL_COMMANDS.refreshSnapshot]: 'mutation',
   [STATE_PROPOSAL_COMMANDS.readSnapshot]: 'query',
   [STATE_PROPOSAL_COMMANDS.invalidateDerived]: 'mutation',
-
   [VALIDATION_COMMANDS.list]: 'query',
   [VALIDATION_COMMANDS.runRules]: 'mutation',
   [VALIDATION_COMMANDS.updateIssue]: 'mutation',
@@ -118,7 +110,6 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [VALIDATION_COMMANDS.resolveComment]: 'mutation',
   [VALIDATION_COMMANDS.rememberException]: 'mutation',
   [VALIDATION_COMMANDS.disableException]: 'mutation',
-
   [SEARCH_TOOLS_COMMANDS.search]: 'query',
   [SEARCH_TOOLS_COMMANDS.getIndexState]: 'query',
   [SEARCH_TOOLS_COMMANDS.rebuildIndex]: 'mutation',
@@ -127,58 +118,50 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [SEARCH_TOOLS_COMMANDS.listDictionary]: 'query',
   [SEARCH_TOOLS_COMMANDS.upsertDictionary]: 'mutation',
   [SEARCH_TOOLS_COMMANDS.deleteDictionary]: 'mutation',
-
   [RHYTHM_COMMANDS.get]: 'query',
   [RHYTHM_COMMANDS.updateProfile]: 'mutation',
   [RHYTHM_COMMANDS.run]: 'mutation',
-
   [STORY_KNOWLEDGE_COMMANDS.project]: 'query',
-
   [LONGFORM_AI_COMMANDS.getSettings]: 'query',
   [LONGFORM_AI_COMMANDS.updateSettings]: 'mutation',
   [LONGFORM_AI_COMMANDS.listDigests]: 'query',
   [LONGFORM_AI_COMMANDS.rebuildDigests]: 'mutation',
   [LONGFORM_AI_COMMANDS.evaluateStyle]: 'query',
   [LONGFORM_AI_COMMANDS.resolveTaskRoute]: 'query',
-
   [IDEA_CAPSULE_COMMANDS.list]: 'query',
   [IDEA_CAPSULE_COMMANDS.get]: 'query',
   [IDEA_CAPSULE_COMMANDS.create]: 'mutation',
   [IDEA_CAPSULE_COMMANDS.setStatus]: 'mutation',
   [IDEA_CAPSULE_COMMANDS.previewConversion]: 'query',
   [IDEA_CAPSULE_COMMANDS.applyConversion]: 'mutation',
-
   [RESEARCH_COMMANDS.list]: 'query',
   [RESEARCH_COMMANDS.createNote]: 'mutation',
   [RESEARCH_COMMANDS.updateNote]: 'mutation',
   [RESEARCH_COMMANDS.setNoteStatus]: 'mutation',
+  [RESEARCH_COMMANDS.deleteNote]: 'mutation',
   [RESEARCH_COMMANDS.importAttachment]: 'mutation',
+  [RESEARCH_COMMANDS.previewAttachment]: 'query',
   [RESEARCH_COMMANDS.deleteAttachment]: 'mutation',
   [RESEARCH_COMMANDS.addLink]: 'mutation',
   [RESEARCH_COMMANDS.removeLink]: 'mutation',
-
   [DRAFT_COMMANDS.openDraft]: 'query',
   [DRAFT_COMMANDS.applyPatch]: 'mutation',
-
   [CANDIDATE_COMMANDS.createFixtureCandidate]: 'mutation',
   [CANDIDATE_COMMANDS.listCandidates]: 'query',
   [CANDIDATE_COMMANDS.getCandidate]: 'query',
   [CANDIDATE_COMMANDS.discardCandidate]: 'mutation',
   [CANDIDATE_COMMANDS.editSkeleton]: 'mutation',
-
   [CANDIDATE_APPLY_COMMANDS.previewCandidate]: 'mutation',
   [CANDIDATE_APPLY_COMMANDS.cancelPreview]: 'mutation',
   [CANDIDATE_APPLY_COMMANDS.applyCandidate]: 'mutation',
   [CANDIDATE_APPLY_COMMANDS.findUndoRecord]: 'query',
   [CANDIDATE_APPLY_COMMANDS.previewUndo]: 'query',
   [CANDIDATE_APPLY_COMMANDS.undoApply]: 'mutation',
-
   [VERSION_COMMANDS.createVersion]: 'mutation',
   [VERSION_COMMANDS.listVersions]: 'query',
   [VERSION_COMMANDS.getVersion]: 'query',
   [VERSION_COMMANDS.setFinalVersion]: 'mutation',
   [VERSION_COMMANDS.restoreVersion]: 'mutation',
-
   [RECOVERY_COMMANDS.createCheckpoint]: 'mutation',
   [RECOVERY_COMMANDS.createDailyBackup]: 'mutation',
   [RECOVERY_COMMANDS.createNamedSnapshot]: 'mutation',
@@ -189,7 +172,6 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [RECOVERY_COMMANDS.applyCleanup]: 'mutation',
   [RECOVERY_COMMANDS.restoreCheckpoint]: 'mutation',
   [RECOVERY_COMMANDS.exportVersion]: 'mutation',
-
   [TEXT_IO_COMMANDS.previewImport]: 'query',
   [TEXT_IO_COMMANDS.commitImport]: 'mutation',
   [TEXT_IO_COMMANDS.listExportVersions]: 'query',

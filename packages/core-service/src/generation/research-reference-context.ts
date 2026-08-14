@@ -4,6 +4,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { ResearchReference } from '@worldforge/contracts';
 
 import { sqliteResult } from '../database/sqlite-result.js';
+import { stableJson } from '../stable-json.js';
 import { GenerationRunServiceError } from './run-repository.js';
 
 const MAX_REFERENCE_COUNT = 20;
@@ -36,6 +37,10 @@ interface PersistedResearchReferenceRow {
   readonly trimmed: number | bigint;
 }
 
+interface ResearchReferenceSetRow {
+  readonly selectionHash: string;
+}
+
 export interface ResearchReferenceSnapshot {
   readonly sourceType: 'note' | 'attachment';
   readonly sourceId: string;
@@ -48,6 +53,19 @@ export interface ResearchReferenceSnapshot {
 
 function hashText(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+export function researchReferenceSelectionHash(
+  references: readonly ResearchReference[],
+): string {
+  return hashText(
+    stableJson(
+      references.map((reference) => ({
+        sourceType: reference.sourceType,
+        sourceId: reference.sourceId,
+      })),
+    ),
+  );
 }
 
 function tags(value: string): string {
@@ -159,14 +177,27 @@ export function snapshotResearchReferences(
   });
 }
 
-export function persistResearchReferenceSnapshots(
+export function persistPreparedResearchReferenceSnapshots(
   database: DatabaseSync,
   runId: string,
   projectId: string,
   references: readonly ResearchReference[],
+  snapshots: readonly ResearchReferenceSnapshot[],
   addedAt: string,
 ): void {
-  const snapshots = snapshotResearchReferences(database, projectId, references);
+  if (references.length !== snapshots.length) {
+    throw new GenerationRunServiceError(
+      'GENERATION_BASE_CONFLICT',
+      'The research reference snapshot set is incomplete.',
+    );
+  }
+  database
+    .prepare(
+      `INSERT INTO generation_research_ref_sets(
+         generation_run_id, project_id, selection_hash, added_at
+       ) VALUES(?, ?, ?, ?)`,
+    )
+    .run(runId, projectId, researchReferenceSelectionHash(references), addedAt);
   const insert = database.prepare(
     `INSERT INTO generation_research_refs(
        generation_run_id, project_id, source_type, source_id, source_order,
@@ -187,6 +218,23 @@ export function persistResearchReferenceSnapshots(
       addedAt,
     );
   }
+}
+
+export function persistedResearchSelectionHash(
+  database: DatabaseSync,
+  projectId: string,
+  runId: string,
+): string | null {
+  const row = sqliteResult<ResearchReferenceSetRow | undefined>(
+    database
+      .prepare(
+        `SELECT selection_hash AS selectionHash
+           FROM generation_research_ref_sets
+          WHERE generation_run_id = ? AND project_id = ?`,
+      )
+      .get(runId, projectId),
+  );
+  return row?.selectionHash ?? null;
 }
 
 export function persistedResearchReferences(

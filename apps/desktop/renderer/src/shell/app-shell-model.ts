@@ -93,7 +93,8 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
     route: 'canon',
     label: authorTerm('canon'),
     beginnerDescription: '管理人物、地点、关系、世界设定和研究资料',
-    professionalDescription: '人物、地点、组织、动态状态、时间线、知情状态、伏笔、人物成长线与研究资料',
+    professionalDescription:
+      '人物、地点、组织、动态状态、时间线、知情状态、伏笔、人物成长线与研究资料',
     requiresProject: true,
   },
   {

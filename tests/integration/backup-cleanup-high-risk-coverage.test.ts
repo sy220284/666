@@ -141,23 +141,36 @@ describe('backup cleanup high-risk coverage', () => {
         projectId: harness.project.projectId,
         operation: 'replace',
       });
-      harness.advance(2);
-      await harness.recovery.createOperationCheckpoint(randomUUID(), {
+      harness.advance(1);
+      const second = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: harness.project.projectId,
+        operation: 'split-chapter',
+      });
+      harness.advance(1);
+      const newest = await harness.recovery.createOperationCheckpoint(randomUUID(), {
         projectId: harness.project.projectId,
         operation: 'merge-chapter',
       });
+      for (const backup of [first, second, newest]) {
+        await inflateMetadata(
+          harness.backupRoot,
+          harness.project.projectId,
+          backup.backupId,
+          70 * 1024 * 1024,
+        );
+      }
       await harness.recovery.updatePolicy(randomUUID(), {
         projectId: harness.project.projectId,
         authority: 'author',
         dailyRetentionCount: 365,
-        majorRetentionCount: 1,
+        majorRetentionCount: 500,
         majorRetentionDays: 3650,
         quotaBytes: 100 * 1024 * 1024,
       });
       const preview = await harness.recovery.previewCleanup(harness.project.projectId);
       expect(preview.items.find((item) => item.backupId === first.backupId)).toMatchObject({
         action: 'delete',
-        reason: 'major-over-limit',
+        reason: 'quota-pressure',
       });
 
       await rm(path.join(harness.backupRoot, harness.project.projectId, `${first.backupId}.json`));

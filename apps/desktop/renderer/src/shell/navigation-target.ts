@@ -1,4 +1,4 @@
-import type { SearchResultItem } from '@worldforge/contracts';
+import type { ResearchTargetType, SearchResultItem } from '@worldforge/contracts';
 
 import type { RendererRouteId, RendererSelectionState } from '../state/ui-state-boundary.js';
 
@@ -46,6 +46,12 @@ export type AuthorNavigationTarget =
       readonly query: string | null;
     }
   | {
+      readonly type: 'research-link-target';
+      readonly projectId: string;
+      readonly targetType: ResearchTargetType;
+      readonly targetId: string;
+    }
+  | {
       readonly type: 'validation-issue';
       readonly projectId: string;
       readonly issueId: string;
@@ -86,6 +92,71 @@ export function authorNavigationTargetBelongsToProject(
   target: AuthorNavigationTarget,
 ): boolean {
   return activeProjectId !== null && target.projectId === activeProjectId;
+}
+
+function researchLinkResolution(
+  target: Extract<AuthorNavigationTarget, { type: 'research-link-target' }>,
+): AuthorNavigationResolution {
+  const baseSelection: Partial<RendererSelectionState> = {
+    projectId: target.projectId,
+    entityId: null,
+    researchNoteId: null,
+    chapterId: null,
+    volumeId: null,
+    logicalBlockId: null,
+    versionId: null,
+    sceneBeatId: null,
+    issueId: null,
+  };
+  if (target.targetType === 'chapter') {
+    return {
+      route: 'writing',
+      selection: { ...baseSelection, chapterId: target.targetId },
+      filters: { 'navigation.researchTargetType': 'chapter' },
+    };
+  }
+  if (target.targetType === 'volume') {
+    return {
+      route: 'structure',
+      selection: { ...baseSelection, volumeId: target.targetId },
+      filters: { 'navigation.researchTargetType': 'volume' },
+    };
+  }
+  if (target.targetType === 'entity') {
+    return {
+      route: 'canon',
+      selection: { ...baseSelection, entityId: target.targetId },
+      filters: { 'navigation.researchTargetType': 'entity' },
+    };
+  }
+  if (target.targetType === 'idea') {
+    return {
+      route: 'planning',
+      selection: baseSelection,
+      filters: {
+        'navigation.researchTargetType': target.targetType,
+        'navigation.ideaId': target.targetId,
+      },
+    };
+  }
+  const filterKey: Record<
+    Exclude<ResearchTargetType, 'chapter' | 'volume' | 'entity' | 'idea'>,
+    string
+  > = {
+    relationship: 'navigation.relationshipId',
+    timeline: 'navigation.timelineEventId',
+    foreshadowing: 'navigation.foreshadowingId',
+    arc: 'navigation.characterArcId',
+    milestone: 'navigation.arcMilestoneId',
+  };
+  return {
+    route: 'canon',
+    selection: baseSelection,
+    filters: {
+      'navigation.researchTargetType': target.targetType,
+      [filterKey[target.targetType]]: target.targetId,
+    },
+  };
 }
 
 export function resolveAuthorNavigationTarget(
@@ -156,6 +227,10 @@ export function resolveAuthorNavigationTarget(
       },
       filters: { 'navigation.query': target.query },
     };
+  }
+
+  if (target.type === 'research-link-target') {
+    return researchLinkResolution(target);
   }
 
   if (target.type === 'entity') {
@@ -235,7 +310,7 @@ export function resolveAuthorNavigationTarget(
       selection: {
         projectId: target.projectId,
         chapterId: target.chapterId,
-        versionId: target.type === 'version' ? target.versionId : target.versionId,
+        versionId: target.versionId,
         entityId: null,
         researchNoteId: null,
         logicalBlockId: target.logicalBlockId ?? null,

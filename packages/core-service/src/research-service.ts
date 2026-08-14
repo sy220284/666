@@ -31,6 +31,7 @@ import {
 } from '@worldforge/contracts';
 
 import type { DatabaseClock } from './database/index.js';
+import { sqliteResult } from './database/sqlite-result.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
 const MAX_ATTACHMENT_BYTES = 268_435_456;
@@ -78,6 +79,10 @@ interface FtsNoteRow {
   readonly sourceUri: string | null;
   readonly tagsJson: string;
   readonly status: string;
+}
+
+interface AttachmentPathRow {
+  readonly managedRelativePath: string;
 }
 
 function parseTags(value: string): string[] {
@@ -174,12 +179,14 @@ function refreshResearchFts(
   noteId: string,
 ): void {
   database.prepare('DELETE FROM fts_research_notes WHERE note_id = ?').run(noteId);
-  const row = database
-    .prepare(
-      `SELECT id, title, body, source_uri AS sourceUri, tags_json AS tagsJson, status
+  const row = sqliteResult<FtsNoteRow | undefined>(
+    database
+      .prepare(
+        `SELECT id, title, body, source_uri AS sourceUri, tags_json AS tagsJson, status
          FROM research_notes WHERE id = ? AND project_id = ?`,
-    )
-    .get(noteId, projectId) as FtsNoteRow | undefined;
+      )
+      .get(noteId, projectId),
+  );
   if (!row) return;
   database
     .prepare(
@@ -373,15 +380,15 @@ export class ResearchService {
     raw: ResearchAttachmentDeleteInput,
   ): Promise<ResearchCatalog> {
     const input = ResearchAttachmentDeleteInputSchema.parse(raw);
-    const attachment = this.#workspace.readProject(
-      input.projectId,
-      (database) =>
+    const attachment = this.#workspace.readProject(input.projectId, (database) =>
+      sqliteResult<AttachmentPathRow | undefined>(
         database
           .prepare(
             `SELECT managed_relative_path AS managedRelativePath
-               FROM research_attachments WHERE id = ? AND project_id = ?`,
+             FROM research_attachments WHERE id = ? AND project_id = ?`,
           )
-          .get(input.attachmentId, input.projectId) as { managedRelativePath: string } | undefined,
+          .get(input.attachmentId, input.projectId),
+      ),
     );
     if (!attachment) {
       throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Attachment not found.');
@@ -494,14 +501,16 @@ export class ResearchService {
 
   #catalog(database: ProjectDatabase, raw: ResearchListInput): ResearchCatalog {
     const input = ResearchListInputSchema.parse(raw);
-    const notes = (database
-      .prepare(
-        `SELECT id, project_id AS projectId, title, body, source_uri AS sourceUri,
-                tags_json AS tagsJson, status, created_at AS createdAt, updated_at AS updatedAt
-           FROM research_notes WHERE project_id = ?
-          ORDER BY status = 'archived', updated_at DESC, id`,
-      )
-      .all(input.projectId) as unknown as NoteRow[])
+    const notes = sqliteResult<NoteRow[]>(
+      database
+        .prepare(
+          `SELECT id, project_id AS projectId, title, body, source_uri AS sourceUri,
+                  tags_json AS tagsJson, status, created_at AS createdAt, updated_at AS updatedAt
+             FROM research_notes WHERE project_id = ?
+            ORDER BY status = 'archived', updated_at DESC, id`,
+        )
+        .all(input.projectId),
+    )
       .map(noteFromRow)
       .filter((note) => input.includeArchived || note.status === 'active')
       .filter(
@@ -515,28 +524,32 @@ export class ResearchService {
         ).includes(query);
       });
     const noteIds = new Set(notes.map((note) => note.id));
-    const attachments = (database
-      .prepare(
-        `SELECT id, project_id AS projectId, note_id AS noteId, display_name AS displayName,
-                media_type AS mediaType, size_bytes AS sizeBytes, content_hash AS contentHash,
-                managed_relative_path AS managedRelativePath, created_at AS createdAt
-           FROM research_attachments WHERE project_id = ?
-          ORDER BY created_at DESC, id`,
-      )
-      .all(input.projectId) as unknown as Record<string, unknown>[])
+    const attachments = sqliteResult<Record<string, unknown>[]>(
+      database
+        .prepare(
+          `SELECT id, project_id AS projectId, note_id AS noteId, display_name AS displayName,
+                  media_type AS mediaType, size_bytes AS sizeBytes, content_hash AS contentHash,
+                  managed_relative_path AS managedRelativePath, created_at AS createdAt
+             FROM research_attachments WHERE project_id = ?
+            ORDER BY created_at DESC, id`,
+        )
+        .all(input.projectId),
+    )
       .map((row) =>
         ResearchAttachmentSchema.parse({ ...row, sizeBytes: Number(row.sizeBytes) }),
       )
       .filter((attachment) => attachment.noteId === null || noteIds.has(attachment.noteId));
     const sourceIds = new Set([...noteIds, ...attachments.map((attachment) => attachment.id)]);
-    const links = (database
-      .prepare(
-        `SELECT id, project_id AS projectId, source_type AS sourceType, source_id AS sourceId,
-                target_type AS targetType, target_id AS targetId, created_at AS createdAt
-           FROM research_links WHERE project_id = ?
-          ORDER BY created_at DESC, id`,
-      )
-      .all(input.projectId) as unknown as Record<string, unknown>[])
+    const links = sqliteResult<Record<string, unknown>[]>(
+      database
+        .prepare(
+          `SELECT id, project_id AS projectId, source_type AS sourceType, source_id AS sourceId,
+                  target_type AS targetType, target_id AS targetId, created_at AS createdAt
+             FROM research_links WHERE project_id = ?
+            ORDER BY created_at DESC, id`,
+        )
+        .all(input.projectId),
+    )
       .map((row) => ResearchLinkSchema.parse(row))
       .filter((link) => sourceIds.has(link.sourceId));
     return ResearchCatalogSchema.parse({ projectId: input.projectId, notes, attachments, links });

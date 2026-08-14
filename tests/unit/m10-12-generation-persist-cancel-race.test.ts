@@ -119,6 +119,7 @@ describe('M10-12 Candidate持久化与取消原子边界', () => {
     const runs = {
       createWithReplay: async () => ({ run: current, replayed: false }),
       get: () => current,
+      getResearchReferenceMessage: () => null,
       markRunning: async () => {
         current = generationRun('running', 'assembling_constraints');
         return current;

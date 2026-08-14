@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 
 import {
   CoreProjectOperationSchema,
@@ -15,7 +16,7 @@ import {
   ResearchUpdateNoteCommandSchema,
   type ErrorCode,
 } from '@worldforge/contracts';
-import type { IpcMain, IpcMainInvokeEvent } from 'electron';
+import { BrowserWindow, dialog, type IpcMain, type IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import { registerIpcInvokeHandler } from './handler-guard.js';
@@ -26,11 +27,30 @@ export interface ResearchIpcOptions {
   readonly ipcMain: IpcMain;
   readonly supervisor: CoreSupervisor;
   readonly rendererUrl: string;
-  readonly chooseAttachmentFile: () => Promise<string | null>;
 }
 
 function trustedSender(event: IpcMainInvokeEvent, rendererUrl: string): boolean {
   return event.senderFrame?.url === rendererUrl;
+}
+
+async function chooseAttachmentFile(event: IpcMainInvokeEvent): Promise<string | null> {
+  if (process.env.WORLDFORGE_E2E === '1' && process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT) {
+    const injected = process.env.WORLDFORGE_E2E_RESEARCH_ATTACHMENT;
+    if (!path.isAbsolute(injected)) throw new Error('WORLDFORGE_E2E_RESEARCH_ATTACHMENT_MUST_BE_ABSOLUTE');
+    return injected;
+  }
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (!window || window.isDestroyed()) return null;
+  const selection = await dialog.showOpenDialog(window, {
+    title: '选择研究资料附件',
+    buttonLabel: '加入资料库',
+    properties: ['openFile'],
+    filters: [
+      { name: '研究资料', extensions: ['pdf', 'txt', 'md', 'markdown', 'docx', 'json', 'png', 'jpg', 'jpeg', 'webp', 'gif'] },
+      { name: '全部文件', extensions: ['*'] },
+    ],
+  });
+  return selection.canceled ? null : (selection.filePaths[0] ?? null);
 }
 
 const registrations = [
@@ -143,7 +163,7 @@ export function registerResearchIpc(options: ResearchIpcOptions): () => void {
         },
       });
     }
-    const sourcePath = await options.chooseAttachmentFile();
+    const sourcePath = await chooseAttachmentFile(event);
     if (!sourcePath) {
       return ResearchCatalogResultSchema.parse({
         ok: false,

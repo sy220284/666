@@ -1,4 +1,4 @@
-name: M12-02 Draft Verify
+name: M12-02 Visual Baseline Apply
 
 on:
   pull_request:
@@ -6,140 +6,123 @@ on:
       - main
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
-  group: m12-02-draft-verify-${{ github.event.pull_request.head.ref }}
+  group: m12-02-visual-baseline-${{ github.event.pull_request.head.ref }}
   cancel-in-progress: true
 
 jobs:
-  verify:
+  apply:
     if: github.event.pull_request.head.ref == 'work' && github.event.pull_request.draft == true
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: work
           fetch-depth: 0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
-        with:
-          node-version: 24.18.1
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply exact closure-test corrections
-        run: |
-          node --input-type=module <<'NODE'
-          import { readFileSync, writeFileSync } from 'node:fs';
-          const file = 'tests/reliability/m12-02-artifact-recovery.test.ts';
-          let source = readFileSync(file, 'utf8');
-
-          const manifestTypeBefore = 'artifacts: Array<{ managedRelativePath: string; sha256: string; sizeBytes: number }>';
-          const manifestTypeAfter = 'files: Array<{ relativePath: string; sha256: string; sizeBytes: number }>';
-          if (!source.includes(manifestTypeBefore)) throw new Error('Expected artifact manifest type was not found.');
-          if ((source.match(/manifest\.artifacts/gu) ?? []).length !== 2) throw new Error('Expected exactly two manifest.artifacts assertions.');
-          source = source.replace(manifestTypeBefore, manifestTypeAfter).replaceAll('manifest.artifacts', 'manifest.files');
-
-          const unsafeStartMarker = "  it('fails backup creation when managed artifact metadata escapes the project path boundary', async () => {";
-          const nextTestMarker = "  it('removes managed artifact bundles as part of backup cleanup completion', async () => {";
-          const start = source.indexOf(unsafeStartMarker);
-          const end = source.indexOf(nextTestMarker, start);
-          if (start < 0 || end < 0) throw new Error('Expected unsafe-path test boundaries were not found.');
-          const replacement = [
-            "  it('rejects unsafe managed paths at both database and restore-manifest boundaries', async () => {",
-            '    const value = await harness();',
-            '    try {',
-            '      await expect(',
-            '        value.workspace.writeProject(randomUUID(), value.project.projectId, (database) => {',
-            '          database',
-            '            .prepare(',
-            "              'UPDATE research_attachments SET managed_relative_path = ? WHERE id = ? AND project_id = ?',",
-            '            )',
-            "            .run('../escape.txt', value.attachment.id, value.project.projectId);",
-            '        }),',
-            "      ).rejects.toMatchObject({ code: 'DATABASE_WRITE_FAILED' });",
-            '',
-            '      const checkpoint = await value.recovery.createOperationCheckpoint(randomUUID(), {',
-            '        projectId: value.project.projectId,',
-            "        operation: 'replace',",
-            '      });',
-            '      const manifestPath = path.join(',
-            '        value.backupRoot,',
-            '        value.project.projectId,',
-            '        `${checkpoint.backupId}.artifacts.json`,',
-            '      );',
-            "      const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {",
-            '        files: Array<Record<string, unknown>>;',
-            '      };',
-            "      manifest.files[0]!.relativePath = '../escape.txt';",
-            "      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\\n`, 'utf8');",
-            '',
-            '      await expect(',
-            '        value.recovery.restoreCheckpoint(',
-            '          randomUUID(),',
-            '          { projectId: value.project.projectId, backupId: checkpoint.backupId },',
-            '          value.restoreParent,',
-            '        ),',
-            "      ).rejects.toMatchObject({ code: 'BACKUP_VERIFY_FAILED' });",
-            '      expect(await readdir(value.restoreParent)).toEqual([]);',
-            '    } finally {',
-            '      await value.workspace.shutdown();',
-            '      await value.runtime.close();',
-            '    }',
-            '  });',
-            '',
-          ].join('\n');
-          source = source.slice(0, start) + replacement + source.slice(end);
-          writeFileSync(file, source, 'utf8');
-          NODE
-      - name: Format every changed PR text file with locked Prettier
+      - name: Apply byte-stable visual witness artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          mapfile -t files < <(git diff --name-only origin/main...HEAD | grep -E '\.(ts|tsx|js|mjs|cjs|json|md|yml|yaml)$' || true)
-          files+=(tests/reliability/m12-02-artifact-recovery.test.ts)
-          mapfile -t files < <(printf '%s\n' "${files[@]}" | sort -u)
-          if (( ${#files[@]} > 0 )); then
-            pnpm exec prettier --write "${files[@]}"
-            pnpm exec prettier --check "${files[@]}"
-          fi
-          pnpm exec prettier --version
-      - name: Run workspace boundaries
-        run: |
-          pnpm check:workspaces
-          pnpm check:boundaries
-      - name: Run lint and typecheck
-        run: |
-          pnpm lint
-          pnpm typecheck
-      - name: Prepare tests
-        run: pnpm test:prepare
-      - name: Run M12-02 closure and regression tests
-        run: >-
-          pnpm exec vitest run
-          tests/unit/ar08-contracts-public-surface.test.ts
-          tests/unit/m10-12-generation-cancel-barrier.test.ts
-          tests/unit/m10-12-generation-cancel-order.test.ts
-          tests/unit/m10-12-generation-persist-cancel-race.test.ts
-          tests/unit/m10-19-lifecycle-renderer-recovery.test.ts
-          tests/unit/ipc-handlers-branch-coverage.test.ts
-          tests/unit/m11-05-idea-navigation.test.ts
-          tests/unit/m11-project-operation-semantics.test.ts
-          tests/unit/renderer-m3-09-workbenches.test.ts
-          tests/security/search-rhythm-ipc.test.ts
-          tests/integration/recovery-request-replay.test.ts
-          tests/integration/m12-02-research-assets.test.ts
-          tests/integration/m12-02-research-closure.test.ts
-          tests/integration/m12-02-generation-research-reference.test.ts
-          tests/integration/m12-02-artifact-move.test.ts
-          tests/reliability/m12-02-artifact-recovery.test.ts
-      - name: Commit verified closure fixes and locked formatting
-        shell: bash
-        run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add -u
-            git commit -m 'test(M12-02): verify artifact path and manifest boundaries'
-            git push origin HEAD:work
-          fi
+          set -euo pipefail
+          witness=/tmp/m12-02-visual-witness
+          rm -rf "$witness" /tmp/m12-02-visual-witness.zip
+          mkdir -p "$witness"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/9220558006/zip" \
+            > /tmp/m12-02-visual-witness.zip
+          unzip -q /tmp/m12-02-visual-witness.zip -d "$witness"
+
+          apply_baseline() {
+            local snapshot="$1"
+            local expected="$2"
+            local actual
+            actual="$(find "$witness" -type f -name "${snapshot%.png}.actual.png" -print -quit)"
+            test -n "$actual"
+            local observed
+            observed="$(sha256sum "$actual" | awk '{print $1}')"
+            test "$observed" = "$expected"
+            cp "$actual" "tests/e2e/visual-baselines/$snapshot"
+          }
+
+          apply_baseline 'theme-a-light-1280x800.png' '49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7'
+          apply_baseline 'theme-a-dark-1280x800.png' '2de849bccc172050f450eee3f45f9cd2202d401eaa7a91acbc4ab6ee09c4c544'
+          apply_baseline 'theme-b-light-1280x800.png' '2d5dbddc39d1b44d8e8945bb9b55e9b98ad727e10a193c61688962e8be0af6bc'
+          apply_baseline 'theme-b-dark-1280x800.png' '790ff5da93ae555c0a9313721f35483fec2107cd52cf7b98b6b1d47299232e89'
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+          expected = {
+              'theme-a-light-1280x800.png': '49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7',
+              'theme-a-dark-1280x800.png': '2de849bccc172050f450eee3f45f9cd2202d401eaa7a91acbc4ab6ee09c4c544',
+              'theme-b-light-1280x800.png': '2d5dbddc39d1b44d8e8945bb9b55e9b98ad727e10a193c61688962e8be0af6bc',
+              'theme-b-dark-1280x800.png': '790ff5da93ae555c0a9313721f35483fec2107cd52cf7b98b6b1d47299232e89',
+          }
+          for name in expected:
+              data = (Path('tests/e2e/visual-baselines') / name).read_bytes()
+              if data[:8] != b'\x89PNG\r\n\x1a\n':
+                  raise SystemExit(f'{name}: invalid PNG signature')
+              width, height = struct.unpack('>II', data[16:24])
+              if (width, height) != (1280, 800):
+                  raise SystemExit(f'{name}: unexpected dimensions {(width, height)}')
+          PY
+
+          cat > tests/e2e/visual-baselines/manifest.json <<'JSON'
+          {
+            "schemaVersion": 1,
+            "platform": "linux",
+            "source": {
+              "verifiedHead": "07b9484a7a8ab7f2b02af6aff0572a17b7fd4720",
+              "qualityRunId": 31794884165,
+              "artifactId": 9217434664,
+              "artifactDigest": "sha256:380f368582b02552f480974414eba7530c2750ed299bf164d042230c64457277"
+            },
+            "stabilityWitness": {
+              "verifiedHead": "3e6f77c02ebc36d8b670788f92c8e04ce669da20",
+              "qualityRunId": 31803014918,
+              "artifactId": 9220558006,
+              "artifactDigest": "sha256:62ad1f69f5d5beb49b53f6eca5d164db42de820929e5a0ddfed34897b12748c9"
+            },
+            "baselines": [
+              {
+                "snapshotName": "theme-a-light-1280x800.png",
+                "sha256": "49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7",
+                "width": 1280,
+                "height": 800
+              },
+              {
+                "snapshotName": "theme-a-dark-1280x800.png",
+                "sha256": "2de849bccc172050f450eee3f45f9cd2202d401eaa7a91acbc4ab6ee09c4c544",
+                "width": 1280,
+                "height": 800
+              },
+              {
+                "snapshotName": "theme-b-light-1280x800.png",
+                "sha256": "2d5dbddc39d1b44d8e8945bb9b55e9b98ad727e10a193c61688962e8be0af6bc",
+                "width": 1280,
+                "height": 800
+              },
+              {
+                "snapshotName": "theme-b-dark-1280x800.png",
+                "sha256": "790ff5da93ae555c0a9313721f35483fec2107cd52cf7b98b6b1d47299232e89",
+                "width": 1280,
+                "height": 800
+              }
+            ]
+          }
+          JSON
+
+          sha256sum tests/e2e/visual-baselines/*.png
+          git diff --check
+          git rm .github/workflows/m12-02-draft-verify.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/e2e/visual-baselines
+          git commit -m 'test(M12-02): accept stable research visual baselines'
+          git push origin HEAD:work

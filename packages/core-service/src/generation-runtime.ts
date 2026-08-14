@@ -382,7 +382,20 @@ export class GenerationRuntime {
         runId: initialRun.runId,
         stage: 'calling_model',
       });
-      const request = validateRequest(initialRun, input.requestFor(initialRun.runId));
+      const baseRequest = input.requestFor(initialRun.runId);
+      const researchMessage = this.#runs.getResearchReferenceMessage({
+        projectId: initialRun.projectId,
+        runId: initialRun.runId,
+      });
+      const request = validateRequest(
+        initialRun,
+        researchMessage
+          ? {
+              ...baseRequest,
+              messages: [...baseRequest.messages, { role: 'user', content: researchMessage }],
+            }
+          : baseRequest,
+      );
       let completed = false;
       for await (const event of input.provider.generate(request, task.signal)) {
         if (await this.#cancelled(initialRun.runId)) return;

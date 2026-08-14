@@ -77,7 +77,7 @@ describe('validation exception operations coverage', () => {
         ...common,
         scopeType: 'issue',
       });
-      expect(catalog.exceptions.at(-1)).toMatchObject({
+      expect(catalog.exceptions.find((item) => item.scopeType === 'issue')).toMatchObject({
         scopeType: 'issue',
         validationIssueId: issueId,
         chapterId: seeded.chapter2.id,
@@ -89,7 +89,7 @@ describe('validation exception operations coverage', () => {
         ...common,
         scopeType: 'chapter',
       });
-      expect(catalog.exceptions.at(-1)).toMatchObject({
+      expect(catalog.exceptions.find((item) => item.scopeType === 'chapter')).toMatchObject({
         scopeType: 'chapter',
         chapterId: seeded.chapter2.id,
       });
@@ -99,7 +99,7 @@ describe('validation exception operations coverage', () => {
         scopeType: 'entity',
         entityId: seeded.character.id,
       });
-      expect(catalog.exceptions.at(-1)).toMatchObject({
+      expect(catalog.exceptions.find((item) => item.scopeType === 'entity')).toMatchObject({
         scopeType: 'entity',
         entityId: seeded.character.id,
       });
@@ -110,7 +110,7 @@ describe('validation exception operations coverage', () => {
         validFromChapterId: seeded.chapter2.id,
         validUntilChapterId: seeded.chapter4.id,
       });
-      expect(catalog.exceptions.at(-1)).toMatchObject({
+      expect(catalog.exceptions.find((item) => item.scopeType === 'chapter_range')).toMatchObject({
         scopeType: 'chapter_range',
         validFromChapterId: seeded.chapter2.id,
         validUntilChapterId: seeded.chapter4.id,
@@ -120,7 +120,7 @@ describe('validation exception operations coverage', () => {
         ...common,
         scopeType: 'project_rule',
       });
-      expect(catalog.exceptions.at(-1)).toMatchObject({
+      expect(catalog.exceptions.find((item) => item.scopeType === 'project_rule')).toMatchObject({
         scopeType: 'project_rule',
         projectRuleKey: 'rule.coverage',
       });
@@ -199,7 +199,9 @@ describe('validation exception operations coverage', () => {
         projectId: seeded.project.projectId,
         exceptionId: exception.exceptionId,
       });
-      expect(disabled.exceptions.find((item) => item.exceptionId === exception.exceptionId)).toMatchObject({
+      expect(
+        disabled.exceptions.find((item) => item.exceptionId === exception.exceptionId),
+      ).toMatchObject({
         active: false,
       });
 

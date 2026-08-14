@@ -30,6 +30,7 @@ interface WritingWorkbenchProps {
   readonly navigationLogicalBlockId?: string | null;
   readonly navigationVersionId?: string | null;
   readonly navigationQuery?: string | null;
+  readonly navigationGenerationMode?: string | null;
   readonly onNavigate: (target: AuthorNavigationTarget) => void;
   readonly onPanelChange: (panel: WritingPanel) => void;
   readonly onStatus: (message: string) => void;
@@ -47,6 +48,7 @@ export function WritingWorkbench({
   navigationLogicalBlockId,
   navigationVersionId,
   navigationQuery,
+  navigationGenerationMode,
   onNavigate,
   onPanelChange,
   onStatus,
@@ -215,6 +217,7 @@ export function WritingWorkbench({
       isComposing={isComposing}
       editorTools={editorTools}
       navigationVersionId={navigationVersionId}
+      navigationGenerationMode={navigationGenerationMode}
       onNavigate={onNavigate}
       onPanelChange={onPanelChange}
       onStatus={onStatus}

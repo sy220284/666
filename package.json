@@ -33,7 +33,7 @@
     "test:mutation": "pnpm test:prepare && node scripts/mutation-test.mjs",
     "test:reliability": "pnpm test:prepare && vitest run tests/reliability --no-file-parallelism && node scripts/mutation-test.mjs",
     "test:perf": "pnpm test:prepare && vitest run tests/performance --no-file-parallelism --retry=1",
-    "test:eval": "pnpm test:prepare && vitest run tests/performance/ai-output-protocol.test.ts tests/performance/ai-eval-baseline.test.ts",
+    "test:eval": "pnpm test:prepare && vitest run tests/performance/ai-output-protocol.test.ts tests/performance/ai-eval-baseline.test.ts tests/performance/m11-07-semantic-retrieval-gate.test.ts",
     "check:language": "node scripts/check-author-language.mjs",
     "check:css": "node scripts/check-css-quality.mjs",
     "check:sql": "node scripts/check-sql-migrations.mjs",

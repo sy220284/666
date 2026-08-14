@@ -4,6 +4,11 @@ import type { RendererRouteId, RendererSelectionState } from '../state/ui-state-
 
 export type AuthorNavigationTarget =
   | {
+      readonly type: 'writing-action';
+      readonly projectId: string;
+      readonly generationMode: 'skeleton' | 'chapter' | 'rewrite';
+    }
+  | {
       readonly type: 'project-brief';
       readonly projectId: string;
       readonly briefId: string;
@@ -80,6 +85,21 @@ export function authorNavigationTargetBelongsToProject(
 export function resolveAuthorNavigationTarget(
   target: AuthorNavigationTarget,
 ): AuthorNavigationResolution {
+  if (target.type === 'writing-action') {
+    return {
+      route: 'candidates',
+      selection: {
+        projectId: target.projectId,
+        entityId: null,
+        logicalBlockId: null,
+        versionId: null,
+        sceneBeatId: null,
+        issueId: null,
+      },
+      filters: { 'navigation.generationMode': target.generationMode },
+    };
+  }
+
   if (target.type === 'project-brief') {
     return {
       route: 'planning',

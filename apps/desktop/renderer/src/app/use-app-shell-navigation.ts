@@ -47,6 +47,9 @@ export function useAppShellNavigation({
   const filters = useRendererUiStore((state) => state.filters);
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
   const navigationQuery = useRendererUiStore((state) => state.filters['navigation.query'] ?? null);
+  const navigationGenerationMode = useRendererUiStore(
+    (state) => state.filters['navigation.generationMode'] ?? null,
+  );
   const foregroundTaskId = useRendererUiStore((state) => state.foregroundRequestKey);
   const dispatch = useRendererUiStore((state) => state.dispatch);
   const [navOpen, setNavOpen] = useState(false);
@@ -189,6 +192,7 @@ export function useAppShellNavigation({
     filters,
     returnLocation,
     navigationQuery,
+    navigationGenerationMode,
     foregroundTaskId,
     dispatch,
     navigation,

@@ -16,6 +16,7 @@ export async function routeStructureProjectOperation(
   requestId: string,
   operation: CoreProjectOperation,
 ): Promise<CoreProjectResult | null> {
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- this router intentionally handles only structure operations
   switch (operation.operation) {
     case PROJECT_STRUCTURE_COMMANDS.listStructure:
       return success(operation.operation, services.projectStructure.list(operation.projectId));

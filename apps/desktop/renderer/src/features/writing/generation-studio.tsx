@@ -96,115 +96,143 @@ export function GenerationStudio(props: GenerationStudioProps) {
           {generationStatus}
         </span>
       </header>
-      <div className="generation-grid">
-        <label>
-          任务
-          <select
-            data-generation-mode
-            value={generationMode}
-            onChange={(event) => props.onGenerationModeChange(event.target.value as GenerationMode)}
-          >
-            <option value="skeleton">生成章节骨架</option>
-            <option value="chapter">生成正文</option>
-            <option value="rewrite">快速改写</option>
-            <option value="merge">融合建议稿</option>
-          </select>
-        </label>
-        <label>
-          智能连接
-          <select
-            data-generation-provider
-            value={providerId}
-            onChange={(event) => props.onProviderIdChange(event.target.value)}
-          >
-            <option value="">请选择</option>
-            {providers.map((provider) => (
-              <option key={provider.id} value={provider.id}>
-                {provider.name} · {provider.model}
-              </option>
-            ))}
-          </select>
-        </label>
-        {generationMode === 'chapter' ? (
+      <div className="generation-primary-actions" data-generation-primary-actions>
+        <button
+          type="button"
+          aria-pressed={generationMode === 'skeleton'}
+          onClick={() => props.onGenerationModeChange('skeleton')}
+        >
+          规划这一章
+        </button>
+        <button
+          type="button"
+          aria-pressed={generationMode === 'chapter'}
+          onClick={() => props.onGenerationModeChange('chapter')}
+        >
+          生成这一章
+        </button>
+        <button
+          type="button"
+          aria-pressed={generationMode === 'rewrite'}
+          onClick={() => props.onGenerationModeChange('rewrite')}
+        >
+          改写选中内容
+        </button>
+      </div>
+      <details className="generation-advanced-settings" data-generation-advanced-settings>
+        <summary>高级设置与来源</summary>
+        <div className="generation-grid">
           <label>
-            正文来源
+            任务
             <select
-              data-chapter-generation-source
-              value={chapterSource}
+              data-generation-mode
+              value={generationMode}
               onChange={(event) =>
-                props.onChapterSourceChange(event.target.value as ChapterGenerationSource)
+                props.onGenerationModeChange(event.target.value as GenerationMode)
               }
             >
-              <option value="direct_chapter_goal">直接使用本章目标</option>
-              <option value="skeleton_candidate">已选章节骨架</option>
-              <option value="canonical_scene_beats">已确认场景</option>
+              <option value="skeleton">生成章节骨架</option>
+              <option value="chapter">生成正文</option>
+              <option value="rewrite">快速改写</option>
+              <option value="merge">融合建议稿</option>
             </select>
           </label>
-        ) : null}
-        {generationMode === 'skeleton' ? (
-          <>
-            <label>
-              候选数
-              <input
-                data-skeleton-candidate-count
-                type="number"
-                min={1}
-                max={5}
-                value={candidateCount}
-                onChange={(event) =>
-                  props.onCandidateCountChange(
-                    Math.max(1, Math.min(5, Number(event.target.value) || 1)),
-                  )
-                }
-              />
-            </label>
-            <label>
-              叙事倾向
-              <input
-                data-skeleton-tendency
-                value={tendency}
-                onChange={(event) => props.onTendencyChange(event.target.value)}
-              />
-            </label>
-          </>
-        ) : null}
-        {generationMode === 'chapter' && chapterSource === 'skeleton_candidate' ? (
           <label>
-            章节骨架
+            智能连接
             <select
-              data-selected-skeleton
-              value={selectedSkeletonId}
-              onChange={(event) => props.onSelectedSkeletonChange(event.target.value)}
+              data-generation-provider
+              value={providerId}
+              onChange={(event) => props.onProviderIdChange(event.target.value)}
             >
-              <option value="">请选择</option>
-              {skeletonCandidates.map((candidate) => (
-                <option key={candidate.candidateId} value={candidate.candidateId}>
-                  {candidate.title} · 修订 {candidate.skeletonRevision}
-                  {candidate.sourceState === 'stale' ? ' · 来源已变化' : ''}
+              <option value="">按任务自动选择</option>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name} · {provider.model}
                 </option>
               ))}
             </select>
           </label>
-        ) : null}
-        {generationMode === 'chapter' ? (
-          <label>
-            目标字数
-            <input
-              data-generation-target-characters
-              type="number"
-              min={100}
-              max={200_000}
-              step={100}
-              value={targetCharacters}
-              onChange={(event) =>
-                props.onTargetCharactersChange(
-                  Math.max(100, Math.min(200_000, Number(event.target.value) || 100)),
-                )
-              }
-            />
-          </label>
-        ) : null}
-      </div>
+          {generationMode === 'chapter' ? (
+            <label>
+              正文来源
+              <select
+                data-chapter-generation-source
+                value={chapterSource}
+                onChange={(event) =>
+                  props.onChapterSourceChange(event.target.value as ChapterGenerationSource)
+                }
+              >
+                <option value="direct_chapter_goal">直接使用本章目标</option>
+                <option value="skeleton_candidate">已选章节骨架</option>
+                <option value="canonical_scene_beats">已确认场景</option>
+              </select>
+            </label>
+          ) : null}
+          {generationMode === 'skeleton' ? (
+            <>
+              <label>
+                候选数
+                <input
+                  data-skeleton-candidate-count
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={candidateCount}
+                  onChange={(event) =>
+                    props.onCandidateCountChange(
+                      Math.max(1, Math.min(5, Number(event.target.value) || 1)),
+                    )
+                  }
+                />
+              </label>
+              <label>
+                叙事倾向
+                <input
+                  data-skeleton-tendency
+                  value={tendency}
+                  onChange={(event) => props.onTendencyChange(event.target.value)}
+                />
+              </label>
+            </>
+          ) : null}
+          {generationMode === 'chapter' && chapterSource === 'skeleton_candidate' ? (
+            <label>
+              章节骨架
+              <select
+                data-selected-skeleton
+                value={selectedSkeletonId}
+                onChange={(event) => props.onSelectedSkeletonChange(event.target.value)}
+              >
+                <option value="">请选择</option>
+                {skeletonCandidates.map((candidate) => (
+                  <option key={candidate.candidateId} value={candidate.candidateId}>
+                    {candidate.title} · 修订 {candidate.skeletonRevision}
+                    {candidate.sourceState === 'stale' ? ' · 来源已变化' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {generationMode === 'chapter' ? (
+            <label>
+              目标字数
+              <input
+                data-generation-target-characters
+                type="number"
+                min={100}
+                max={200_000}
+                step={100}
+                value={targetCharacters}
+                onChange={(event) =>
+                  props.onTargetCharactersChange(
+                    Math.max(100, Math.min(200_000, Number(event.target.value) || 100)),
+                  )
+                }
+              />
+            </label>
+          ) : null}
+        </div>
+      </details>
       {(generationMode === 'skeleton' ||
         (generationMode === 'chapter' && chapterSource === 'direct_chapter_goal')) && (
         <label className="generation-wide-field">
@@ -322,15 +350,17 @@ export function GenerationStudio(props: GenerationStudioProps) {
           data-start-generation
           type="button"
           disabled={
-            pending ||
-            readOnly ||
-            !providerId ||
-            activeRun?.status === 'queued' ||
-            activeRun?.status === 'running'
+            pending || readOnly || activeRun?.status === 'queued' || activeRun?.status === 'running'
           }
           onClick={props.onStartGeneration}
         >
-          开始生成
+          {generationMode === 'skeleton'
+            ? '规划这一章'
+            : generationMode === 'chapter'
+              ? '生成这一章'
+              : generationMode === 'rewrite'
+                ? '改写选中内容'
+                : '开始融合'}
         </button>
         <button
           data-cancel-generation
@@ -365,7 +395,7 @@ export function GenerationStudio(props: GenerationStudioProps) {
           <button
             data-retry-rewrite
             type="button"
-            disabled={pending || readOnly || !providerId}
+            disabled={pending || readOnly}
             onClick={props.onRetryRewrite}
           >
             换一个

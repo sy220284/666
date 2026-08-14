@@ -6,12 +6,14 @@ import type {
   AppearancePreferences,
   CoreStatus,
   DiagnosticPreview,
+  ProjectWorkspaceSummary,
   ProviderConnectionTestResult,
   ProviderSummary,
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
+import { LongformAiSettingsPanel } from './longform-ai-settings.js';
 import { ProviderSettings } from './provider-settings.js';
 import {
   createSettingsNavigationItems,
@@ -28,6 +30,8 @@ export interface SettingsPageProps {
   readonly settings: AppSettings;
   readonly appearance: AppearancePreferences;
   readonly coreStatus: CoreStatus | null;
+  readonly project: ProjectWorkspaceSummary | null;
+  readonly providers: readonly ProviderSummary[];
   readonly pendingKey: string | null;
   readonly message: string | null;
   readonly onClose: () => void;
@@ -44,29 +48,25 @@ export interface SettingsPageProps {
 
 export function SettingsPage(props: SettingsPageProps) {
   const [section, setSection] = useState<SettingsBasicSectionId>('general');
+  const sectionAvailability = {
+    general: true,
+    editor: true,
+    appearance: true,
+    providers: true,
+    longform: props.project !== null,
+    advanced: true,
+  } as const;
   const items = createSettingsNavigationItems({
     disclosureMode: props.disclosureMode,
     currentSection: section,
-    availability: {
-      general: true,
-      editor: true,
-      appearance: true,
-      providers: true,
-      advanced: true,
-    },
+    availability: sectionAvailability,
   });
 
   const navigate = (candidate: string): void => {
     const resolution = resolveSettingsNavigationIntent(candidate, {
       disclosureMode: props.disclosureMode,
       currentSection: section,
-      availability: {
-        general: true,
-        editor: true,
-        appearance: true,
-        providers: true,
-        advanced: true,
-      },
+      availability: sectionAvailability,
     });
     if (resolution.accepted) setSection(resolution.section);
   };
@@ -128,6 +128,14 @@ export function SettingsPage(props: SettingsPageProps) {
               onProviderConnectionVerified={props.onProviderConnectionVerified}
               onProviderInvalidated={props.onProviderInvalidated}
               onProvidersChanged={props.onProvidersChanged}
+            />
+          ) : null}
+          {section === 'longform' && props.project ? (
+            <LongformAiSettingsPanel
+              bridge={props.bridge}
+              project={props.project}
+              providers={props.providers}
+              readOnly={props.project.databaseMode === 'read-only'}
             />
           ) : null}
           {section === 'advanced' ? <AdvancedSettings {...props} /> : null}

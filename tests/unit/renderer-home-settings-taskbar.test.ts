@@ -172,6 +172,7 @@ describe('设置分区导航', () => {
     expect(items.map((item) => item.id)).toEqual(SETTINGS_BASIC_SECTION_IDS);
     expect(items.filter((item) => item.disabled).map((item) => item.id)).toEqual([
       'editor',
+      'longform',
       'advanced',
     ]);
     expect(items.find((item) => item.id === 'general')?.current).toBe(true);

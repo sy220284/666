@@ -38,6 +38,7 @@ import type {
   SearchToolsBridge,
   StateProposalBridge,
   StoryKnowledgeBridge,
+  LongformAiBridge,
   TaskStreamUpdate,
   TimelineEventArchiveInput,
   TimelineEventSaveInput,
@@ -156,6 +157,7 @@ interface AuxiliaryRendererBridges {
   readonly searchTools?: SearchToolsBridge;
   readonly rhythm?: RhythmBridge;
   readonly storyKnowledge?: StoryKnowledgeBridge;
+  readonly longformAi?: LongformAiBridge;
   readonly candidateAction?: CandidateActionBridgePort;
 }
 
@@ -204,6 +206,7 @@ export interface RendererBridgeAdapter {
   readonly searchTools: AdaptedDomain<SearchToolsBridge>;
   readonly rhythm: AdaptedDomain<RhythmBridge>;
   readonly storyKnowledge: AdaptedDomain<StoryKnowledgeBridge>;
+  readonly longformAi: AdaptedDomain<LongformAiBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
   readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
@@ -277,6 +280,11 @@ export function createRendererBridgeAdapter(
     storyKnowledge: adaptDomain(
       'storyKnowledge',
       requireDomain(auxiliary.storyKnowledge, 'storyKnowledge'),
+      coordinator,
+    ),
+    longformAi: adaptDomain(
+      'longformAi',
+      requireDomain(auxiliary.longformAi, 'longformAi'),
       coordinator,
     ),
     candidateAction: adaptDomain(
@@ -381,6 +389,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     !window.worldforgeSearchTools ||
     !window.worldforgeRhythm ||
     !window.worldforgeStoryKnowledge ||
+    !window.worldforgeLongformAi ||
     !window.worldforgeCandidatePreview
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
@@ -393,6 +402,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     searchTools: window.worldforgeSearchTools,
     rhythm: window.worldforgeRhythm,
     storyKnowledge: window.worldforgeStoryKnowledge,
+    longformAi: window.worldforgeLongformAi,
     candidateAction: window.worldforgeCandidatePreview,
   });
 }

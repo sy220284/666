@@ -112,6 +112,18 @@
     color: var(--color-text-primary);
   }
 
+  .react-settings-form textarea {
+    width: 100%;
+    min-height: 104px;
+    padding: 9px;
+    resize: vertical;
+    border: 1px solid var(--color-border-strong);
+    background: var(--color-bg-elevated);
+    color: var(--color-text-primary);
+    font: inherit;
+    line-height: 1.55;
+  }
+
   .react-dialog footer,
   .react-settings-form footer {
     justify-content: flex-end;
@@ -127,6 +139,123 @@
 
   .react-settings-form h2 {
     margin: 0 0 6px;
+  }
+
+  .longform-ai-settings {
+    align-content: start;
+  }
+
+  .longform-ai-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-panel);
+  }
+
+  .longform-ai-card h3,
+  .longform-ai-card p {
+    margin: 0;
+  }
+
+  .longform-ai-card > p,
+  .longform-ai-card__heading p,
+  .longform-ai-empty {
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+  }
+
+  .longform-ai-card__heading {
+    display: flex;
+    gap: 16px;
+    align-items: start;
+    justify-content: space-between;
+  }
+
+  .longform-ai-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .longform-memory-list,
+  .longform-style-list {
+    display: grid;
+    gap: 9px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .longform-memory-list li,
+  .longform-style-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 14px;
+    padding: 11px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-paper);
+  }
+
+  .longform-memory-list li > span,
+  .longform-style-list li > span {
+    display: grid;
+    gap: 3px;
+  }
+
+  .longform-memory-list small,
+  .longform-style-list small {
+    color: var(--color-text-muted);
+  }
+
+  .longform-memory-list em {
+    color: var(--color-success);
+    font-size: 0.78rem;
+    font-style: normal;
+  }
+
+  .longform-memory-list em[data-freshness='stale'] {
+    color: var(--color-danger);
+  }
+
+  .longform-memory-list details,
+  .longform-style-list p {
+    grid-column: 1 / -1;
+  }
+
+  .longform-memory-list details p {
+    margin: 9px 0 5px;
+    white-space: pre-wrap;
+  }
+
+  .longform-style-form {
+    display: grid;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .longform-route-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+  }
+
+  .longform-route-list fieldset {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+  }
+
+  .longform-route-list legend {
+    padding-inline: 5px;
+    color: var(--color-text-primary);
+    font-weight: 650;
   }
 
   .react-switch-row {
@@ -476,6 +605,117 @@
 
   .react-dialog::backdrop {
     background: rgb(15 18 22 / 46%);
+  }
+
+  .react-command-palette-trigger kbd,
+  .command-palette kbd {
+    padding: 2px 6px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-panel);
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+  }
+
+  .command-palette-backdrop {
+    position: fixed;
+    z-index: 140;
+    inset: 0;
+    display: grid;
+    place-items: start center;
+    padding: min(14vh, 112px) 16px 16px;
+    background: rgb(15 18 22 / 46%);
+  }
+
+  .command-palette {
+    width: min(720px, 100%);
+    max-height: min(680px, calc(100vh - 128px));
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-paper);
+    box-shadow: var(--shadow-popover);
+  }
+
+  .command-palette > header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .command-palette > header input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-paper);
+    color: var(--color-text-primary);
+    font-size: 1rem;
+  }
+
+  .command-palette__results {
+    display: grid;
+    max-height: min(520px, calc(100vh - 260px));
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .command-palette__result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-primary);
+    text-align: left;
+  }
+
+  .command-palette__result[aria-selected='true'] {
+    background: var(--color-bg-panel);
+  }
+
+  .command-palette__result span,
+  .command-palette__result small {
+    display: block;
+  }
+
+  .command-palette__result small,
+  .command-palette__result em,
+  .command-palette > footer,
+  .command-palette__empty {
+    color: var(--color-text-secondary);
+  }
+
+  .command-palette__result em {
+    flex: none;
+    font-size: 0.78rem;
+    font-style: normal;
+  }
+
+  .command-palette__result small {
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .command-palette__empty,
+  .command-palette > footer {
+    margin: 0;
+    padding: 12px 14px;
+  }
+
+  .command-palette > footer {
+    border-top: 1px solid var(--color-border-subtle);
+    font-size: 0.82rem;
   }
 
   .inline-error,

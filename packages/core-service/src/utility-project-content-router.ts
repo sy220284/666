@@ -23,6 +23,7 @@ export async function routeContentProjectOperation(
   requestId: string,
   operation: CoreProjectOperation,
 ): Promise<CoreProjectResult | null> {
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- this router intentionally handles only content operations
   switch (operation.operation) {
     case DRAFT_COMMANDS.openDraft:
       return success(operation.operation, await services.drafts.open(requestId, operation.input));

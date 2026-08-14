@@ -21,6 +21,7 @@ export async function routePrimaryProjectOperation(
   requestId: string,
   operation: CoreProjectOperation,
 ): Promise<CoreProjectResult | null> {
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- this router intentionally handles only primary project operations
   switch (operation.operation) {
     case PROJECT_WORKSPACE_COMMANDS.getActive:
       return success(operation.operation, services.projectWorkspace.activeProject);

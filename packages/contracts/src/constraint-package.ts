@@ -27,6 +27,10 @@ export const ConstraintSourceTypeSchema = z.enum([
   'character_arc',
   'current_draft',
   'supplemental_search',
+  'chapter_digest',
+  'volume_digest',
+  'project_digest',
+  'style_profile',
 ]);
 export const ConstraintTemporalStatusSchema = z.enum([
   'current',

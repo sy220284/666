@@ -425,6 +425,31 @@
     gap: 0.65rem;
   }
 
+  .generation-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .generation-primary-actions button[aria-pressed='true'] {
+    border-color: var(--accent, #3d6be0);
+    color: var(--accent, #3d6be0);
+    background: var(--surface, rgba(120, 120, 120, 0.12));
+  }
+
+  .generation-advanced-settings {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .generation-advanced-settings > summary {
+    cursor: pointer;
+  }
+
+  .generation-advanced-settings[open] > summary {
+    margin-bottom: 0.7rem;
+  }
+
   .generation-grid label,
   .generation-wide-field {
     display: grid;

@@ -9,6 +9,7 @@ import { DraftServiceError } from './draft.js';
 import { EntityCanonServiceError } from './entity-canon.js';
 import { IdeaCapsuleServiceError } from './idea-capsule-service.js';
 import { ImportExportServiceError } from './import-export.js';
+import { LongformAiServiceError } from './longform-ai-service.js';
 import { NarrativePlanningServiceError } from './narrative-planning.js';
 import { ProjectPlanningError } from './project-planning.js';
 import { ProjectStructureError } from './project-structure.js';
@@ -71,6 +72,16 @@ export function appDataError(error: unknown): ErrorCode {
 }
 
 export function projectOperationError(error: unknown): ErrorCode {
+  if (error instanceof LongformAiServiceError) {
+    if (error.code === 'LONGFORM_DIGEST_FAILED') return 'LONGFORM_DIGEST_FAILED_001';
+    if (error.code === 'LONGFORM_STYLE_SAMPLE_INSUFFICIENT') {
+      return 'LONGFORM_STYLE_SAMPLE_INSUFFICIENT_002';
+    }
+    if (error.code === 'LONGFORM_ROUTE_UNAVAILABLE') return 'LONGFORM_ROUTE_UNAVAILABLE_003';
+    if (error.code === 'LONGFORM_SETTINGS_CONFLICT') return 'LONGFORM_SETTINGS_CONFLICT_004';
+    if (error.code === 'LONGFORM_SCOPE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    return 'COMMON_INTERNAL_999';
+  }
   if (
     error instanceof DatabaseFoundationError &&
     error.code === 'DATABASE_WRITE_FAILED' &&

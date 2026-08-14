@@ -52,6 +52,7 @@ const PROJECT_CLONE_POLICY = new Map<string, ProjectCloneAction>([
   ['fts_entities', 'regenerate'],
   ['project_dictionary', 'preserve'],
   ['project_settings', 'preserve'],
+  ['story_digests', 'regenerate'],
   ['generation_runs', 'clone-remap'],
   ['generation_constraint_packages', 'preserve'],
   ['generation_result_refs', 'preserve'],
@@ -136,6 +137,7 @@ export function prepareProjectClone(database: DatabaseSync, timestamp: string): 
   deleteAll(database, available, 'migration_journal');
   deleteAll(database, available, 'command_receipts');
   deleteAll(database, available, 'semantic_revision');
+  deleteAll(database, available, 'story_digests');
 
   for (const table of ['fts_draft_blocks', 'fts_version_blocks', 'fts_entities']) {
     deleteAll(database, available, table);

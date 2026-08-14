@@ -23,6 +23,7 @@ export function dispatchUtilityOperation(
   message: CoreControlMessage,
 ): boolean {
   const { options, state } = context;
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- lifecycle messages are handled by dispatchUtilityLifecycle
   switch (message.type) {
     case 'core.app-data.command': {
       const { requestId, operation } = message;

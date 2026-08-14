@@ -6,6 +6,7 @@ export const SETTINGS_BASIC_SECTION_IDS = [
   'editor',
   'appearance',
   'providers',
+  'longform',
   'advanced',
 ] as const;
 
@@ -51,6 +52,7 @@ const DEFAULT_SETTINGS_AVAILABILITY: SettingsSectionAvailability = {
   editor: false,
   appearance: true,
   providers: false,
+  longform: false,
   advanced: false,
 };
 
@@ -78,6 +80,12 @@ const SETTINGS_SECTION_DEFINITIONS = [
     label: authorTerm('provider'),
     beginnerDescription: '配置本机或外部智能模型服务',
     professionalDescription: `${authorTerm('provider')}、服务地址边界、凭据和连接能力测试`,
+  },
+  {
+    id: 'longform',
+    label: '长篇创作',
+    beginnerDescription: '管理长篇记忆、文风和智能任务分配',
+    professionalDescription: '长篇记忆来源、文风档案、偏离检查与智能任务回退',
   },
   {
     id: 'advanced',

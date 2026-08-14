@@ -582,7 +582,7 @@
     position: relative;
     z-index: 50;
     display: grid;
-    grid-template-columns: auto minmax(180px, 1fr) auto auto;
+    grid-template-columns: auto minmax(180px, 1fr) auto auto auto;
     gap: 12px;
     align-items: center;
     min-height: 58px;
@@ -779,7 +779,7 @@
   }
 
   body[data-layout-mode='compact'] .react-top-bar {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   }
 
   body[data-layout-mode='compact'] .react-nav-toggle {

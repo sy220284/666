@@ -75,6 +75,8 @@ packages/testkit 可被测试代码使用，不进入生产运行依赖。
 - 依赖Renderer Store。
 - 将Provider响应直接写Draft。
 
+`LongformAiService`属于Core：它只维护可重建StoryDigest、类型化长篇项目设置、文风偏离计算和已有Provider的任务选择。它不得成为第二套GenerationRuntime、搜索服务、约束包或凭据仓库。
+
 ## 5. `packages/editor-core`
 
 允许：

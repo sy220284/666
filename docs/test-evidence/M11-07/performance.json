@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M11-07",
+  "implementationCommit": "fa09008b87ff977380655f231d8dbfb621a29a90",
+  "generatedAt": "2026-08-14T10:59:00+08:00",
+  "heapGrowthBytes": 7741792,
+  "measurements": [
+    {
+      "dataset": "300万字",
+      "characters": 3000000,
+      "chapters": 600,
+      "projectOpenMs": 788.296348,
+      "digestRebuildMs": 1015.613198,
+      "incrementalDigestMs": 69.358661,
+      "searchRebuildMs": 2263.901412,
+      "commandPaletteMs": 51.058458,
+      "storyKnowledgeMs": 7.280436,
+      "contextBuildMs": 108.108478,
+      "autosaveMs": 24.54665,
+      "historyMs": 3.382281,
+      "sqliteBytes": 53338112,
+      "digestSourceCount": 12
+    },
+    {
+      "dataset": "500万字",
+      "characters": 5000000,
+      "chapters": 1000,
+      "projectOpenMs": 1219.403993,
+      "digestRebuildMs": 1002.154683,
+      "incrementalDigestMs": 111.952951,
+      "searchRebuildMs": 5762.240169,
+      "commandPaletteMs": 29.635256,
+      "storyKnowledgeMs": 3.7723,
+      "contextBuildMs": 127.474264,
+      "autosaveMs": 5.764184,
+      "historyMs": 1.097326,
+      "sqliteBytes": 87334912,
+      "digestSourceCount": 12,
+      "backupMs": 1963.911002,
+      "restoreMs": 2461.801547,
+      "backupBytes": 87375872
+    }
+  ],
+  "memoryLeakProbe": {
+    "budgetStatus": "enforced",
+    "standalonePassed": true,
+    "draftSteadyState": {
+      "operations": 2450,
+      "finalGrowthBytes": -14688,
+      "peakGrowthBytes": 0,
+      "tailSpreadBytes": 40312,
+      "slopeBytesPerOperation": 0.880457
+    },
+    "projectLifecycle": {
+      "cycles": 1100,
+      "finalGrowthBytes": 475832,
+      "peakGrowthBytes": 475832,
+      "tailSpreadBytes": 475832,
+      "slopeBytesPerOperation": 1016.722286
+    }
+  }
+}

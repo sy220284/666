@@ -23,6 +23,7 @@ export default defineConfig({
     'm8-04-author-experience.spec.ts',
     'm8-07-chinese-experience.spec.ts',
     'daily-writing-ui-refinement.spec.ts',
+    'm11-07-longform-ai.spec.ts',
     'visual-regression.spec.ts',
     'accessibility.spec.ts',
     'platform-experience.spec.ts',

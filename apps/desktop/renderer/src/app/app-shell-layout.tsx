@@ -11,6 +11,7 @@ import type {
 import { ContextHelp } from '../components/context-help.js';
 import { SafetyBanner } from '../components/safety-banner.js';
 import { TaskBar } from '../components/task-bar.js';
+import { commandPaletteShortcutLabel } from '../features/command-palette/command-catalog.js';
 import type { CapabilityMatrix } from '../runtime/capability-matrix.js';
 import type { RendererStatus } from '../runtime/status-arbitrator.js';
 import type {
@@ -39,12 +40,15 @@ interface AppShellLayoutProps {
   readonly foregroundTaskId: string | null;
   readonly navOpen: boolean;
   readonly helpOpen: boolean;
+  readonly commandPaletteOpen: boolean;
   readonly navToggle: RefObject<HTMLButtonElement | null>;
   readonly settingsTrigger: RefObject<HTMLButtonElement | null>;
   readonly helpTrigger: RefObject<HTMLButtonElement | null>;
+  readonly commandPaletteTrigger: RefObject<HTMLButtonElement | null>;
   readonly mainContent: RefObject<HTMLElement | null>;
   readonly onNavOpenChange: (open: boolean) => void;
   readonly onHelpOpenChange: (open: boolean) => void;
+  readonly onCommandPaletteOpenChange: (open: boolean) => void;
   readonly onNavigate: (id: PrimaryNavigationId) => void;
   readonly onTransitionToRoute: (route: RendererRouteId) => Promise<boolean>;
   readonly onOpenCanonSection: (section: 'continuity' | 'narrative' | 'proposals') => void;
@@ -81,6 +85,16 @@ export function AppShellLayout(props: AppShellLayoutProps) {
           <span>{props.activeProject?.databaseMode === 'read-only' ? '只读' : '本地'}</span>
           <span>任务 {props.tasks.length}</span>
         </div>
+        <button
+          aria-expanded={props.commandPaletteOpen}
+          className="quiet-button react-command-palette-trigger"
+          data-open-command-palette
+          ref={props.commandPaletteTrigger}
+          type="button"
+          onClick={() => props.onCommandPaletteOpenChange(true)}
+        >
+          搜索与命令 <kbd>{commandPaletteShortcutLabel(globalThis.navigator?.platform ?? '')}</kbd>
+        </button>
         <button
           aria-expanded={props.helpOpen}
           className="quiet-button"

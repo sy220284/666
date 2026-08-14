@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M11-07",
+  "implementationCommit": "fa09008b87ff977380655f231d8dbfb621a29a90",
+  "decision": "vector-layer-not-triggered",
+  "criticalCoverage": 1,
+  "ftsRecall": 1,
+  "semanticOnlyCriticalMissRate": 0,
+  "results": [
+    { "id": "fts-current-draft-copper-bell", "critical": true, "route": "fts", "passed": true },
+    { "id": "fts-current-draft-keeper", "critical": true, "route": "fts", "passed": true },
+    { "id": "structure-chapter-title", "critical": true, "route": "structure", "passed": true },
+    {
+      "id": "structure-next-chapter-title",
+      "critical": true,
+      "route": "structure",
+      "passed": true
+    },
+    {
+      "id": "digest-cross-volume-object",
+      "critical": true,
+      "route": "digest-context",
+      "passed": true
+    },
+    {
+      "id": "digest-cross-volume-promise",
+      "critical": true,
+      "route": "digest-context",
+      "passed": true
+    },
+    {
+      "id": "digest-source-provenance",
+      "critical": true,
+      "route": "digest-context",
+      "passed": true
+    },
+    {
+      "id": "fts-noncritical-paraphrase-gap",
+      "critical": false,
+      "route": "semantic-only",
+      "passed": false
+    }
+  ]
+}

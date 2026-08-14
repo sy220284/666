@@ -20,6 +20,7 @@ export async function routeValidationOperation(
   operation: CoreProjectOperation,
 ): Promise<CoreProjectResult | null> {
   const validation = new ValidationService(services.projectWorkspace);
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- this router intentionally handles only validation operations
   switch (operation.operation) {
     case VALIDATION_COMMANDS.list:
       return success(operation.operation, validation.list(operation.input));

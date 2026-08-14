@@ -12,6 +12,7 @@ export function dispatchUtilityLifecycle(
   ports: UtilityParentMessage['ports'],
 ): void {
   const { options, state } = context;
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- operation messages are delegated to dispatchUtilityOperation
   switch (message.type) {
     case 'core.ping':
       context.send({

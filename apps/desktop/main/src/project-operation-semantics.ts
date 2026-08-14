@@ -5,6 +5,7 @@ import {
   DRAFT_COMMANDS,
   ENTITY_CANON_COMMANDS,
   IDEA_CAPSULE_COMMANDS,
+  LONGFORM_AI_COMMANDS,
   NARRATIVE_PLANNING_COMMANDS,
   PROJECT_PLANNING_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
@@ -131,6 +132,13 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [RHYTHM_COMMANDS.run]: 'mutation',
 
   [STORY_KNOWLEDGE_COMMANDS.project]: 'query',
+
+  [LONGFORM_AI_COMMANDS.getSettings]: 'query',
+  [LONGFORM_AI_COMMANDS.updateSettings]: 'mutation',
+  [LONGFORM_AI_COMMANDS.listDigests]: 'query',
+  [LONGFORM_AI_COMMANDS.rebuildDigests]: 'mutation',
+  [LONGFORM_AI_COMMANDS.evaluateStyle]: 'query',
+  [LONGFORM_AI_COMMANDS.resolveTaskRoute]: 'query',
 
   [IDEA_CAPSULE_COMMANDS.list]: 'query',
   [IDEA_CAPSULE_COMMANDS.get]: 'query',

@@ -240,6 +240,12 @@ function domainErrorMessage(code: string): AuthorErrorMessage | null {
       message: '本次检查所依据的版本或内容不再是当前状态。',
       suggestedAction: '请重新选择当前定稿并再次检查。',
     };
+  if (code.startsWith('LONGFORM_'))
+    return {
+      title: '长篇创作设置未完成',
+      message: '长篇记忆、文风档案或智能任务分配没有安全完成，正文与权威故事资料保持不变。',
+      suggestedAction: '请重新读取作品设置，确认定稿来源和可用智能连接后重试。',
+    };
   if (code.startsWith('TASK_'))
     return {
       title: '后台任务未完成',

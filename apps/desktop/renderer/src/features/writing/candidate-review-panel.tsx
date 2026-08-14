@@ -57,6 +57,7 @@ export function CandidateReviewPanel({
   onDraftReplace,
   onClose,
   getRewriteSelectionAnchor,
+  initialGenerationMode,
 }: {
   readonly bridge: RendererBridgeAdapter;
   readonly chapter: Chapter;
@@ -66,6 +67,7 @@ export function CandidateReviewPanel({
   readonly onDraftReplace: (draft: DraftDocument, message: string) => void;
   readonly onClose: () => void;
   readonly getRewriteSelectionAnchor: () => Promise<RewriteSelectionAnchor | null>;
+  readonly initialGenerationMode?: string | null;
 }) {
   const readOnly = project.databaseMode !== 'read-write';
   const [candidates, setCandidates] = useState<readonly CandidateSummary[]>([]);
@@ -93,6 +95,15 @@ export function CandidateReviewPanel({
     setMergeMappingMode,
   } = useGenerationSources(bridge, project.projectId, chapter.id);
   const [generationMode, setGenerationMode] = useState<GenerationMode>('chapter');
+  useEffect(() => {
+    if (
+      initialGenerationMode === 'skeleton' ||
+      initialGenerationMode === 'chapter' ||
+      initialGenerationMode === 'rewrite'
+    ) {
+      setGenerationMode(initialGenerationMode);
+    }
+  }, [initialGenerationMode]);
   const [chapterSource, setChapterSource] =
     useState<ChapterGenerationSource>('direct_chapter_goal');
   const [chapterGoal, setChapterGoal] = useState('');
@@ -107,7 +118,8 @@ export function CandidateReviewPanel({
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
   const [selectedRun, setSelectedRun] = useState<GenerationRun | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [generationStatus, setGenerationStatus] = useState('选择智能连接后可生成建议稿。');
+  const [generationStatus, setGenerationStatus] =
+    useState('可按任务自动选择智能连接，也可手动指定。');
   const [skeletonEndingHook, setSkeletonEndingHook] = useState('');
   const [skeletonTendency, setSkeletonTendency] = useState('');
   const [lastGenerationIntent, setLastGenerationIntent] = useState<GenerationIntent | null>(null);
@@ -175,7 +187,7 @@ export function CandidateReviewPanel({
     setActiveTaskId(null);
     setLastGenerationIntent(null);
     setStatus('正在读取当前章节建议稿…');
-    setGenerationStatus('选择智能连接后可生成建议稿。');
+    setGenerationStatus('可按任务自动选择智能连接，也可手动指定。');
     void refreshList(() => active).then((items) => {
       if (!active) return;
       const first = items[0];
@@ -279,6 +291,7 @@ export function CandidateReviewPanel({
       commandPrefix,
       draft,
       providerId,
+      providers,
       readOnly,
       flush,
       generationMode,
@@ -344,8 +357,8 @@ export function CandidateReviewPanel({
         mergeMappingMode={mergeMappingMode}
         pending={pending}
         proseCandidates={proseCandidates}
-        providers={providers}
         providerId={providerId}
+        providers={providers}
         readOnly={readOnly}
         sceneBeats={sceneBeats}
         selectedSkeletonId={selectedSkeletonId}
@@ -390,7 +403,6 @@ export function CandidateReviewPanel({
         pending={pending}
         preview={preview}
         previewRequest={previewRequest}
-        providerId={providerId}
         providers={providers}
         readOnly={readOnly}
         reviewGroups={reviewGroups}

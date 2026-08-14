@@ -32,11 +32,18 @@ import {
   RecoveryServiceError,
   createRecoveryRuntime,
   hashFile,
+  readBackupMetadata,
   verifyDatabase,
+  type RecoveryRuntime,
   type RecoveryServiceErrorCode,
   type RecoveryServiceOptions,
 } from './backup-manifest.js';
 import { IdempotentBackupCleanupOperations } from './idempotent-cleanup.js';
+import {
+  finalizeArtifactBackup,
+  removeArtifactBackup,
+  restoreArtifactBackup,
+} from './project-artifact-backup.js';
 import { VersionExportOperations } from './version-export.js';
 
 export { RecoveryServiceError };
@@ -93,6 +100,7 @@ function backupRecordValues(record: BackupRecord): (string | number | null)[] {
 
 export class RecoveryService {
   readonly #workspace: ProjectWorkspaceService;
+  readonly #runtime: RecoveryRuntime;
   readonly #create: BackupCreateOperations;
   readonly #cleanup: IdempotentBackupCleanupOperations;
   readonly #restore: BackupRestoreOperations;
@@ -105,16 +113,16 @@ export class RecoveryService {
     this.#workspace = workspace;
     this.#backupRootDirectory = path.resolve(options.backupRootDirectory);
     this.#now = () => options.clock?.now() ?? new Date();
-    const runtime = createRecoveryRuntime(workspace, options);
-    this.#create = new BackupCreateOperations(runtime);
-    this.#cleanup = new IdempotentBackupCleanupOperations(runtime);
-    this.#restore = new BackupRestoreOperations(runtime);
-    this.#versionExport = new VersionExportOperations(runtime);
+    this.#runtime = createRecoveryRuntime(workspace, options);
+    this.#create = new BackupCreateOperations(this.#runtime);
+    this.#cleanup = new IdempotentBackupCleanupOperations(this.#runtime);
+    this.#restore = new BackupRestoreOperations(this.#runtime);
+    this.#versionExport = new VersionExportOperations(this.#runtime);
   }
 
   createOperationCheckpoint(requestId: string, raw: RecoveryCreateInput): Promise<BackupRecord> {
-    return this.#share('create-checkpoint', requestId, raw, 'BACKUP_CREATE_FAILED', () =>
-      this.#create.createOperationCheckpoint(requestId, raw),
+    return this.#share('create-checkpoint', requestId, raw, 'BACKUP_CREATE_FAILED', async () =>
+      this.#finalizeBackupArtifacts(await this.#create.createOperationCheckpoint(requestId, raw)),
     );
   }
 
@@ -130,7 +138,9 @@ export class RecoveryService {
 
     const execute = (): Promise<BackupRecord> =>
       this.#share('create-daily', requestId, input, 'BACKUP_CREATE_FAILED', async () => {
-        const candidate = await this.#create.createDailyBackup(requestId, input);
+        const candidate = await this.#finalizeBackupArtifacts(
+          await this.#create.createDailyBackup(requestId, input),
+        );
         return this.#finalizeDailyWinner(input.projectId, day, candidate);
       });
     const operation = existing ? existing.promise.then(execute, execute) : execute();
@@ -144,8 +154,8 @@ export class RecoveryService {
   }
 
   createNamedSnapshot(requestId: string, raw: RecoveryNamedSnapshotInput): Promise<BackupRecord> {
-    return this.#share('create-named', requestId, raw, 'BACKUP_CREATE_FAILED', () =>
-      this.#create.createNamedSnapshot(requestId, raw),
+    return this.#share('create-named', requestId, raw, 'BACKUP_CREATE_FAILED', async () =>
+      this.#finalizeBackupArtifacts(await this.#create.createNamedSnapshot(requestId, raw)),
     );
   }
 
@@ -178,9 +188,15 @@ export class RecoveryService {
   ): Promise<RecoveryCleanupResult> {
     const input = RecoveryCleanupApplyInputSchema.parse(raw);
     this.#assertCleanupPolicyReadable(input.projectId);
-    return this.#share('apply-cleanup', requestId, input, 'BACKUP_CLEANUP_STALE', () =>
-      this.#cleanup.applyCleanup(requestId, input),
-    );
+    return this.#share('apply-cleanup', requestId, input, 'BACKUP_CLEANUP_STALE', async () => {
+      const result = await this.#cleanup.applyCleanup(requestId, input);
+      await Promise.allSettled(
+        result.deletedBackupIds.map((backupId) =>
+          removeArtifactBackup(this.#backupRootDirectory, input.projectId, backupId),
+        ),
+      );
+      return result;
+    });
   }
 
   restoreCheckpoint(
@@ -193,12 +209,64 @@ export class RecoveryService {
       requestId,
       { raw, targetParentDirectory },
       'RESTORE_TARGET_CONFLICT',
-      () => this.#restore.restoreCheckpoint(requestId, raw, targetParentDirectory),
+      async () => {
+        const input = raw;
+        const metadata = (await readBackupMetadata(this.#runtime, input.projectId)).find(
+          (record) => record.backupId === input.backupId,
+        );
+        if (!metadata) {
+          throw new RecoveryServiceError('BACKUP_NOT_FOUND', 'The checkpoint was not found.');
+        }
+        const restored = await this.#restore.restoreCheckpoint(requestId, raw, targetParentDirectory);
+        try {
+          await restoreArtifactBackup(this.#runtime, metadata, restored.workspacePath);
+          return restored;
+        } catch (error) {
+          throw error instanceof RecoveryServiceError
+            ? error
+            : new RecoveryServiceError(
+                'RESTORE_VERIFY_FAILED',
+                'Managed project artifacts could not be restored completely.',
+                { cause: error },
+              );
+        }
+      },
     );
   }
 
   exportVersion(raw: RecoveryExportInput, targetDirectory: string): Promise<RecoveryVersionExport> {
     return this.#versionExport.exportVersion(raw, targetDirectory);
+  }
+
+  async #finalizeBackupArtifacts(record: BackupRecord): Promise<BackupRecord> {
+    try {
+      return await finalizeArtifactBackup(this.#runtime, record);
+    } catch (error) {
+      await this.#discardIncompleteBackup(record);
+      if (error instanceof RecoveryServiceError) throw error;
+      throw new RecoveryServiceError(
+        'BACKUP_VERIFY_FAILED',
+        'Managed project artifacts could not be captured completely.',
+        { cause: error },
+      );
+    }
+  }
+
+  async #discardIncompleteBackup(record: BackupRecord): Promise<void> {
+    await Promise.allSettled([
+      this.#workspace.writeProject(randomUUID(), record.projectId, (database) => {
+        database
+          .prepare('DELETE FROM backup_records WHERE id = ? AND project_id = ?')
+          .run(record.backupId, record.projectId);
+      }),
+      rm(path.join(this.#backupRootDirectory, record.projectId, record.backupFileName), {
+        force: true,
+      }),
+      rm(path.join(this.#backupRootDirectory, record.projectId, `${record.backupId}.json`), {
+        force: true,
+      }),
+      removeArtifactBackup(this.#backupRootDirectory, record.projectId, record.backupId),
+    ]);
   }
 
   async #finalizeDailyWinner(
@@ -287,6 +355,7 @@ export class RecoveryService {
         await Promise.all([
           rm(path.join(directory, loser.backupFileName), { force: true }),
           rm(path.join(directory, `${loser.backupId}.json`), { force: true }),
+          removeArtifactBackup(this.#backupRootDirectory, projectId, loser.backupId),
         ]);
       }),
     );

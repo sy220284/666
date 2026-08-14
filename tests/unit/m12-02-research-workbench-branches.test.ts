@@ -173,13 +173,24 @@ describe('M12-02 research workbench defensive branch coverage', () => {
       ...catalog,
       notes: [
         ...catalog.notes,
-        { ...note, id: '77777777-7777-4777-8777-777777777777', createdAt: '2026-08-14T09:00:00.000Z' },
-        { ...note, id: '88888888-8888-4888-8888-888888888888', createdAt: '2026-08-14T10:00:00.000Z' },
+        {
+          ...note,
+          id: '77777777-7777-4777-8777-777777777777',
+          createdAt: '2026-08-14T09:00:00.000Z',
+        },
+        {
+          ...note,
+          id: '88888888-8888-4888-8888-888888888888',
+          createdAt: '2026-08-14T10:00:00.000Z',
+        },
       ],
     };
     const createNote = vi.fn(async () => success(expanded));
     const onSelectNote = vi.fn();
-    const renderer = await render({ list: vi.fn(async () => success(catalog)), createNote }, { onSelectNote });
+    const renderer = await render(
+      { list: vi.fn(async () => success(catalog)), createNote },
+      { onSelectNote },
+    );
 
     await act(async () => {
       invoke(buttonByText(renderer.root, '新建笔记'), 'onClick');
@@ -199,7 +210,10 @@ describe('M12-02 research workbench defensive branch coverage', () => {
   it('treats stale list and mutation outcomes as no-op results instead of author-visible failures', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const staleSelection = vi.fn();
-    const staleLoad = await render({ list: vi.fn(async () => stale()) }, { onSelectNote: staleSelection });
+    const staleLoad = await render(
+      { list: vi.fn(async () => stale()) },
+      { onSelectNote: staleSelection },
+    );
     expect(staleSelection).not.toHaveBeenCalled();
     await act(async () => staleLoad.unmount());
 

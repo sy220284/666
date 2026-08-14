@@ -86,6 +86,7 @@ describe('M4-04 search, replacement and rhythm IPC boundary', () => {
             draftCount: 0,
             versionCount: 0,
             entityCount: 0,
+            researchCount: 0,
             failedCount: 0,
             status: 'ready',
           };

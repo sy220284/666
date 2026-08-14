@@ -1,0 +1,79 @@
+name: M12-02 Draft Verify
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m12-02-draft-verify-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: github.event.pull_request.head.ref == 'work' && github.event.pull_request.draft == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: work
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Format every changed PR text file with locked Prettier
+        shell: bash
+        run: |
+          mapfile -t files < <(git diff --name-only origin/main...HEAD | grep -E '\.(ts|tsx|js|mjs|cjs|json|md|yml|yaml)$' || true)
+          if (( ${#files[@]} > 0 )); then
+            pnpm exec prettier --write "${files[@]}"
+          fi
+          pnpm exec prettier --check .
+          pnpm exec prettier --version
+      - name: Run workspace boundaries
+        run: |
+          pnpm check:workspaces
+          pnpm check:boundaries
+      - name: Run lint and typecheck
+        run: |
+          pnpm lint
+          pnpm typecheck
+      - name: Prepare tests
+        run: pnpm test:prepare
+      - name: Run M12-02 closure and regression tests
+        run: >-
+          pnpm exec vitest run
+          tests/unit/ar08-contracts-public-surface.test.ts
+          tests/unit/m10-12-generation-cancel-barrier.test.ts
+          tests/unit/m10-12-generation-cancel-order.test.ts
+          tests/unit/m10-12-generation-persist-cancel-race.test.ts
+          tests/unit/m10-19-lifecycle-renderer-recovery.test.ts
+          tests/unit/ipc-handlers-branch-coverage.test.ts
+          tests/unit/m11-05-idea-navigation.test.ts
+          tests/unit/m11-project-operation-semantics.test.ts
+          tests/unit/renderer-m3-09-workbenches.test.ts
+          tests/security/search-rhythm-ipc.test.ts
+          tests/integration/recovery-request-replay.test.ts
+          tests/integration/m12-02-research-assets.test.ts
+          tests/integration/m12-02-research-closure.test.ts
+          tests/integration/m12-02-generation-research-reference.test.ts
+          tests/integration/m12-02-artifact-move.test.ts
+          tests/reliability/m12-02-artifact-recovery.test.ts
+      - name: Commit locked formatting only
+        shell: bash
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -u
+            git add tests/integration/m12-02-generation-research-reference.test.ts tests/integration/m12-02-artifact-move.test.ts
+            git commit -m 'format(M12-02): apply locked Prettier output'
+            git push origin HEAD:work
+          fi

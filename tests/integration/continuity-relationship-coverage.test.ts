@@ -7,11 +7,29 @@ import {
   closeContinuityHarness,
   createContinuityHarness,
   seedContinuity,
+  type ContinuityHarness,
 } from './continuity-hardening-harness.js';
 
 const evidence = (versionId: string) => [
   { kind: 'version' as const, targetId: versionId, note: '' },
 ];
+
+async function finalVersionForChapter(
+  harness: ContinuityHarness,
+  projectId: string,
+  chapterId: string,
+  title: string,
+): Promise<string> {
+  const draft = await harness.drafts.open(randomUUID(), { projectId, chapterId });
+  const version = await harness.versions.create(randomUUID(), {
+    projectId,
+    chapterId,
+    draftId: draft.draftId,
+    baseRevision: draft.revision,
+    title,
+  });
+  return version.versionId;
+}
 
 afterEach(async () => {
   await cleanupContinuityHarnesses();
@@ -22,6 +40,18 @@ describe('character relationship history coverage', () => {
     const harness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
+      const version2 = await finalVersionForChapter(
+        harness,
+        seeded.project.projectId,
+        seeded.chapter2.id,
+        '第二章关系来源',
+      );
+      const version3 = await finalVersionForChapter(
+        harness,
+        seeded.project.projectId,
+        seeded.chapter3.id,
+        '第三章关系来源',
+      );
       const catalog = await harness.canon.create(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -38,14 +68,14 @@ describe('character relationship history coverage', () => {
         toCharacterId: other.id,
         category: 'alliance' as const,
         label: '盟友',
-        sourceVersionId: seeded.version.versionId,
-        evidence: evidence(seeded.version.versionId),
       };
 
       let result = await harness.continuity.setCharacterRelationship(randomUUID(), {
         ...common,
         validFromChapterId: seeded.chapter1.id,
         validUntilChapterId: seeded.chapter4.id,
+        sourceVersionId: seeded.version.versionId,
+        evidence: evidence(seeded.version.versionId),
       });
       const first = result.relationships.find(
         (relationship) => relationship.recordStatus === 'current',
@@ -55,6 +85,8 @@ describe('character relationship history coverage', () => {
         ...common,
         validFromChapterId: seeded.chapter2.id,
         validUntilChapterId: null,
+        sourceVersionId: version2,
+        evidence: evidence(version2),
       });
       const historicalFirst = result.relationships.find(
         (relationship) => relationship.id === first.id,
@@ -71,6 +103,8 @@ describe('character relationship history coverage', () => {
         ...common,
         validFromChapterId: seeded.chapter3.id,
         validUntilChapterId: null,
+        sourceVersionId: version3,
+        evidence: evidence(version3),
       });
       expect(
         result.relationships.find((relationship) => relationship.id === second.id),
@@ -87,6 +121,18 @@ describe('character relationship history coverage', () => {
     const harness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
+      const version2 = await finalVersionForChapter(
+        harness,
+        seeded.project.projectId,
+        seeded.chapter2.id,
+        '第二章回填来源',
+      );
+      const version3 = await finalVersionForChapter(
+        harness,
+        seeded.project.projectId,
+        seeded.chapter3.id,
+        '第三章当前来源',
+      );
       const catalog = await harness.canon.create(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -103,19 +149,21 @@ describe('character relationship history coverage', () => {
         toCharacterId: other.id,
         category: 'rivalry' as const,
         label: '竞争者',
-        sourceVersionId: seeded.version.versionId,
-        evidence: evidence(seeded.version.versionId),
         validUntilChapterId: null,
       };
 
       await harness.continuity.setCharacterRelationship(randomUUID(), {
         ...common,
         validFromChapterId: seeded.chapter3.id,
+        sourceVersionId: version3,
+        evidence: evidence(version3),
       });
       await expect(
         harness.continuity.setCharacterRelationship(randomUUID(), {
           ...common,
           validFromChapterId: seeded.chapter2.id,
+          sourceVersionId: version2,
+          evidence: evidence(version2),
         }),
       ).rejects.toMatchObject({ code: 'CONTINUITY_CONFLICT' });
     } finally {

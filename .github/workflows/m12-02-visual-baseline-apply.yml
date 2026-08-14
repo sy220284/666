@@ -23,21 +23,19 @@ jobs:
         with:
           ref: work
           fetch-depth: 0
+      - name: Download immutable stable visual source artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: 9234964206
+          path: /tmp/m12-02-stable-visual-source
+          github-token: ${{ github.token }}
+          repository: sy220284/666
+          run-id: 31841828379
       - name: Apply independently witnessed stable visual baselines
-        env:
-          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           source_dir=/tmp/m12-02-stable-visual-source
-          rm -rf "$source_dir" /tmp/m12-02-stable-visual-source.zip
-          mkdir -p "$source_dir"
-
-          gh api \
-            -H 'Accept: application/vnd.github+json' \
-            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/9234964206/zip" \
-            > /tmp/m12-02-stable-visual-source.zip
-          unzip -q /tmp/m12-02-stable-visual-source.zip -d "$source_dir"
 
           verify_existing() {
             local snapshot="$1"
@@ -68,13 +66,12 @@ jobs:
           from pathlib import Path
           import struct
 
-          expected = {
-              'theme-a-light-1280x800.png': '49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7',
-              'theme-a-dark-1280x800.png': '01b9ee8bf53bb0ad2c941e53ffb47f95836f0352c3dd63278e768152e342de78',
-              'theme-b-light-1280x800.png': 'a1bea42416911316fc703108887bcc4903dadfd9f81882dcc1f40c6850cda8ce',
-              'theme-b-dark-1280x800.png': 'eb69c25d18f7bc4f129f687fd54493744b5f35d1642800ebabd3fb134d4ae774',
-          }
-          for name in expected:
+          for name in (
+              'theme-a-light-1280x800.png',
+              'theme-a-dark-1280x800.png',
+              'theme-b-light-1280x800.png',
+              'theme-b-dark-1280x800.png',
+          ):
               data = (Path('tests/e2e/visual-baselines') / name).read_bytes()
               if data[:8] != b'\x89PNG\r\n\x1a\n':
                   raise SystemExit(f'{name}: invalid PNG signature')

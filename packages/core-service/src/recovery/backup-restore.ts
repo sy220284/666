@@ -292,6 +292,7 @@ export class BackupRestoreOperations {
     requestId: string,
     raw: RecoveryRestoreInput,
     targetParentDirectory: string,
+    prepareStaging?: (stagingWorkspacePath: string) => Promise<void>,
   ): Promise<RecoveryRestoredProject> {
     const input = RecoveryRestoreInputSchema.parse(raw);
     const sourceProject = this.#runtime.workspace.assertActiveProject(input.projectId);
@@ -395,6 +396,7 @@ export class BackupRestoreOperations {
           flag: 'wx',
         },
       );
+      await prepareStaging?.(staging);
       await rename(staging, target);
       targetCreated = true;
       const registered = await this.#runtime.workspace.registerRecoveredWorkspace(requestId, target);

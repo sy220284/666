@@ -737,6 +737,21 @@ export class JournalService {
       ) {
         throw new JournalServiceError('JOURNAL_AI_CONFLICT', 'Journal AI run scope is invalid.');
       }
+      const source = database
+        .prepare(
+          `SELECT content_hash AS contentHash
+             FROM generation_input_sources
+            WHERE run_id = ? AND source_type = 'journal_entry' AND source_id = ?
+            ORDER BY source_order
+            LIMIT 1`,
+        )
+        .get(input.runId, entry.id) as { readonly contentHash?: string | null } | undefined;
+      if (!source?.contentHash || source.contentHash !== entry.sourceHash) {
+        throw new JournalServiceError(
+          'JOURNAL_AI_CONFLICT',
+          'Journal AI source changed before completion.',
+        );
+      }
       if (run.status !== 'queued' && run.status !== 'running') {
         throw new JournalServiceError('JOURNAL_AI_CONFLICT', 'Journal AI run is no longer active.');
       }

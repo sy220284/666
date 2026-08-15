@@ -138,6 +138,14 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
   });
 
   useEffect(() => {
+    const projectId = activeProject?.projectId;
+    if (!projectId) return;
+    if (activeProject?.databaseMode === 'read-only') return;
+    if (!window.worldforgeJournal) return;
+    void window.worldforgeJournal.catchUp({ projectId }).catch(() => undefined);
+  }, [activeProject?.databaseMode, activeProject?.projectId]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.isComposing) return;
       if (event.key === 'Escape' && commandPaletteOpen) {

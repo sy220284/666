@@ -4,6 +4,7 @@ import { ContinuityService } from './continuity.js';
 import { CoordinatedImportExportService } from './coordinated-import-export.js';
 import { DraftService } from './draft.js';
 import { EntityCanonService } from './entity-canon.js';
+import { JournalService } from './journal-service.js';
 import { LongformAiService } from './longform-ai-service.js';
 import { ProjectContinuationService } from './project-continuation.js';
 import { ProjectPlanningService } from './project-planning.js';
@@ -47,6 +48,7 @@ export function createUtilityProjectServiceContainer(
     ideas: new SafeIdeaCapsuleService(projectWorkspace),
     longformAi,
     research: new ResearchService(projectWorkspace),
+    journal: new JournalService(projectWorkspace),
     structureOperations: new ReferenceAwareStructureOperationService(projectWorkspace),
     drafts: new DraftService(projectWorkspace),
     candidates,

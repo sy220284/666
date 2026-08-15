@@ -54,6 +54,8 @@ const PROJECT_CLONE_POLICY = new Map<string, ProjectCloneAction>([
   ['project_dictionary', 'preserve'],
   ['project_settings', 'preserve'],
   ['story_digests', 'regenerate'],
+  ['project_journal_preferences', 'clone-remap'],
+  ['project_journal_entries', 'clone-remap'],
   ['generation_runs', 'clone-remap'],
   ['generation_constraint_packages', 'preserve'],
   ['generation_result_refs', 'preserve'],

@@ -86,6 +86,39 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'IdeaSetStatusInputSchema',
   'IdeaSourceContextSchema',
   'IdeaStatusSchema',
+  'CoreJournalOperationSchema',
+  'CoreJournalResultSchema',
+  'JOURNAL_COMMANDS',
+  'JOURNAL_IPC_CHANNELS',
+  'JournalAiPromptInputSchema',
+  'JournalAiSummaryOutputJsonSchema',
+  'JournalAiSummaryOutputSchema',
+  'JournalCatalogResultSchema',
+  'JournalCatalogSchema',
+  'JournalCatchUpCommandSchema',
+  'JournalCatchUpInputSchema',
+  'JournalCursorSchema',
+  'JournalDeterministicSummarySchema',
+  'JournalDigestReferenceSchema',
+  'JournalEntrySchema',
+  'JournalEntryStatusSchema',
+  'JournalGenerateCommandSchema',
+  'JournalListCommandSchema',
+  'JournalListInputSchema',
+  'JournalMarkAiFailedCommandSchema',
+  'JournalMarkAiFailedInputSchema',
+  'JournalNavigationReferenceSchema',
+  'JournalPeriodTypeSchema',
+  'JournalPreferencesSchema',
+  'JournalPreviewCommandSchema',
+  'JournalPreviewResultSchema',
+  'JournalPreviewSchema',
+  'JournalScheduleSchema',
+  'JournalUpdateNoteCommandSchema',
+  'JournalUpdateNoteInputSchema',
+  'JournalUpdatePreferencesCommandSchema',
+  'JournalUpdatePreferencesInputSchema',
+  'JournalWindowInputSchema',
   'KnowledgeStateProposalDraftSchema',
   'KnowledgeStateProposalValueSchema',
   'LONGFORM_AI_COMMANDS',
@@ -179,7 +212,7 @@ const BASELINE = {
   protocolVersion: 1,
   ipcChannelCount: 97,
   appCommandCount: 96,
-  runtimeExportCount: 991,
+  runtimeExportCount: 1024,
   legacySurfaceSha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
 } as const;
 
@@ -217,6 +250,8 @@ describe('AR-08 contracts public surface', () => {
     expect(publicContracts.GenerationScopeSchema).toBeDefined();
     expect(publicContracts.ResearchCatalogSchema).toBeDefined();
     expect(publicContracts.CoreResearchOperationSchema).toBeDefined();
+    expect(publicContracts.CoreJournalOperationSchema).toBeDefined();
+    expect(publicContracts.JournalCatalogSchema).toBeDefined();
   });
 
   it('keeps the source compatibility root wired to the split modules', () => {

@@ -15,6 +15,7 @@ describe('M11-05 Generation workflow handler authority', () => {
       [
         'chapter',
         'idea_explore',
+        'journal_summarize',
         'merge',
         'rewrite',
         'skeleton',

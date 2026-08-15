@@ -5,6 +5,7 @@ import type { DraftService } from './draft.js';
 import type { EntityCanonService } from './entity-canon.js';
 import type { IdeaCapsuleService } from './idea-capsule-service.js';
 import type { ImportExportService } from './import-export.js';
+import type { JournalService } from './journal-service.js';
 import type { LongformAiService } from './longform-ai-service.js';
 import type { ProjectPlanningService } from './project-planning.js';
 import type { ProjectContinuationService } from './project-continuation.js';
@@ -31,6 +32,7 @@ export interface UtilityProjectServices {
   readonly ideas: IdeaCapsuleService;
   readonly longformAi: LongformAiService;
   readonly research: ResearchService;
+  readonly journal: JournalService;
   readonly structureOperations: StructureOperationService;
   readonly drafts: DraftService;
   readonly candidates: CandidateService;

@@ -7,6 +7,7 @@ import {
   GENERATION_COMMANDS,
   GenerationRequestSchema,
   IdeaExploreOutputSchema,
+  JournalAiSummaryOutputSchema,
   RewriteOutputSchema,
   SemanticValidationOutputSchema,
   SkeletonCandidateBatchOutputSchema,
@@ -21,6 +22,7 @@ import {
 import {
   chapterPrompt,
   ideaExplorePrompt,
+  journalSummaryPrompt,
   mergePrompt,
   parseChapterTextCandidate,
   rewritePrompt,
@@ -39,6 +41,7 @@ import {
   GenerationSourceResolverError,
   type GenerationSourceResolver,
 } from './generation-source-resolver.js';
+import type { JournalService } from './journal-service.js';
 import { createProviderAdapter } from './provider-adapter-runtime.js';
 import type { StateProposalService } from './state-proposal.js';
 import type { ValidationService } from './validation.js';
@@ -50,6 +53,7 @@ export interface UtilityGenerationServices {
   readonly sources: GenerationSourceResolver;
   readonly stateProposals: StateProposalService;
   readonly validation: ValidationService;
+  readonly journal: JournalService;
 }
 
 type StartOperation = Extract<
@@ -824,6 +828,94 @@ async function ideaExploreWorkflow({ services, requestId, operation }: Generatio
   });
 }
 
+async function journalSummarizeWorkflow({
+  services,
+  requestId,
+  operation,
+}: GenerationWorkflowContext) {
+  const input = operation.input;
+  if (input.intent.runType !== 'journal_summarize') {
+    return workflowMismatch('journal_summarize', input.intent.runType);
+  }
+  const intent = input.intent;
+  const scopeId = requireScopeId(input.scopeId);
+  if (input.scopeType !== 'project' || scopeId !== input.projectId) {
+    throw new GenerationSourceResolverError(
+      'GENERATION_SOURCE_NOT_FOUND',
+      'Journal summary generation requires the current project scope.',
+    );
+  }
+  const source = services.journal.prepareAiInput(input.projectId, intent.journalEntryId);
+  const profile = modelSupport(services, {
+    projectId: input.projectId,
+    providerId: operation.provider.id,
+    model: operation.provider.model,
+    taskType: 'journal_summarize',
+    promptId: journalSummaryPrompt.promptId,
+    promptVersion: journalSummaryPrompt.version,
+  });
+  const bundle = journalSummaryPrompt.build(source);
+  const provider = createProviderAdapter(operation.provider, operation.credential);
+  const started = await services.runtime.startStructured({
+    requestId,
+    run: {
+      projectId: input.projectId,
+      scopeType: 'project',
+      scopeId: input.projectId,
+      chapterId: null,
+      baseDraftId: null,
+      baseDraftRevision: null,
+      runType: 'journal_summarize',
+      promptId: journalSummaryPrompt.promptId,
+      promptVersion: journalSummaryPrompt.version,
+      outputMode: 'structured',
+      providerId: operation.provider.id,
+      actualModel: operation.provider.model,
+      supportStatus: profile.status,
+      constraintPackage: null,
+      inputSources: [
+        {
+          sourceType: 'journal_entry',
+          sourceId: intent.journalEntryId,
+          sourceOrder: 0,
+          contentHash: source.constraintHash,
+          metadata: { periodType: source.periodType },
+        },
+      ],
+      researchReferences: input.researchReferences,
+    },
+    provider,
+    requestFor: (runId) => request(runId, operation.provider.model, bundle, 4_096),
+    partialOnFailure: false,
+    onFailure: async (runId) => {
+      await services.journal.markAiFailed(randomUUID(), {
+        projectId: input.projectId,
+        entryId: intent.journalEntryId,
+        generationRunId: runId,
+      });
+    },
+    complete: async (runId, raw, usage) => {
+      const output = parseStructured(JournalAiSummaryOutputSchema, raw);
+      await services.journal.completeAiSummary(requestId, {
+        projectId: input.projectId,
+        entryId: intent.journalEntryId,
+        runId,
+        output,
+        usage,
+      });
+      const run = services.runs.get({ projectId: input.projectId, runId });
+      return { run, candidateIds: [], resultRefs: run.resultRefs };
+    },
+  });
+  await services.journal.markAiPending(randomUUID(), {
+    projectId: input.projectId,
+    entryId: intent.journalEntryId,
+    generationRunId: started.run.runId,
+    expectedSourceHash: source.constraintHash,
+  });
+  return started;
+}
+
 export const GenerationWorkflowHandlers = {
   skeleton: skeletonWorkflow,
   chapter: chapterWorkflow,
@@ -832,6 +924,7 @@ export const GenerationWorkflowHandlers = {
   validate: validateWorkflow,
   state_extract: stateExtractWorkflow,
   idea_explore: ideaExploreWorkflow,
+  journal_summarize: journalSummarizeWorkflow,
 } as const satisfies Record<GenerationRunType, GenerationWorkflowHandler>;
 
 async function startGeneration(

@@ -2,6 +2,7 @@ import {
   CANDIDATE_APPLY_COMMANDS,
   CANDIDATE_COMMANDS,
   DRAFT_COMMANDS,
+  JOURNAL_COMMANDS,
   RECOVERY_COMMANDS,
   RESEARCH_COMMANDS,
   TEXT_IO_COMMANDS,
@@ -138,6 +139,35 @@ export async function routeContentProjectOperation(
       return success(
         operation.operation,
         await services.research.removeLink(requestId, operation.input),
+      );
+    case JOURNAL_COMMANDS.list:
+      return success(operation.operation, services.journal.list(operation.input));
+    case JOURNAL_COMMANDS.preview:
+      return success(operation.operation, services.journal.preview(operation.input));
+    case JOURNAL_COMMANDS.generate:
+      return success(
+        operation.operation,
+        await services.journal.generate(requestId, operation.input),
+      );
+    case JOURNAL_COMMANDS.updateNote:
+      return success(
+        operation.operation,
+        await services.journal.updateNote(requestId, operation.input),
+      );
+    case JOURNAL_COMMANDS.updatePreferences:
+      return success(
+        operation.operation,
+        await services.journal.updatePreferences(requestId, operation.input),
+      );
+    case JOURNAL_COMMANDS.catchUp:
+      return success(
+        operation.operation,
+        await services.journal.catchUp(requestId, operation.input),
+      );
+    case JOURNAL_COMMANDS.markAiFailed:
+      return success(
+        operation.operation,
+        await services.journal.markAiFailed(requestId, operation.input),
       );
     case RECOVERY_COMMANDS.createCheckpoint:
       return success(

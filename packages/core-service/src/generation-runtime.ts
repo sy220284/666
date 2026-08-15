@@ -52,6 +52,7 @@ export interface StartStructuredGenerationInput {
   readonly provider: GenerationRuntimeProvider;
   readonly requestFor: (runId: string) => GenerationRequest;
   readonly partialOnFailure: boolean;
+  readonly onFailure?: (runId: string, errorCode: ErrorCode) => Promise<void>;
   readonly complete: (
     runId: string,
     text: string,
@@ -91,6 +92,7 @@ interface GenerationLifecycleInput<Prepared> {
     usage: GenerationUsage,
   ) => Promise<GenerationLifecycleResult>;
   readonly partialTextOnFailure: (text: string) => string | undefined;
+  readonly onFailure?: (runId: string, errorCode: ErrorCode) => Promise<void>;
 }
 
 function runtimeError(error: unknown): { readonly code: ErrorCode; readonly retryable: boolean } {
@@ -199,6 +201,7 @@ export class GenerationRuntime {
       persist: (_prepared, text, usage) => input.complete(run.runId, text, usage),
       partialTextOnFailure: (text) =>
         text && input.partialOnFailure && input.run.outputMode === 'text' ? text : undefined,
+      ...(input.onFailure ? { onFailure: input.onFailure } : {}),
     });
     this.#rememberExecution(run, completion);
     return { run, taskId: task.taskId };
@@ -477,6 +480,7 @@ export class GenerationRuntime {
       if (await this.#cancelled(initialRun.runId)) return;
       if (task.signal.aborted) return;
       const mapped = runtimeError(error);
+      let failedPersisted = false;
       try {
         const partialText = input.partialTextOnFailure(text);
         await this.#runs.fail(randomUUID(), {
@@ -486,6 +490,7 @@ export class GenerationRuntime {
           retryable: mapped.retryable,
           ...(partialText ? { partialText } : {}),
         });
+        failedPersisted = true;
       } catch (persistenceError) {
         if (!(
           persistenceError instanceof GenerationRunServiceError &&
@@ -493,6 +498,13 @@ export class GenerationRuntime {
         )) {
           task.fail('COMMON_INTERNAL_999', false);
           return;
+        }
+      }
+      if (failedPersisted && input.onFailure) {
+        try {
+          await input.onFailure(initialRun.runId, mapped.code);
+        } catch {
+          // Auxiliary failure-state projection must never replace the GenerationRun authority.
         }
       }
       task.fail(mapped.code, mapped.retryable);

@@ -28,6 +28,7 @@ import { stableSerialize } from '@worldforge/domain';
 import {
   chapterPrompt,
   ideaExplorePrompt,
+  journalSummaryPrompt,
   mergePrompt,
   rewritePrompt,
   skeletonPrompt,
@@ -218,6 +219,7 @@ function promptIdentity(taskType: AiTaskRouteResolveInput['taskType']): {
     validate: validatePrompt,
     state_extract: stateExtractPrompt,
     idea_explore: ideaExplorePrompt,
+    journal_summarize: journalSummaryPrompt,
   }[taskType];
   return { promptId: prompt.promptId, promptVersion: prompt.version };
 }

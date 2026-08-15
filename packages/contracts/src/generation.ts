@@ -236,6 +236,10 @@ const generationIntentSchemas = [
     authorInstruction: z.string().trim().min(1).max(32_768),
     count: z.number().int().min(1).max(8).default(4),
   }),
+  z.strictObject({
+    runType: z.literal('journal_summarize'),
+    journalEntryId: DraftEntityIdSchema,
+  }),
 ] as const;
 
 export const GenerationIntentSchema = z.discriminatedUnion('runType', generationIntentSchemas);
@@ -276,12 +280,37 @@ export const GenerationStartInputSchema = GenerationStartInputBaseSchema.superRe
         message: 'Chapter generation scope must use the same chapterId and scopeId.',
       });
     }
-    if (input.intent.runType !== 'idea_explore' && input.chapterId === null) {
+    if (
+      input.intent.runType !== 'idea_explore' &&
+      input.intent.runType !== 'journal_summarize' &&
+      input.chapterId === null
+    ) {
       context.addIssue({
         code: 'custom',
         path: ['chapterId'],
-        message: 'Legacy generation workflows still require a chapterId.',
+        message: 'Chapter generation workflows require a chapterId.',
       });
+    }
+    if (input.intent.runType === 'journal_summarize') {
+      if (input.scopeType !== 'project' || scopeId !== input.projectId) {
+        context.addIssue({
+          code: 'custom',
+          path: ['scopeType'],
+          message: 'Journal generation must use the current project scope.',
+        });
+      }
+      if (
+        input.chapterId !== null ||
+        input.baseDraftId !== null ||
+        input.baseDraftRevision !== null ||
+        input.continuationOfRunId !== null
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['intent'],
+          message: 'Journal generation cannot bind chapter Draft or continuation state.',
+        });
+      }
     }
   },
 ).transform((input) => ({

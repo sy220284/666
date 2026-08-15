@@ -39,6 +39,7 @@ import {
 import { CoreIdeaOperationSchema, CoreIdeaResultSchema } from './idea-capsule.js';
 import { CoreLongformAiOperationSchema, CoreLongformAiResultSchema } from './longform-ai.js';
 import { CoreResearchOperationSchema, CoreResearchResultSchema } from './research.js';
+import { CoreJournalOperationSchema, CoreJournalResultSchema } from './journal.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
@@ -342,6 +343,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreIdeaOperationSchema,
   CoreLongformAiOperationSchema,
   CoreResearchOperationSchema,
+  CoreJournalOperationSchema,
   CoreDraftOperationSchema,
   CoreCandidateOperationSchema,
   CoreCandidateApplyOperationSchema,
@@ -395,6 +397,7 @@ export const CoreProjectResultSchema = z.union([
   CoreIdeaResultSchema,
   CoreLongformAiResultSchema,
   CoreResearchResultSchema,
+  CoreJournalResultSchema,
   CoreDraftResultSchema,
   CoreCandidateResultSchema,
   CoreCandidateApplyResultSchema,

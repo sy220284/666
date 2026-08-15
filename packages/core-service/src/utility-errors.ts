@@ -9,6 +9,7 @@ import { DraftServiceError } from './draft.js';
 import { EntityCanonServiceError } from './entity-canon.js';
 import { IdeaCapsuleServiceError } from './idea-capsule-service.js';
 import { ImportExportServiceError } from './import-export.js';
+import { JournalServiceError } from './journal-service.js';
 import { LongformAiServiceError } from './longform-ai-service.js';
 import { NarrativePlanningServiceError } from './narrative-planning.js';
 import { ProjectPlanningError } from './project-planning.js';
@@ -87,6 +88,14 @@ export function projectOperationError(error: unknown): ErrorCode {
     if (error.code === 'RESEARCH_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'RESEARCH_INVALID') return 'COMMON_INVALID_INPUT_001';
     if (error.code === 'RESEARCH_CONFLICT') return 'COMMON_CONFLICT_003';
+    return 'COMMON_INTERNAL_999';
+  }
+  if (error instanceof JournalServiceError) {
+    if (error.code === 'JOURNAL_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'JOURNAL_INVALID') return 'COMMON_INVALID_INPUT_001';
+    if (error.code === 'JOURNAL_CONFLICT' || error.code === 'JOURNAL_AI_CONFLICT') {
+      return 'COMMON_CONFLICT_003';
+    }
     return 'COMMON_INTERNAL_999';
   }
   if (

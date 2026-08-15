@@ -67,7 +67,7 @@ describe('M11-05 generation scope guardrails migration', () => {
         .get() as { readonly sql: string };
 
       for (const sql of [insertTrigger.sql, updateTrigger.sql]) {
-        expect(sql).toContain("NEW.run_type <> 'idea_explore'");
+        expect(sql).toContain("NEW.run_type NOT IN ('idea_explore', 'journal_summarize')");
         expect(sql).toContain("NEW.scope_type <> 'chapter'");
         expect(sql).toContain('NEW.scope_id <> NEW.chapter_id');
         expect(sql).toContain('chapter.active_draft_id = draft.id');

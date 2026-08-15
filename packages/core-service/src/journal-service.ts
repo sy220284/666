@@ -592,14 +592,16 @@ export class JournalService {
 
   async updateNote(requestId: string, raw: JournalUpdateNoteInput): Promise<JournalCatalog> {
     const input = JournalUpdateNoteInputSchema.parse(raw);
-    const now = this.#clock.now().toISOString();
+    const nowMs = this.#clock.now().getTime();
+    const previousMs = Date.parse(input.expectedUpdatedAt);
+    const updatedAt = new Date(Math.max(nowMs, previousMs + 1)).toISOString();
     await this.#workspace.writeProject(requestId, input.projectId, (database) => {
       const changed = database
         .prepare(
           `UPDATE project_journal_entries SET author_note = ?, updated_at = ?
             WHERE id = ? AND project_id = ? AND updated_at = ?`,
         )
-        .run(input.authorNote, now, input.entryId, input.projectId, input.expectedUpdatedAt);
+        .run(input.authorNote, updatedAt, input.entryId, input.projectId, input.expectedUpdatedAt);
       if (Number(changed.changes) !== 1) {
         if (
           !database

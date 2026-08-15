@@ -292,6 +292,7 @@ describe('JournalService', () => {
       authorNote: '今天把第一章定稿。',
     });
     expect(saved.entries[0]?.authorNote).toBe('今天把第一章定稿。');
+    expect(saved.entries[0]?.updatedAt).not.toBe(entry.updatedAt);
 
     await expect(
       service.updateNote(randomUUID(), {

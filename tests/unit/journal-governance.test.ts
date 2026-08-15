@@ -39,7 +39,7 @@ describe('M12-01 Project Journal governance', () => {
       'utf8',
     ).toLowerCase();
     const renderer = readFileSync(
-      resolve(process.cwd(), 'apps/desktop/renderer/src/app/app-shell-pages.tsx'),
+      resolve(process.cwd(), 'apps/desktop/renderer/src/app/app-shell-m3.tsx'),
       'utf8',
     );
 

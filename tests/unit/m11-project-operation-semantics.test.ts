@@ -7,6 +7,7 @@ import {
   DRAFT_COMMANDS,
   ENTITY_CANON_COMMANDS,
   IDEA_CAPSULE_COMMANDS,
+  JOURNAL_COMMANDS,
   LONGFORM_AI_COMMANDS,
   NARRATIVE_PLANNING_COMMANDS,
   PROJECT_PLANNING_COMMANDS,
@@ -42,6 +43,7 @@ const commandGroups = [
   RHYTHM_COMMANDS,
   STORY_KNOWLEDGE_COMMANDS,
   IDEA_CAPSULE_COMMANDS,
+  JOURNAL_COMMANDS,
   LONGFORM_AI_COMMANDS,
   RESEARCH_COMMANDS,
   DRAFT_COMMANDS,
@@ -75,6 +77,8 @@ describe('M11 Project Operation Semantics', () => {
     expect(projectOperationKind(STORY_KNOWLEDGE_COMMANDS.project)).toBe('query');
     expect(projectOperationKind(IDEA_CAPSULE_COMMANDS.list)).toBe('query');
     expect(projectOperationKind(IDEA_CAPSULE_COMMANDS.applyConversion)).toBe('mutation');
+    expect(projectOperationKind(JOURNAL_COMMANDS.list)).toBe('query');
+    expect(projectOperationKind(JOURNAL_COMMANDS.generate)).toBe('mutation');
     expect(projectOperationKind(RESEARCH_COMMANDS.list)).toBe('query');
     expect(projectOperationKind(RESEARCH_COMMANDS.createNote)).toBe('mutation');
   });

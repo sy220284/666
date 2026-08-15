@@ -5,6 +5,7 @@ import {
   CANDIDATE_IPC_CHANNELS,
   IDEA_CAPSULE_IPC_CHANNELS,
   IPC_CHANNELS,
+  JOURNAL_IPC_CHANNELS,
   PROTOCOL_VERSION,
   RESEARCH_IPC_CHANNELS,
 } from '@worldforge/contracts';
@@ -207,6 +208,7 @@ const productionHandlerChannels = sorted([
     (channel) => channel !== CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
   ),
   ...Object.values(IDEA_CAPSULE_IPC_CHANNELS),
+  ...Object.values(JOURNAL_IPC_CHANNELS),
   ...Object.values(RESEARCH_IPC_CHANNELS),
 ]);
 const removableHandlerChannels = sorted([

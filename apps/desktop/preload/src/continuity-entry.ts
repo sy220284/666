@@ -1,3 +1,12 @@
-import './bridge.js';
+import './entry.js';
+import './continuity-bridge.js';
+import './narrative-planning-bridge.js';
+import './state-proposal-bridge.js';
+import './validation-bridge.js';
+import './search-tools-bridge.js';
+import './rhythm-bridge.js';
+import './story-knowledge-bridge.js';
+import './longform-ai-bridge.js';
+import './idea-capsule-bridge.js';
 import './journal-bridge.js';
 import './research-bridge.js';

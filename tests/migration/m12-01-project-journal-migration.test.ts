@@ -40,12 +40,12 @@ describe('M12-01 Project Journal migration', () => {
       recentProjects: appRuntime.recentProjects,
       clock,
     });
-    const projectId = randomUUID();
     const project = await workspace.create(
-      projectId,
+      randomUUID(),
       { name: 'M12-01 日志迁移验证', channel: '长篇' },
       parent,
     );
+    const projectId = project.projectId;
     await workspace.shutdown();
     await appRuntime.close();
 

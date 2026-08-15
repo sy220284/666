@@ -14,6 +14,7 @@
     "work": "6dfd29cc4a286224957b773699958b35823a622f"
   },
   "allowedPaths": [
+    ".github/workflows/m12-01-product-regression-fix.yml",
     "migrations/project/",
     "packages/contracts/src/",
     "packages/core-service/src/",

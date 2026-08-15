@@ -18,10 +18,7 @@ const periodEnd = '2026-08-15T00:00:00.000Z';
 const updatedAt = '2026-08-15T01:00:00.000Z';
 
 type JournalOptions = Parameters<typeof registerJournalIpc>[0];
-type RegisteredHandler = (
-  event: unknown,
-  raw: unknown,
-) => Promise<unknown> | unknown;
+type RegisteredHandler = (event: unknown, raw: unknown) => Promise<unknown> | unknown;
 
 const trustedEvent = { senderFrame: { url: rendererUrl } };
 const untrustedEvent = { senderFrame: { url: 'https://evil.example' } };
@@ -136,9 +133,7 @@ describe('M12-01 Journal IPC boundary coverage', () => {
       before: null,
     });
 
-    await expect(
-      call(harness, JOURNAL_IPC_CHANNELS.list, {}),
-    ).resolves.toMatchObject({
+    await expect(call(harness, JOURNAL_IPC_CHANNELS.list, {})).resolves.toMatchObject({
       ok: false,
       error: { code: 'COMMON_INVALID_INPUT_001' },
     });
@@ -156,9 +151,7 @@ describe('M12-01 Journal IPC boundary coverage', () => {
       operation: JOURNAL_COMMANDS.list,
       errorCode: 'COMMON_NOT_FOUND_002',
     });
-    await expect(
-      call(harness, JOURNAL_IPC_CHANNELS.list, listCommand),
-    ).resolves.toMatchObject({
+    await expect(call(harness, JOURNAL_IPC_CHANNELS.list, listCommand)).resolves.toMatchObject({
       ok: false,
       requestId,
       error: { code: 'COMMON_NOT_FOUND_002' },
@@ -169,9 +162,7 @@ describe('M12-01 Journal IPC boundary coverage', () => {
       operation: JOURNAL_COMMANDS.list,
       data: catalog(),
     });
-    await expect(
-      call(harness, JOURNAL_IPC_CHANNELS.list, listCommand),
-    ).resolves.toEqual({
+    await expect(call(harness, JOURNAL_IPC_CHANNELS.list, listCommand)).resolves.toEqual({
       ok: true,
       requestId,
       data: catalog(),
@@ -191,9 +182,7 @@ describe('M12-01 Journal IPC boundary coverage', () => {
       periodEnd,
     });
 
-    await expect(
-      call(harness, JOURNAL_IPC_CHANNELS.preview, null),
-    ).resolves.toMatchObject({
+    await expect(call(harness, JOURNAL_IPC_CHANNELS.preview, null)).resolves.toMatchObject({
       ok: false,
       error: { code: 'COMMON_INVALID_INPUT_001' },
     });
@@ -223,9 +212,7 @@ describe('M12-01 Journal IPC boundary coverage', () => {
       operation: JOURNAL_COMMANDS.preview,
       data: preview(),
     });
-    await expect(
-      call(harness, JOURNAL_IPC_CHANNELS.preview, previewCommand),
-    ).resolves.toEqual({
+    await expect(call(harness, JOURNAL_IPC_CHANNELS.preview, previewCommand)).resolves.toEqual({
       ok: true,
       requestId,
       data: preview(),
@@ -238,12 +225,8 @@ describe('M12-01 Journal IPC boundary coverage', () => {
 
   it('registers and removes the complete Journal IPC surface symmetrically', () => {
     const harness = createHarness();
-    expect([...harness.handlers.keys()].sort()).toEqual(
-      Object.values(JOURNAL_IPC_CHANNELS).sort(),
-    );
+    expect([...harness.handlers.keys()].sort()).toEqual(Object.values(JOURNAL_IPC_CHANNELS).sort());
     harness.unregister();
-    expect(harness.removed.sort()).toEqual(
-      Object.values(JOURNAL_IPC_CHANNELS).sort(),
-    );
+    expect(harness.removed.sort()).toEqual(Object.values(JOURNAL_IPC_CHANNELS).sort());
   });
 });

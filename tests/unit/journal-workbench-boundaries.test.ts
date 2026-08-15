@@ -63,11 +63,7 @@ function controlByLabel(root: TestInstance, label: string): TestInstance {
   return control;
 }
 
-function invoke(
-  node: TestInstance,
-  name: 'onClick' | 'onChange',
-  argument?: unknown,
-): void {
+function invoke(node: TestInstance, name: 'onClick' | 'onChange', argument?: unknown): void {
   const handler = node.props[name];
   if (typeof handler !== 'function') throw new Error(`Missing ${name} handler.`);
   (handler as (value?: unknown) => void)(argument);
@@ -241,9 +237,7 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
     });
     expect(textContent(renderer.root)).toContain('定时设置保存失败。');
 
-    await act(async () =>
-      invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'),
-    );
+    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
     const aiButton = buttonContaining(renderer.root, '生成智能复盘');
     expect(aiButton.props.disabled).toBe(true);
     await act(async () => {
@@ -269,9 +263,7 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
       }),
     );
 
-    await act(async () =>
-      invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'),
-    );
+    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
     expect(renderer.root.findAll((node) => node.type === 'textarea')).toHaveLength(0);
     await act(async () => renderer.unmount());
 
@@ -280,9 +272,7 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
     installWindow(readOnlyJournal);
     const writableProvider = createBridge();
     const readOnlyRenderer = await renderWorkbench(writableProvider.bridge, true);
-    await act(async () =>
-      invoke(buttonContaining(readOnlyRenderer.root, '确定性复盘'), 'onClick'),
-    );
+    await act(async () => invoke(buttonContaining(readOnlyRenderer.root, '确定性复盘'), 'onClick'));
     await act(async () => {
       invoke(buttonContaining(readOnlyRenderer.root, '保存备注'), 'onClick');
       invoke(buttonContaining(readOnlyRenderer.root, '生成智能复盘'), 'onClick');
@@ -334,9 +324,7 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
       const bridge = createBridge({ getRun });
       const renderer = await renderWorkbench(bridge.bridge);
 
-      await act(async () =>
-        invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'),
-      );
+      await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
       await act(async () => {
         invoke(buttonContaining(renderer.root, '生成智能复盘'), 'onClick');
         await flushPromises();
@@ -351,10 +339,7 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
         expect(textContent(renderer.root)).toContain(scenario.notice);
       }
       await act(async () => renderer.unmount());
-      if (
-        scenario.outcome.state === 'success' &&
-        scenario.outcome.data.status === 'running'
-      ) {
+      if (scenario.outcome.state === 'success' && scenario.outcome.data.status === 'running') {
         expect(clearTimeout).toHaveBeenCalled();
       }
     }
@@ -419,5 +404,176 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
       resolveProviders({ state: 'success', data: { providers: [] } });
       await flushPromises();
     });
+  });
+
+  it('covers reload failures, pagination and AI lifecycle fallbacks', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const baseCatalog = catalog();
+    const quietBridge = createBridge({ providers: [] }).bridge;
+
+    installWindow({
+      catchUp: vi.fn().mockResolvedValue({ ok: false, error: { message: '补偿失败。' } }),
+      list: vi.fn().mockResolvedValue({ ok: false, error: { message: '回读失败。' } }),
+    });
+    let renderer = await renderWorkbench(quietBridge);
+    expect(textContent(renderer.root)).toContain('创作日志读取失败：回读失败。');
+    await act(async () => renderer.unmount());
+
+    installWindow({
+      catchUp: vi.fn().mockResolvedValue({ ok: false, error: { message: '补偿失败。' } }),
+      list: vi.fn().mockRejectedValue('非 Error 读取失败'),
+    });
+    renderer = await renderWorkbench(quietBridge);
+    expect(textContent(renderer.root)).toContain('创作日志读取失败。');
+    await act(async () => renderer.unmount());
+
+    const olderEntryId = '55555555-5555-4555-8555-555555555555';
+    const firstCatalog = contractInput<JournalCatalog>({
+      ...baseCatalog,
+      entries: [{ ...entry(), aiSummary: '已有智能复盘' }],
+      nextCursor: { periodEnd, id: entryId },
+    });
+    const olderCatalog = contractInput<JournalCatalog>({
+      ...baseCatalog,
+      entries: [{ ...entry(), id: olderEntryId, authorNote: null, aiSummary: null }],
+      nextCursor: null,
+    });
+    const list = vi.fn().mockResolvedValue({ ok: true, data: olderCatalog });
+    installWindow({
+      catchUp: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+      list,
+      generate: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+      updatePreferences: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+      updateNote: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+      markAiFailed: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+    });
+    renderer = await renderWorkbench(createBridge().bridge);
+    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
+    expect(textContent(renderer.root)).toContain('已有智能复盘');
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '加载更早日志'), 'onClick');
+      await flushPromises();
+    });
+    expect(list).toHaveBeenCalledWith({
+      projectId,
+      limit: 30,
+      before: { periodEnd, id: entryId },
+    });
+    expect(
+      renderer.root.findAll(
+        (node) => node.type === 'li' && node.props.className === 'journal-entry',
+      ),
+    ).toHaveLength(2);
+    await act(async () => renderer.unmount());
+
+    const markAiFailed = vi.fn().mockResolvedValue({
+      ok: false,
+      error: { message: '失败状态回写未完成。' },
+    });
+    const failureCatalog = catalog();
+    installWindow({
+      catchUp: vi.fn().mockResolvedValue({ ok: true, data: failureCatalog }),
+      list: vi.fn().mockResolvedValue({ ok: true, data: failureCatalog }),
+      generate: vi.fn().mockResolvedValue({ ok: true, data: failureCatalog }),
+      updatePreferences: vi.fn().mockResolvedValue({ ok: true, data: failureCatalog }),
+      updateNote: vi.fn().mockResolvedValue({ ok: true, data: failureCatalog }),
+      markAiFailed,
+    });
+    const failedStart = vi.fn().mockResolvedValue({
+      state: 'failure',
+      error: { code: 'AI_CONNECTION_FAILED_003', message: '连接失败。' },
+    });
+    renderer = await renderWorkbench(createBridge({ start: failedStart }).bridge);
+    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '生成智能复盘'), 'onClick');
+      await flushPromises();
+    });
+    expect(markAiFailed).toHaveBeenCalledWith({
+      projectId,
+      entryId,
+      generationRunId: null,
+    });
+    expect(textContent(renderer.root)).toContain('智能复盘未启动');
+    await act(async () => renderer.unmount());
+
+    const timers = [];
+    const runningCatalog = catalog();
+    installWindow(
+      {
+        catchUp: vi.fn().mockResolvedValue({ ok: true, data: runningCatalog }),
+        list: vi.fn().mockResolvedValue({ ok: true, data: runningCatalog }),
+        generate: vi.fn().mockResolvedValue({ ok: true, data: runningCatalog }),
+        updatePreferences: vi.fn().mockResolvedValue({ ok: true, data: runningCatalog }),
+        updateNote: vi.fn().mockResolvedValue({ ok: true, data: runningCatalog }),
+        markAiFailed: vi.fn().mockResolvedValue({ ok: true, data: runningCatalog }),
+      },
+      timers,
+    );
+    const getRun = vi.fn().mockResolvedValue({
+      state: 'success',
+      data: { runId, projectId, status: 'running' },
+    });
+    renderer = await renderWorkbench(createBridge({ getRun }).bridge);
+    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '生成智能复盘'), 'onClick');
+      await flushPromises();
+    });
+    expect(timers.length).toBeGreaterThan(0);
+    const latePoll = timers.at(-1);
+    await act(async () => renderer.unmount());
+    await act(async () => {
+      latePoll?.();
+      await flushPromises();
+    });
+    expect(getRun).toHaveBeenCalled();
+  });
+
+  it('covers missing Journal bridge fail-fast path', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.stubGlobal('window', {
+      worldforgeJournal: undefined,
+      setTimeout: vi.fn(),
+      clearTimeout: vi.fn(),
+    });
+    await expect(renderWorkbench(createBridge({ providers: [] }).bridge)).rejects.toThrow();
+  });
+
+  it('keeps the current Journal page when loading older logs fails', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const firstCatalog = contractInput<JournalCatalog>({
+      ...catalog(),
+      nextCursor: { periodEnd, id: entryId },
+    });
+    const list = vi.fn().mockResolvedValue({
+      ok: false,
+      error: { message: '更早日志读取失败。' },
+    });
+    installWindow({
+      catchUp: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+      list,
+      generate: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+      updatePreferences: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+      updateNote: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+      markAiFailed: vi.fn().mockResolvedValue({ ok: true, data: firstCatalog }),
+    });
+    const renderer = await renderWorkbench(createBridge({ providers: [] }).bridge);
+    const entries = () =>
+      renderer.root.findAll(
+        (node) => node.type === 'li' && node.props.className === 'journal-entry',
+      );
+    expect(entries()).toHaveLength(1);
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '加载更早日志'), 'onClick');
+      await flushPromises();
+    });
+    expect(list).toHaveBeenCalledWith({
+      projectId,
+      limit: 30,
+      before: { periodEnd, id: entryId },
+    });
+    expect(entries()).toHaveLength(1);
+    await act(async () => renderer.unmount());
   });
 });

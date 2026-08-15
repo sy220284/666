@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  JOURNAL_COMMANDS,
-  type JournalCatalog,
-  type JournalPreview,
-} from '@worldforge/contracts';
+import { JOURNAL_COMMANDS, type JournalCatalog, type JournalPreview } from '@worldforge/contracts';
 import { routeContentProjectOperation } from '../../packages/core-service/src/utility-project-content-router.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
@@ -80,9 +76,7 @@ function createHarness() {
     catchUp: vi.fn(async () => catalog()),
     markAiFailed: vi.fn(async () => catalog()),
   };
-  const services = contractInput<
-    Parameters<typeof routeContentProjectOperation>[0]
-  >({ journal });
+  const services = contractInput<Parameters<typeof routeContentProjectOperation>[0]>({ journal });
   return { journal, services };
 }
 

@@ -175,6 +175,13 @@ Journal 只读取现有记录，包括：
 
 必须说明每类 deterministic summary 字段实际读取的权威来源，证明 Journal 是派生层而非第二真源。
 
+## 收口验证记录
+
+- 实现冻结点：`86623d672e9bdecd5d83bb182bec06183794f216`。
+- Schema 2 Evidence 已绑定实现冻结点，清单覆盖 `README.md`、`summary.md`、`commands.txt`、`known-risks.md`。
+- PR #402 保持 Draft 并启用完整验证路由；只有最新完整验证全部成功后才进入 Ready。
+- 实现冻结点之后只允许任务卡、Runtime、TASK_INDEX 与本任务 Evidence 等收口路径变化，不再混入产品代码。
+
 ## 回滚策略
 
 整体回滚 Journal UI、调度与领域接口；Journal 属于作者辅助记录，不得影响 Canon / Continuity / Planning / Version 等核心数据。Migration 保持 append-only。

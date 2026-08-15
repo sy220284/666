@@ -36,10 +36,7 @@ type ProjectDatabase = Parameters<Parameters<ProjectWorkspaceService['readProjec
 const systemClock: DatabaseClock = { now: () => new Date() };
 
 export type JournalServiceErrorCode =
-  | 'JOURNAL_NOT_FOUND'
-  | 'JOURNAL_INVALID'
-  | 'JOURNAL_CONFLICT'
-  | 'JOURNAL_AI_CONFLICT';
+  'JOURNAL_NOT_FOUND' | 'JOURNAL_INVALID' | 'JOURNAL_CONFLICT' | 'JOURNAL_AI_CONFLICT';
 
 export class JournalServiceError extends Error {
   readonly code: JournalServiceErrorCode;
@@ -154,7 +151,10 @@ function readEntry(database: ProjectDatabase, projectId: string, entryId: string
   return entryFromRow(row);
 }
 
-function preference(database: ProjectDatabase, projectId: string): ReturnType<typeof JournalPreferencesSchema.parse> {
+function preference(
+  database: ProjectDatabase,
+  projectId: string,
+): ReturnType<typeof JournalPreferencesSchema.parse> {
   const row = database
     .prepare(
       `SELECT project_id AS projectId, schedule, updated_at AS updatedAt
@@ -166,7 +166,11 @@ function preference(database: ProjectDatabase, projectId: string): ReturnType<ty
     .prepare('SELECT created_at AS createdAt FROM projects WHERE id = ?')
     .get(projectId) as { readonly createdAt?: string } | undefined;
   if (!project?.createdAt) throw new JournalServiceError('JOURNAL_NOT_FOUND', 'Project not found.');
-  return JournalPreferencesSchema.parse({ projectId, schedule: 'off', updatedAt: project.createdAt });
+  return JournalPreferencesSchema.parse({
+    projectId,
+    schedule: 'off',
+    updatedAt: project.createdAt,
+  });
 }
 
 function sourceHash(summary: JournalDeterministicSummary): string {
@@ -514,7 +518,9 @@ export class JournalService {
 
   list(raw: JournalListInput): JournalCatalog {
     const input = JournalListInputSchema.parse(raw);
-    return this.#workspace.readProject(input.projectId, (database) => this.#catalog(database, input));
+    return this.#workspace.readProject(input.projectId, (database) =>
+      this.#catalog(database, input),
+    );
   }
 
   preview(raw: JournalWindowInput): JournalPreview {
@@ -543,8 +549,7 @@ export class JournalService {
             WHERE project_id = ? AND period_type = ? AND period_start = ? AND period_end = ?`,
         )
         .get(input.projectId, input.periodType, input.periodStart, input.periodEnd) as
-        | { readonly id: string; readonly sourceHash: string }
-        | undefined;
+        { readonly id: string; readonly sourceHash: string } | undefined;
       if (!existing) {
         database
           .prepare(
@@ -600,10 +605,17 @@ export class JournalService {
         )
         .run(input.authorNote, now, input.entryId, input.projectId, input.expectedUpdatedAt);
       if (Number(changed.changes) !== 1) {
-        if (!database.prepare('SELECT 1 FROM project_journal_entries WHERE id = ? AND project_id = ?').get(input.entryId, input.projectId)) {
+        if (
+          !database
+            .prepare('SELECT 1 FROM project_journal_entries WHERE id = ? AND project_id = ?')
+            .get(input.entryId, input.projectId)
+        ) {
           throw new JournalServiceError('JOURNAL_NOT_FOUND', 'Journal entry not found.');
         }
-        throw new JournalServiceError('JOURNAL_CONFLICT', 'Journal entry changed before note save.');
+        throw new JournalServiceError(
+          'JOURNAL_CONFLICT',
+          'Journal entry changed before note save.',
+        );
       }
     });
     return this.list({ projectId: input.projectId, limit: 30, before: null });
@@ -663,7 +675,11 @@ export class JournalService {
     const now = this.#clock.now().toISOString();
     await this.#workspace.writeProject(requestId, input.projectId, (database) => {
       const entry = readEntry(database, input.projectId, input.entryId);
-      if (input.generationRunId && entry.generationRunId && entry.generationRunId !== input.generationRunId) {
+      if (
+        input.generationRunId &&
+        entry.generationRunId &&
+        entry.generationRunId !== input.generationRunId
+      ) {
         throw new JournalServiceError('JOURNAL_AI_CONFLICT', 'Journal AI run identity changed.');
       }
       database
@@ -727,7 +743,12 @@ export class JournalService {
             readonly status: string;
           }
         | undefined;
-      if (!run || run.runType !== 'journal_summarize' || run.scopeType !== 'project' || run.scopeId !== input.projectId) {
+      if (
+        !run ||
+        run.runType !== 'journal_summarize' ||
+        run.scopeType !== 'project' ||
+        run.scopeId !== input.projectId
+      ) {
         throw new JournalServiceError('JOURNAL_AI_CONFLICT', 'Journal AI run scope is invalid.');
       }
       if (run.status !== 'queued' && run.status !== 'running') {
@@ -783,7 +804,12 @@ export class JournalService {
           ORDER BY period_end DESC, id DESC
           LIMIT ?`,
       )
-      .all(parsed.projectId, parsed.before, parsed.before, parsed.limit + 1) as unknown as JournalRow[];
+      .all(
+        parsed.projectId,
+        parsed.before,
+        parsed.before,
+        parsed.limit + 1,
+      ) as unknown as JournalRow[];
     const page = rows.slice(0, parsed.limit);
     return JournalCatalogSchema.parse({
       projectId: parsed.projectId,

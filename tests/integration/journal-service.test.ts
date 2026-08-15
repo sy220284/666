@@ -3,7 +3,10 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { JournalService, JournalServiceError } from '../../packages/core-service/src/journal-service.js';
+import {
+  JournalService,
+  JournalServiceError,
+} from '../../packages/core-service/src/journal-service.js';
 import type { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 
 const PROJECT_ID = '00000000-0000-4000-8000-000000000001';
@@ -307,6 +310,8 @@ describe('JournalService', () => {
       periodStart: START,
       periodEnd: END,
     });
-    expect(service.list({ projectId: OTHER_PROJECT_ID, limit: 30, before: null }).entries).toEqual([]);
+    expect(service.list({ projectId: OTHER_PROJECT_ID, limit: 30, before: null }).entries).toEqual(
+      [],
+    );
   });
 });

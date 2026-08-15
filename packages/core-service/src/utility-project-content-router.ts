@@ -121,7 +121,10 @@ export async function routeContentProjectOperation(
         await services.research.importAttachment(requestId, operation.input, operation.sourcePath),
       );
     case RESEARCH_COMMANDS.previewAttachment:
-      return success(operation.operation, await services.research.previewAttachment(operation.input));
+      return success(
+        operation.operation,
+        await services.research.previewAttachment(operation.input),
+      );
     case RESEARCH_COMMANDS.deleteAttachment:
       return success(
         operation.operation,
@@ -231,7 +234,10 @@ export async function routeContentProjectOperation(
         await services.textIo.commitImport(requestId, operation.input),
       );
     case TEXT_IO_COMMANDS.listExportVersions:
-      return success(operation.operation, services.textIo.listExportVersions(operation.input.projectId));
+      return success(
+        operation.operation,
+        services.textIo.listExportVersions(operation.input.projectId),
+      );
     case TEXT_IO_COMMANDS.exportVersions: {
       const catalog = services.textIo.listExportVersions(operation.input.projectId);
       if (mixesWholeBookFinalsWithOtherVersions(operation.input.versionIds, catalog.versions)) {

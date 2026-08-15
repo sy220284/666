@@ -140,7 +140,10 @@ export function registerJournalIpc(options: JournalIpcOptions): () => void {
       operation: JOURNAL_COMMANDS.preview,
       input: parsed.data.payload,
     });
-    const result = await options.supervisor.invokeProjectOperation(parsed.data.requestId, operation);
+    const result = await options.supervisor.invokeProjectOperation(
+      parsed.data.requestId,
+      operation,
+    );
     if (!result.ok) {
       const code: ErrorCode = result.errorCode;
       return JournalPreviewResultSchema.parse({

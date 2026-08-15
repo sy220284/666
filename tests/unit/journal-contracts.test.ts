@@ -29,7 +29,12 @@ function deterministicSummary() {
       commentsResolved: 1,
     },
     ideas: { created: 1, converted: 1 },
-    knowledge: { relationshipChanges: 1, timelineChanges: 1, foreshadowingChanges: 1, arcChanges: 1 },
+    knowledge: {
+      relationshipChanges: 1,
+      timelineChanges: 1,
+      foreshadowingChanges: 1,
+      arcChanges: 1,
+    },
     recovery: { backupsCreated: 1 },
     digestReferences: [],
   });

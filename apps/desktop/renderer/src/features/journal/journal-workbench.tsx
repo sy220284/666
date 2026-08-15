@@ -86,7 +86,8 @@ function localWeek(): { start: string; end: string } {
 }
 
 function formatPeriod(entry: JournalEntry): string {
-  const kind = entry.periodType === 'daily' ? '每日' : entry.periodType === 'weekly' ? '每周' : '手动';
+  const kind =
+    entry.periodType === 'daily' ? '每日' : entry.periodType === 'weekly' ? '每周' : '手动';
   return `${kind} · ${new Date(entry.periodStart).toLocaleString()} — ${new Date(entry.periodEnd).toLocaleString()}`;
 }
 
@@ -97,7 +98,12 @@ function statusText(entry: JournalEntry): string {
   return '确定性复盘';
 }
 
-export function JournalWorkbench({ bridge, projectId, readOnly, onNavigate }: JournalWorkbenchProps) {
+export function JournalWorkbench({
+  bridge,
+  projectId,
+  readOnly,
+  onNavigate,
+}: JournalWorkbenchProps) {
   const [catalog, setCatalog] = useState<JournalCatalog | null>(null);
   const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
   const [providerId, setProviderId] = useState('');
@@ -369,13 +375,25 @@ export function JournalWorkbench({ bridge, projectId, readOnly, onNavigate }: Jo
         </label>
         <label>
           起始日期
-          <input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} />
+          <input
+            type="date"
+            value={customStart}
+            onChange={(event) => setCustomStart(event.target.value)}
+          />
         </label>
         <label>
           结束日期
-          <input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} />
+          <input
+            type="date"
+            value={customEnd}
+            onChange={(event) => setCustomEnd(event.target.value)}
+          />
         </label>
-        <button type="button" disabled={readOnly || pending !== null} onClick={() => void generateCustom()}>
+        <button
+          type="button"
+          disabled={readOnly || pending !== null}
+          onClick={() => void generateCustom()}
+        >
           指定范围复盘
         </button>
       </div>
@@ -397,8 +415,8 @@ export function JournalWorkbench({ bridge, projectId, readOnly, onNavigate }: Jo
               </button>
               <p>
                 净字数 {summary.writing.netCharacters} · 写作会话 {summary.writing.sessions} · 定稿{' '}
-                {summary.versions.finalized} · 采用建议稿 {summary.generation.acceptedCandidates} · 已处理检查{' '}
-                {summary.review.validationIssuesResolved}
+                {summary.versions.finalized} · 采用建议稿 {summary.generation.acceptedCandidates} ·
+                已处理检查 {summary.review.validationIssuesResolved}
               </p>
               {expanded ? (
                 <div className="journal-entry-detail">
@@ -409,7 +427,8 @@ export function JournalWorkbench({ bridge, projectId, readOnly, onNavigate }: Jo
                   </p>
                   <p>
                     关系变化 {summary.knowledge.relationshipChanges} · 时间线{' '}
-                    {summary.knowledge.timelineChanges} · 伏笔 {summary.knowledge.foreshadowingChanges} · 人物成长线{' '}
+                    {summary.knowledge.timelineChanges} · 伏笔{' '}
+                    {summary.knowledge.foreshadowingChanges} · 人物成长线{' '}
                     {summary.knowledge.arcChanges}
                   </p>
                   {summary.navigationReferences.length > 0 ? (

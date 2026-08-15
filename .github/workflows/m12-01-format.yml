@@ -1,4 +1,4 @@
-name: M12-01 Final Locked Formatter
+name: M12-01 Closure Repair
 
 on:
   push:
@@ -10,11 +10,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: m12-01-final-locked-formatter
+  group: m12-01-closure-repair
   cancel-in-progress: true
 
 jobs:
-  format:
+  repair:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -29,28 +29,77 @@ jobs:
           node-version: 24.18.1
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply repository locked Prettier to current task TypeScript changes
+      - name: Wire Journal catch-up to project IANA timezone helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/core-service/src/journal-service.ts')
+          text = path.read_text()
+
+          import_old = "import type { ProjectWorkspaceService } from './project-workspace.js';\nimport { stableJson } from './stable-json.js';"
+          import_new = "import { journalCatchUpWindow } from './journal-period.js';\nimport type { ProjectWorkspaceService } from './project-workspace.js';\nimport { stableJson } from './stable-json.js';"
+          if import_old not in text:
+              raise SystemExit('journal-service import anchor not found')
+          text = text.replace(import_old, import_new, 1)
+
+          legacy = """function previousDaily(now: Date): { start: string; end: string } {
+            const end = new Date(now);
+            end.setUTCHours(0, 0, 0, 0);
+            const start = new Date(end);
+            start.setUTCDate(start.getUTCDate() - 1);
+            return { start: start.toISOString(), end: end.toISOString() };
+          }
+
+          function previousWeekly(now: Date): { start: string; end: string } {
+            const end = new Date(now);
+            end.setUTCHours(0, 0, 0, 0);
+            const day = end.getUTCDay();
+            const sinceMonday = day === 0 ? 6 : day - 1;
+            end.setUTCDate(end.getUTCDate() - sinceMonday);
+            const start = new Date(end);
+            start.setUTCDate(start.getUTCDate() - 7);
+            return { start: start.toISOString(), end: end.toISOString() };
+          }
+
+          """
+          if legacy not in text:
+              raise SystemExit('legacy UTC catch-up helpers not found')
+          text = text.replace(legacy, '', 1)
+
+          catch_old = """    const now = input.now ? new Date(input.now) : this.#clock.now();
+              const period = current.schedule === 'daily' ? previousDaily(now) : previousWeekly(now);
+              const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;
+          """
+          catch_new = """    const now = input.now ? new Date(input.now) : this.#clock.now();
+              const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;
+              const period = this.#workspace.readProject(input.projectId, (database) =>
+                journalCatchUpWindow(database, input.projectId, periodType, now),
+              );
+          """
+          if catch_old not in text:
+              raise SystemExit('catch-up wiring anchor not found')
+          text = text.replace(catch_old, catch_new, 1)
+          path.write_text(text)
+          PY
+      - name: Apply repository locked Prettier
         shell: bash
         run: |
           set -euo pipefail
           mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.ts' '*.tsx' '*.d.ts')
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No TypeScript changes require formatting."
-            exit 0
-          fi
           pnpm exec prettier --write "${files[@]}"
-      - name: Commit authoritative formatting
+      - name: Commit audited closure repair
         shell: bash
         run: |
           set -euo pipefail
           if git diff --quiet; then
-            echo "No formatting changes required."
+            echo "No repair changes required."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- '*.ts' '*.tsx' '*.d.ts'
-          git commit -m "style(M12-01): format current task surface"
+          git add packages/core-service/src/journal-service.ts -- '*.ts' '*.tsx' '*.d.ts'
+          git commit -m "fix(M12-01): honor project timezone in catch-up"
           git push origin HEAD:work
-
-# closure-trigger: 2026-08-15T14:53+08:00

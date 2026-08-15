@@ -80,11 +80,16 @@ function createHarness() {
     catchUp: vi.fn(async () => catalog()),
     markAiFailed: vi.fn(async () => catalog()),
   };
-  const services = contractInput<Parameters<typeof routeContentProjectOperation>[0]>({ journal });
+  const services = contractInput<
+    Parameters<typeof routeContentProjectOperation>[0]
+  >({ journal });
   return { journal, services };
 }
 
-function operation(name: string, input: unknown): Parameters<typeof routeContentProjectOperation>[2] {
+function operation(
+  name: string,
+  input: unknown,
+): Parameters<typeof routeContentProjectOperation>[2] {
   return contractInput({ operation: name, input });
 }
 
@@ -111,9 +116,22 @@ describe('M12-01 Journal project-content routing', () => {
       ],
       [
         JOURNAL_COMMANDS.updateNote,
-        { projectId, entryId, expectedUpdatedAt: updatedAt, authorNote: '复盘备注' },
+        {
+          projectId,
+          entryId,
+          expectedUpdatedAt: updatedAt,
+          authorNote: '复盘备注',
+        },
         'updateNote',
-        [requestId, { projectId, entryId, expectedUpdatedAt: updatedAt, authorNote: '复盘备注' }],
+        [
+          requestId,
+          {
+            projectId,
+            entryId,
+            expectedUpdatedAt: updatedAt,
+            authorNote: '复盘备注',
+          },
+        ],
       ],
       [
         JOURNAL_COMMANDS.updatePreferences,

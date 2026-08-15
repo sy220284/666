@@ -70,6 +70,14 @@ describe('M12-01 Project Journal migration', () => {
       expect(finalizationTrigger.sql).toContain('AFTER UPDATE OF final_version_id');
       expect(finalizationTrigger.sql).toContain('finalized_at');
 
+      const journalTerminalTrigger = database
+        .prepare(
+          "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_generation_run_journal_terminal'",
+        )
+        .get() as { readonly sql: string };
+      expect(journalTerminalTrigger.sql).toContain("NEW.status IN ('failed', 'cancelled')");
+      expect(journalTerminalTrigger.sql).toContain("status = 'ai_failed'");
+
       const insertTrigger = database
         .prepare(
           "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_generation_runs_scope_insert'",
@@ -94,8 +102,9 @@ describe('M12-01 Project Journal migration', () => {
           status, stage, retry_count, partial_status, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
+      const journalRunId = randomUUID();
       insertRun.run(
-        randomUUID(),
+        journalRunId,
         randomUUID(),
         randomUUID(),
         projectId,
@@ -122,6 +131,38 @@ describe('M12-01 Project Journal migration', () => {
           )
           .get(),
       ).toEqual({ count: 1n });
+
+      const journalEntryId = randomUUID();
+      database
+        .prepare(
+          `INSERT INTO project_journal_entries(
+             id, project_id, period_type, period_start, period_end,
+             source_revision, source_hash, deterministic_summary_json,
+             ai_summary, author_note, generation_run_id, status, created_at, updated_at
+           ) VALUES(?, ?, 'manual', ?, ?, 1, ?, '{}', NULL, NULL, ?, 'ai_pending', ?, ?)`,
+        )
+        .run(
+          journalEntryId,
+          projectId,
+          '2026-08-14T00:00:00.000Z',
+          '2026-08-15T00:00:00.000Z',
+          'a'.repeat(64),
+          journalRunId,
+          clock.now().toISOString(),
+          clock.now().toISOString(),
+        );
+      database
+        .prepare(
+          "UPDATE generation_runs SET status = 'cancelled', stage = 'cancelled', finished_at = ? WHERE id = ?",
+        )
+        .run(clock.now().toISOString(), journalRunId);
+      expect(
+        database
+          .prepare(
+            'SELECT generation_run_id AS generationRunId, status FROM project_journal_entries WHERE id = ?',
+          )
+          .get(journalEntryId),
+      ).toEqual({ generationRunId: journalRunId, status: 'ai_failed' });
 
       expect(() =>
         insertRun.run(

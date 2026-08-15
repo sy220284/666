@@ -4,6 +4,7 @@ export const RENDERER_ROUTE_IDS = [
   'planning',
   'canon',
   'research',
+  'journal',
   'structure',
   'writing',
   'versions',

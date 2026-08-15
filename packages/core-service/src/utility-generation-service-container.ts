@@ -3,6 +3,7 @@ import { HardenedConstraintPackageService } from './constraint-package-hardening
 import { GenerationRunService } from './generation-run.js';
 import { GenerationRuntime, type GenerationTaskProtocol } from './generation-runtime.js';
 import { GenerationSourceResolver } from './generation-source-resolver.js';
+import { JournalService } from './journal-service.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { StateProposalService } from './state-proposal.js';
 import type { UtilityGenerationServices } from './utility-generation-router.js';
@@ -17,6 +18,7 @@ export function createUtilityGenerationServiceContainer(
   const candidates = new CandidateService(projectWorkspace);
   const stateProposals = new StateProposalService(projectWorkspace);
   const validation = new ValidationService(projectWorkspace);
+  const journal = new JournalService(projectWorkspace);
   const generationServices: UtilityGenerationServices = {
     constraints: new HardenedConstraintPackageService(projectWorkspace),
     runs: generationRuns,
@@ -24,6 +26,7 @@ export function createUtilityGenerationServiceContainer(
     sources: new GenerationSourceResolver(projectWorkspace, candidates),
     stateProposals,
     validation,
+    journal,
   };
 
   return {
@@ -32,6 +35,7 @@ export function createUtilityGenerationServiceContainer(
     candidates,
     stateProposals,
     validation,
+    journal,
     generationServices,
   };
 }

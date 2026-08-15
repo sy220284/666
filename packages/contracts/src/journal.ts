@@ -117,7 +117,7 @@ export const JournalDeterministicSummarySchema = z.strictObject({
   recovery: z.strictObject({
     backupsCreated: JournalCountSchema,
   }),
-  navigationReferences: z.array(JournalNavigationReferenceSchema).max(100),
+  navigationReferences: z.array(JournalNavigationReferenceSchema).max(100).default([]),
   digestReferences: z.array(JournalDigestReferenceSchema).max(10_000),
 });
 

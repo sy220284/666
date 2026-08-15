@@ -39,14 +39,14 @@ jobs:
           migration = Path('migrations/project/0036_project_journal.sql')
           text = migration.read_text()
           drop_anchor = 'DROP TRIGGER IF EXISTS trg_idea_card_generation_scope_insert;\n'
+          required_drops = (
+              "DROP TRIGGER IF EXISTS trg_generation_runs_scope_insert;\n"
+              "DROP TRIGGER IF EXISTS trg_generation_runs_scope_update;\n"
+              "DROP TRIGGER IF EXISTS trg_state_proposal_batch_scope_insert;\n"
+              "DROP TRIGGER IF EXISTS trg_validation_batch_scope_insert;\n"
+          )
           if 'DROP TRIGGER IF EXISTS trg_generation_runs_scope_insert;' not in text:
-              text = text.replace(
-                  drop_anchor,
-                  "DROP TRIGGER IF EXISTS trg_generation_runs_scope_insert;\n"
-                  "DROP TRIGGER IF EXISTS trg_generation_runs_scope_update;\n"
-                  + drop_anchor,
-                  1,
-              )
+              text = text.replace(drop_anchor, required_drops + drop_anchor, 1)
 
           if 'GENERATION_JOURNAL_SCOPE_INVALID' not in text:
               source = Path('migrations/project/0033_generation_scope_guardrails.sql').read_text()
@@ -73,10 +73,20 @@ jobs:
               if triggers.count(legacy_tail) != 2:
                   raise SystemExit('expected two legacy trigger anchors')
               triggers = triggers.replace(legacy_tail, journal_guard)
+
+              validation_source = Path('migrations/project/0025_state_validation.sql').read_text()
+              state_start = validation_source.index('CREATE TRIGGER trg_state_proposal_batch_scope_insert')
+              state_end = validation_source.index('CREATE TRIGGER trg_state_proposal_scope_insert', state_start)
+              state_trigger = validation_source[state_start:state_end]
+              validation_start = validation_source.index('CREATE TRIGGER trg_validation_batch_scope_insert')
+              validation_end = validation_source.index('CREATE TRIGGER trg_validation_issue_scope_insert', validation_start)
+              validation_trigger = validation_source[validation_start:validation_end]
+
               insert_anchor = 'ALTER TABLE generation_runs\nDROP COLUMN run_type_m12_01;\n\n'
               if insert_anchor not in text:
                   raise SystemExit('generation run migration anchor not found')
-              text = text.replace(insert_anchor, insert_anchor + triggers, 1)
+              rebuilt = triggers + state_trigger + validation_trigger
+              text = text.replace(insert_anchor, insert_anchor + rebuilt, 1)
           migration.write_text(text)
 
           legacy_test = Path('tests/migration/m11-05-generation-scope-guardrails.test.ts')

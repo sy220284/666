@@ -1,0 +1,71 @@
+name: M12-01 Evidence Manifest
+
+on:
+  push:
+    branches: [work]
+    paths:
+      - '.github/workflows/m12-01-evidence-manifest.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  manifest:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: work
+          fetch-depth: 0
+      - name: Generate Schema 2 manifest and self-remove
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import path from 'node:path';
+
+          const directory = 'docs/test-evidence/M12-01';
+          const files = readdirSync(directory, { withFileTypes: true })
+            .filter((entry) => entry.isFile() && entry.name !== 'manifest.json')
+            .map((entry) => entry.name)
+            .sort((left, right) => left.localeCompare(right, 'en'))
+            .map((relative) => {
+              const content = readFileSync(path.join(directory, relative));
+              return {
+                path: relative,
+                bytes: content.byteLength,
+                sha256: createHash('sha256').update(content).digest('hex'),
+              };
+            });
+
+          const manifest = {
+            schemaVersion: 2,
+            taskId: 'M12-01',
+            implementationCommit: '86623d672e9bdecd5d83bb182bec06183794f216',
+            generatedAt: new Date().toISOString(),
+            files,
+          };
+          writeFileSync(
+            path.join(directory, 'manifest.json'),
+            `${JSON.stringify(manifest, null, 2)}\n`,
+          );
+
+          const runtimePath = 'docs/tasks/runtime/M12-01.json';
+          const runtime = JSON.parse(readFileSync(runtimePath, 'utf8'));
+          runtime.allowedPaths = runtime.allowedPaths.filter(
+            (entry) => entry !== '.github/workflows/m12-01-evidence-manifest.yml',
+          );
+          writeFileSync(runtimePath, `${JSON.stringify(runtime, null, 2)}\n`);
+          NODE
+          node --input-type=module <<'NODE'
+          import { validateTaskEvidence } from './scripts/evidence-policy.mjs';
+          await validateTaskEvidence('M12-01');
+          NODE
+          rm .github/workflows/m12-01-evidence-manifest.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'docs(M12-01): generate Schema 2 evidence manifest'
+          git push origin HEAD:work

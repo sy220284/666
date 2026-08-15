@@ -29,6 +29,7 @@ import {
 } from '@worldforge/contracts';
 
 import type { DatabaseClock } from './database/index.js';
+import { journalCatchUpWindow } from './journal-period.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { stableJson } from './stable-json.js';
 
@@ -486,25 +487,6 @@ function deterministicSummary(
   });
 }
 
-function previousDaily(now: Date): { start: string; end: string } {
-  const end = new Date(now);
-  end.setUTCHours(0, 0, 0, 0);
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 1);
-  return { start: start.toISOString(), end: end.toISOString() };
-}
-
-function previousWeekly(now: Date): { start: string; end: string } {
-  const end = new Date(now);
-  end.setUTCHours(0, 0, 0, 0);
-  const day = end.getUTCDay();
-  const sinceMonday = day === 0 ? 6 : day - 1;
-  end.setUTCDate(end.getUTCDate() - sinceMonday);
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 7);
-  return { start: start.toISOString(), end: end.toISOString() };
-}
-
 export class JournalService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #clock: DatabaseClock;
@@ -649,8 +631,10 @@ export class JournalService {
       return this.list({ projectId: input.projectId, limit: 30, before: null });
     }
     const now = input.now ? new Date(input.now) : this.#clock.now();
-    const period = current.schedule === 'daily' ? previousDaily(now) : previousWeekly(now);
     const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;
+    const period = this.#workspace.readProject(input.projectId, (database) =>
+      journalCatchUpWindow(database, input.projectId, periodType, now),
+    );
     const exists = this.#workspace.readProject(input.projectId, (database) =>
       Boolean(
         database

@@ -29,6 +29,7 @@ import {
 } from '@worldforge/contracts';
 
 import type { DatabaseClock } from './database/index.js';
+import { sqliteResult } from './database/sqlite-result.js';
 import { journalNavigationReferences } from './journal-navigation.js';
 import { journalCatchUpWindow } from './journal-period.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
@@ -242,17 +243,19 @@ function deterministicSummary(
         WHERE project_id = ? AND last_input_at >= ? AND last_input_at < ?`,
     )
     .get(projectId, start, end) as SumRow | undefined;
-  const digestRows = database
-    .prepare(
-      `SELECT scope_type AS scopeType, scope_id AS scopeId, source_hash AS sourceHash,
+  const digestRows = sqliteResult<DigestRow[]>(
+    database
+      .prepare(
+        `SELECT scope_type AS scopeType, scope_id AS scopeId, source_hash AS sourceHash,
               freshness, semantic_revision AS semanticRevision, updated_at AS updatedAt
          FROM story_digests
         WHERE project_id = ?
         ORDER BY CASE scope_type WHEN 'project' THEN 0 WHEN 'volume' THEN 1 ELSE 2 END,
                  updated_at DESC, scope_id
         LIMIT 10000`,
-    )
-    .all(projectId) as unknown as DigestRow[];
+      )
+      .all(projectId),
+  );
 
   return JournalDeterministicSummarySchema.parse({
     periodStart: start,
@@ -852,9 +855,10 @@ export class JournalService {
     const parsed = JournalListInputSchema.parse(input);
     const cursorPeriodEnd = parsed.before?.periodEnd ?? null;
     const cursorId = parsed.before?.id ?? null;
-    const rows = database
-      .prepare(
-        `SELECT id, project_id AS projectId, period_type AS periodType,
+    const rows = sqliteResult<JournalRow[]>(
+      database
+        .prepare(
+          `SELECT id, project_id AS projectId, period_type AS periodType,
                 period_start AS periodStart, period_end AS periodEnd,
                 source_revision AS sourceRevision, source_hash AS sourceHash,
                 deterministic_summary_json AS deterministicSummaryJson,
@@ -870,15 +874,16 @@ export class JournalService {
             )
           ORDER BY period_end DESC, id DESC
           LIMIT ?`,
-      )
-      .all(
-        parsed.projectId,
-        cursorPeriodEnd,
-        cursorPeriodEnd,
-        cursorPeriodEnd,
-        cursorId,
-        parsed.limit + 1,
-      ) as unknown as JournalRow[];
+        )
+        .all(
+          parsed.projectId,
+          cursorPeriodEnd,
+          cursorPeriodEnd,
+          cursorPeriodEnd,
+          cursorId,
+          parsed.limit + 1,
+        ),
+    );
     const page = rows.slice(0, parsed.limit);
     const last = page.at(-1);
     return JournalCatalogSchema.parse({

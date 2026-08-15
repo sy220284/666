@@ -6,15 +6,12 @@
   "source": "docs/tasks/M12/M12-01_PROJECT_JOURNAL.md",
   "priority": "P1",
   "startedAt": "2026-08-15T11:36:00+08:00",
-  "dependencies": [
-    "M11-07"
-  ],
+  "dependencies": ["M11-07"],
   "baseline": {
     "main": "6dfd29cc4a286224957b773699958b35823a622f",
     "work": "6dfd29cc4a286224957b773699958b35823a622f"
   },
   "allowedPaths": [
-    ".github/workflows/m12-01-sqlite-boundary-fix.yml",
     "migrations/project/",
     "packages/contracts/src/",
     "packages/core-service/src/",

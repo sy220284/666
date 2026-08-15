@@ -5,6 +5,8 @@ import {
   type JournalNavigationReference,
 } from '@worldforge/contracts';
 
+import { sqliteResult } from './database/sqlite-result.js';
+
 interface ChapterRow {
   readonly id: string;
   readonly title: string;
@@ -50,9 +52,10 @@ export function journalNavigationReferences(
     references.push(JournalNavigationReferenceSchema.parse(reference));
   };
 
-  const chapters = database
-    .prepare(
-      `SELECT chapter.id, chapter.title
+  const chapters = sqliteResult<ChapterRow[]>(
+    database
+      .prepare(
+        `SELECT chapter.id, chapter.title
          FROM writing_sessions session
          JOIN chapters chapter ON chapter.id = session.chapter_id
         WHERE session.project_id = ?
@@ -60,15 +63,17 @@ export function journalNavigationReferences(
         GROUP BY chapter.id, chapter.title
         ORDER BY MAX(session.last_input_at) DESC, chapter.id
         LIMIT 25`,
-    )
-    .all(projectId, periodStart, periodEnd) as unknown as ChapterRow[];
+      )
+      .all(projectId, periodStart, periodEnd),
+  );
   for (const row of chapters) {
     append({ targetType: 'chapter', targetId: row.id, label: `章节 · ${row.title}` });
   }
 
-  const versions = database
-    .prepare(
-      `SELECT version.id, chapter.id AS chapterId, chapter.title AS chapterTitle
+  const versions = sqliteResult<VersionRow[]>(
+    database
+      .prepare(
+        `SELECT version.id, chapter.id AS chapterId, chapter.title AS chapterTitle
          FROM versions version
          JOIN chapters chapter ON chapter.id = version.chapter_id
          JOIN volumes volume ON volume.id = chapter.volume_id
@@ -76,8 +81,9 @@ export function journalNavigationReferences(
           AND version.created_at >= ? AND version.created_at < ?
         ORDER BY version.created_at DESC, version.id DESC
         LIMIT 25`,
-    )
-    .all(projectId, periodStart, periodEnd) as unknown as VersionRow[];
+      )
+      .all(projectId, periodStart, periodEnd),
+  );
   for (const row of versions) {
     append({
       targetType: 'version',
@@ -87,31 +93,35 @@ export function journalNavigationReferences(
     });
   }
 
-  const entities = database
-    .prepare(
-      `SELECT id, name
+  const entities = sqliteResult<EntityRow[]>(
+    database
+      .prepare(
+        `SELECT id, name
          FROM entities
         WHERE project_id = ? AND status = 'active'
           AND updated_at >= ? AND updated_at < ?
         ORDER BY updated_at DESC, id DESC
         LIMIT 20`,
-    )
-    .all(projectId, periodStart, periodEnd) as unknown as EntityRow[];
+      )
+      .all(projectId, periodStart, periodEnd),
+  );
   for (const row of entities) {
     append({ targetType: 'entity', targetId: row.id, label: `人物/设定 · ${row.name}` });
   }
 
-  const issues = database
-    .prepare(
-      `SELECT id, issue_type AS issueType, chapter_id AS chapterId,
+  const issues = sqliteResult<ValidationRow[]>(
+    database
+      .prepare(
+        `SELECT id, issue_type AS issueType, chapter_id AS chapterId,
               source_version_id AS versionId, logical_block_id AS logicalBlockId
          FROM validation_issues
         WHERE project_id = ?
           AND updated_at >= ? AND updated_at < ?
         ORDER BY updated_at DESC, id DESC
         LIMIT 20`,
-    )
-    .all(projectId, periodStart, periodEnd) as unknown as ValidationRow[];
+      )
+      .all(projectId, periodStart, periodEnd),
+  );
   for (const row of issues) {
     append({
       targetType: 'validation',
@@ -123,16 +133,18 @@ export function journalNavigationReferences(
     });
   }
 
-  const ideas = database
-    .prepare(
-      `SELECT id, title
+  const ideas = sqliteResult<IdeaRow[]>(
+    database
+      .prepare(
+        `SELECT id, title
          FROM idea_cards
         WHERE project_id = ?
           AND updated_at >= ? AND updated_at < ?
         ORDER BY updated_at DESC, id DESC
         LIMIT 20`,
-    )
-    .all(projectId, periodStart, periodEnd) as unknown as IdeaRow[];
+      )
+      .all(projectId, periodStart, periodEnd),
+  );
   for (const row of ideas) {
     append({ targetType: 'idea', targetId: row.id, label: `灵感 · ${row.title}` });
   }

@@ -14,4 +14,5 @@ export * from './rhythm.js';
 export * from './story-knowledge.js';
 export * from './longform-ai.js';
 export * from './research.js';
+export * from './journal.js';
 export * from './renderer-shutdown.js';

@@ -29,7 +29,7 @@ jobs:
           node-version: 24.18.1
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply audited Journal closure wiring
+      - name: Apply lifecycle and stale-result guards
         shell: bash
         run: |
           set -euo pipefail
@@ -38,79 +38,46 @@ jobs:
 
           service_path = Path('packages/core-service/src/journal-service.ts')
           text = service_path.read_text()
-
-          if "import { journalCatchUpWindow } from './journal-period.js';" not in text:
-              anchor = "import type { ProjectWorkspaceService } from './project-workspace.js';"
+          marker = 'Journal AI source changed before completion.'
+          if marker not in text:
+              anchor = "      if (run.status !== 'queued' && run.status !== 'running') {"
               if anchor not in text:
-                  raise SystemExit('project-workspace import anchor not found')
-              text = text.replace(anchor, "import { journalCatchUpWindow } from './journal-period.js';\n" + anchor, 1)
-
-          if "import { journalNavigationReferences } from './journal-navigation.js';" not in text:
-              anchor = "import { journalCatchUpWindow } from './journal-period.js';"
-              if anchor not in text:
-                  raise SystemExit('journal period import anchor not found')
-              text = text.replace(anchor, "import { journalNavigationReferences } from './journal-navigation.js';\n" + anchor, 1)
-
-          legacy_start = text.find('function previousDaily(now: Date):')
-          if legacy_start != -1:
-              legacy_end_marker = "  return { start: start.toISOString(), end: end.toISOString() };\n}\n\nexport class JournalService"
-              legacy_end = text.find(legacy_end_marker, legacy_start)
-              if legacy_end == -1:
-                  raise SystemExit('legacy UTC helper end anchor not found')
-              text = text[:legacy_start] + 'export class JournalService' + text[legacy_end + len(legacy_end_marker):]
-
-          old_catch = "    const period = current.schedule === 'daily' ? previousDaily(now) : previousWeekly(now);\n    const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;"
-          if old_catch in text:
-              new_catch = "    const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;\n    const period = this.#workspace.readProject(input.projectId, (database) =>\n      journalCatchUpWindow(database, input.projectId, periodType, now),\n    );"
-              text = text.replace(old_catch, new_catch, 1)
-
-          nav_line = '    navigationReferences: journalNavigationReferences(database, projectId, start, end),\n'
-          if nav_line not in text:
-              digest_anchor = '    digestReferences: digestRows.map((row) => ({\n'
-              if digest_anchor not in text:
-                  raise SystemExit('digestReferences anchor not found')
-              text = text.replace(digest_anchor, nav_line + digest_anchor, 1)
-
-          stale_guard_marker = "Journal AI source changed before completion."
-          if stale_guard_marker not in text:
-              status_anchor = "      if (run.status !== 'queued' && run.status !== 'running') {"
-              if status_anchor not in text:
                   raise SystemExit('AI status anchor not found')
-              guard = """      const source = database
-            .prepare(
-              `SELECT content_hash AS contentHash
-                 FROM generation_input_sources
-                WHERE run_id = ? AND source_type = 'journal_entry' AND source_id = ?
-                ORDER BY source_order
-                LIMIT 1`,
-            )
-            .get(input.runId, entry.id) as { readonly contentHash?: string | null } | undefined;
-          if (!source?.contentHash || source.contentHash !== entry.sourceHash) {
-            throw new JournalServiceError(
-              'JOURNAL_AI_CONFLICT',
-              'Journal AI source changed before completion.',
-            );
-          }
-"""
-              text = text.replace(status_anchor, guard + status_anchor, 1)
-
-          service_path.write_text(text)
+              guard = (
+                  "      const source = database\n"
+                  "        .prepare(\n"
+                  "          `SELECT content_hash AS contentHash\n"
+                  "             FROM generation_input_sources\n"
+                  "            WHERE run_id = ? AND source_type = 'journal_entry' AND source_id = ?\n"
+                  "            ORDER BY source_order\n"
+                  "            LIMIT 1`,\n"
+                  "        )\n"
+                  "        .get(input.runId, entry.id) as { readonly contentHash?: string | null } | undefined;\n"
+                  "      if (!source?.contentHash || source.contentHash !== entry.sourceHash) {\n"
+                  "        throw new JournalServiceError(\n"
+                  "          'JOURNAL_AI_CONFLICT',\n"
+                  "          'Journal AI source changed before completion.',\n"
+                  "        );\n"
+                  "      }\n"
+              )
+              text = text.replace(anchor, guard + anchor, 1)
+              service_path.write_text(text)
 
           shell_path = Path('apps/desktop/renderer/src/app/app-shell-m3.tsx')
           shell = shell_path.read_text()
-          catchup_marker = "window.worldforgeJournal.catchUp({ projectId })"
+          catchup_marker = 'window.worldforgeJournal.catchUp({ projectId })'
           if catchup_marker not in shell:
-              keydown_anchor = "  useEffect(() => {\n    const onKeyDown = (event: KeyboardEvent): void => {"
-              if keydown_anchor not in shell:
+              anchor = "  useEffect(() => {\n    const onKeyDown = (event: KeyboardEvent): void => {"
+              if anchor not in shell:
                   raise SystemExit('AppShell keydown anchor not found')
-              effect = """  useEffect(() => {
-    const projectId = activeProject?.projectId;
-    if (!projectId || activeProject?.databaseMode === 'read-only' || !window.worldforgeJournal) return;
-    void window.worldforgeJournal.catchUp({ projectId }).catch(() => undefined);
-  }, [activeProject?.databaseMode, activeProject?.projectId]);
-
-"""
-              shell = shell.replace(keydown_anchor, effect + keydown_anchor, 1)
+              effect = (
+                  "  useEffect(() => {\n"
+                  "    const projectId = activeProject?.projectId;\n"
+                  "    if (!projectId || activeProject?.databaseMode === 'read-only' || !window.worldforgeJournal) return;\n"
+                  "    void window.worldforgeJournal.catchUp({ projectId }).catch(() => undefined);\n"
+                  "  }, [activeProject?.databaseMode, activeProject?.projectId]);\n\n"
+              )
+              shell = shell.replace(anchor, effect + anchor, 1)
               shell_path.write_text(shell)
           PY
       - name: Apply repository locked Prettier

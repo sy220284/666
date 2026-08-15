@@ -164,7 +164,9 @@ describe('JournalService stale AI completion', () => {
         runId: RUN_ID,
         output: { summary: '旧模型结果', highlights: [], nextFocus: [] },
       }),
-    ).rejects.toMatchObject<Partial<JournalServiceError>>({ code: 'JOURNAL_AI_CONFLICT' });
+    ).rejects.toMatchObject<Partial<JournalServiceError>>({
+      code: 'JOURNAL_AI_CONFLICT',
+    });
 
     expect(
       database

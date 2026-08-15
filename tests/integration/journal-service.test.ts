@@ -342,7 +342,9 @@ describe('JournalService', () => {
       expectedSourceHash: entry.sourceHash,
     });
 
-    expect(service.list({ projectId: PROJECT_ID, limit: 30, before: null }).entries[0]).toMatchObject({
+    expect(
+      service.list({ projectId: PROJECT_ID, limit: 30, before: null }).entries[0],
+    ).toMatchObject({
       id: entry.id,
       generationRunId: runId,
       status: 'ai_pending',

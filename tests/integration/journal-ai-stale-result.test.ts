@@ -173,8 +173,10 @@ describe('JournalService stale AI completion', () => {
         .prepare('SELECT ai_summary AS aiSummary, status FROM project_journal_entries WHERE id = ?')
         .get(ENTRY_ID),
     ).toEqual({ aiSummary: null, status: 'ai_pending' });
-    expect(database.prepare('SELECT status FROM generation_runs WHERE id = ?').get(RUN_ID)).toEqual({
-      status: 'running',
-    });
+    expect(database.prepare('SELECT status FROM generation_runs WHERE id = ?').get(RUN_ID)).toEqual(
+      {
+        status: 'running',
+      },
+    );
   });
 });

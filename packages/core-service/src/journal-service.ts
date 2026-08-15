@@ -702,13 +702,7 @@ export class JournalService {
               SET generation_run_id = ?, status = 'ai_pending', updated_at = ?
             WHERE id = ? AND project_id = ? AND source_hash = ?`,
         )
-        .run(
-          input.generationRunId,
-          now,
-          input.entryId,
-          input.projectId,
-          input.expectedSourceHash,
-        );
+        .run(input.generationRunId, now, input.entryId, input.projectId, input.expectedSourceHash);
     });
   }
 

@@ -60,10 +60,9 @@ describe('M12-01 500万字 Journal 窗口聚合性能', () => {
       const draftId = randomUUID();
       const versionId = randomUUID();
       const logicalBlockId = randomUUID();
-      const body = '长篇正文'.repeat(Math.ceil(FIVE_MILLION_CHARACTERS / 4)).slice(
-        0,
-        FIVE_MILLION_CHARACTERS,
-      );
+      const body = '长篇正文'
+        .repeat(Math.ceil(FIVE_MILLION_CHARACTERS / 4))
+        .slice(0, FIVE_MILLION_CHARACTERS);
       const bodyHash = hash(body);
 
       await workspace.writeProject(randomUUID(), project.projectId, (database) => {

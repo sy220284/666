@@ -47,6 +47,10 @@ export const GenerationResultRefSchema = z.discriminatedUnion('resultType', [
     resultType: z.literal('idea_card'),
     resultId: z.uuid(),
   }),
+  z.strictObject({
+    resultType: z.literal('journal_entry'),
+    resultId: z.uuid(),
+  }),
 ]);
 
 export const TaskSnapshotSchema = z.strictObject({

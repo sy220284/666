@@ -29,7 +29,7 @@ jobs:
           node-version: 24.18.1
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Wire Journal catch-up to project IANA timezone helper
+      - name: Apply audited Journal closure wiring
         shell: bash
         run: |
           set -euo pipefail
@@ -39,49 +39,38 @@ jobs:
           path = Path('packages/core-service/src/journal-service.ts')
           text = path.read_text()
 
-          import_old = "import type { ProjectWorkspaceService } from './project-workspace.js';\nimport { stableJson } from './stable-json.js';"
-          import_new = "import { journalCatchUpWindow } from './journal-period.js';\nimport type { ProjectWorkspaceService } from './project-workspace.js';\nimport { stableJson } from './stable-json.js';"
-          if import_old not in text:
-              raise SystemExit('journal-service import anchor not found')
-          text = text.replace(import_old, import_new, 1)
+          if "import { journalCatchUpWindow } from './journal-period.js';" not in text:
+              anchor = "import type { ProjectWorkspaceService } from './project-workspace.js';"
+              if anchor not in text:
+                  raise SystemExit('project-workspace import anchor not found')
+              text = text.replace(anchor, "import { journalCatchUpWindow } from './journal-period.js';\n" + anchor, 1)
 
-          legacy = """function previousDaily(now: Date): { start: string; end: string } {
-            const end = new Date(now);
-            end.setUTCHours(0, 0, 0, 0);
-            const start = new Date(end);
-            start.setUTCDate(start.getUTCDate() - 1);
-            return { start: start.toISOString(), end: end.toISOString() };
-          }
+          if "import { journalNavigationReferences } from './journal-navigation.js';" not in text:
+              anchor = "import { journalCatchUpWindow } from './journal-period.js';"
+              if anchor not in text:
+                  raise SystemExit('journal period import anchor not found')
+              text = text.replace(anchor, "import { journalNavigationReferences } from './journal-navigation.js';\n" + anchor, 1)
 
-          function previousWeekly(now: Date): { start: string; end: string } {
-            const end = new Date(now);
-            end.setUTCHours(0, 0, 0, 0);
-            const day = end.getUTCDay();
-            const sinceMonday = day === 0 ? 6 : day - 1;
-            end.setUTCDate(end.getUTCDate() - sinceMonday);
-            const start = new Date(end);
-            start.setUTCDate(start.getUTCDate() - 7);
-            return { start: start.toISOString(), end: end.toISOString() };
-          }
+          legacy_start = text.find('function previousDaily(now: Date):')
+          if legacy_start != -1:
+              legacy_end_marker = "  return { start: start.toISOString(), end: end.toISOString() };\n}\n\nexport class JournalService"
+              legacy_end = text.find(legacy_end_marker, legacy_start)
+              if legacy_end == -1:
+                  raise SystemExit('legacy UTC helper end anchor not found')
+              text = text[:legacy_start] + 'export class JournalService' + text[legacy_end + len(legacy_end_marker):]
 
-          """
-          if legacy not in text:
-              raise SystemExit('legacy UTC catch-up helpers not found')
-          text = text.replace(legacy, '', 1)
+          old_catch = "    const period = current.schedule === 'daily' ? previousDaily(now) : previousWeekly(now);\n    const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;"
+          if old_catch in text:
+              new_catch = "    const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;\n    const period = this.#workspace.readProject(input.projectId, (database) =>\n      journalCatchUpWindow(database, input.projectId, periodType, now),\n    );"
+              text = text.replace(old_catch, new_catch, 1)
 
-          catch_old = """    const now = input.now ? new Date(input.now) : this.#clock.now();
-              const period = current.schedule === 'daily' ? previousDaily(now) : previousWeekly(now);
-              const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;
-          """
-          catch_new = """    const now = input.now ? new Date(input.now) : this.#clock.now();
-              const periodType = current.schedule as Exclude<JournalSchedule, 'off'>;
-              const period = this.#workspace.readProject(input.projectId, (database) =>
-                journalCatchUpWindow(database, input.projectId, periodType, now),
-              );
-          """
-          if catch_old not in text:
-              raise SystemExit('catch-up wiring anchor not found')
-          text = text.replace(catch_old, catch_new, 1)
+          nav_line = '    navigationReferences: journalNavigationReferences(database, projectId, start, end),\n'
+          if nav_line not in text:
+              digest_anchor = '    digestReferences: digestRows.map((row) => ({\n'
+              if digest_anchor not in text:
+                  raise SystemExit('digestReferences anchor not found')
+              text = text.replace(digest_anchor, nav_line + digest_anchor, 1)
+
           path.write_text(text)
           PY
       - name: Apply repository locked Prettier
@@ -101,5 +90,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add packages/core-service/src/journal-service.ts -- '*.ts' '*.tsx' '*.d.ts'
-          git commit -m "fix(M12-01): honor project timezone in catch-up"
+          git commit -m "fix(M12-01): wire journal closure helpers"
           git push origin HEAD:work

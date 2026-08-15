@@ -20,6 +20,7 @@
     "apps/desktop/preload/src/",
     "apps/desktop/renderer/src/",
     "tests/",
+    ".github/workflows/m12-01-coverage-format.yml",
     "docs/architecture/",
     "docs/contracts/",
     "docs/database/",

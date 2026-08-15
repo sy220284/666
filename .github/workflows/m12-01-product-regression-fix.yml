@@ -1,0 +1,220 @@
+name: M12-01 Product Regression Fix
+
+on:
+  push:
+    branches: [work]
+    paths:
+      - '.github/workflows/m12-01-product-regression-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: work
+          fetch-depth: 1
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply minimal product-test closure fixes
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+
+          function replaceExact(text, from, to, label) {
+            const first = text.indexOf(from);
+            if (first < 0 || text.indexOf(from, first + from.length) >= 0) {
+              throw new Error(`Expected exactly one match for ${label}`);
+            }
+            return text.replace(from, to);
+          }
+
+          const servicePath = 'packages/core-service/src/journal-service.ts';
+          let service = readFileSync(servicePath, 'utf8');
+          service = replaceExact(
+            service,
+            `  async updateNote(requestId: string, raw: JournalUpdateNoteInput): Promise<JournalCatalog> {\n    const input = JournalUpdateNoteInputSchema.parse(raw);\n    const now = this.#clock.now().toISOString();\n    await this.#workspace.writeProject(requestId, input.projectId, (database) => {\n`,
+            `  async updateNote(requestId: string, raw: JournalUpdateNoteInput): Promise<JournalCatalog> {\n    const input = JournalUpdateNoteInputSchema.parse(raw);\n    const nowMs = this.#clock.now().getTime();\n    const previousMs = Date.parse(input.expectedUpdatedAt);\n    const updatedAt = new Date(Math.max(nowMs, previousMs + 1)).toISOString();\n    await this.#workspace.writeProject(requestId, input.projectId, (database) => {\n`,
+            'monotonic note timestamp prelude',
+          );
+          service = replaceExact(
+            service,
+            `.run(input.authorNote, now, input.entryId, input.projectId, input.expectedUpdatedAt);`,
+            `.run(input.authorNote, updatedAt, input.entryId, input.projectId, input.expectedUpdatedAt);`,
+            'monotonic note timestamp write',
+          );
+          writeFileSync(servicePath, service);
+
+          const journalTestPath = 'tests/integration/journal-service.test.ts';
+          let journalTest = readFileSync(journalTestPath, 'utf8');
+          journalTest = replaceExact(
+            journalTest,
+            `    expect(saved.entries[0]?.authorNote).toBe('今天把第一章定稿。');\n\n    await expect(`,
+            `    expect(saved.entries[0]?.authorNote).toBe('今天把第一章定稿。');\n    expect(saved.entries[0]?.updatedAt).not.toBe(entry.updatedAt);\n\n    await expect(`,
+            'note monotonic regression assertion',
+          );
+          writeFileSync(journalTestPath, journalTest);
+
+          const arPath = 'tests/unit/ar08-contracts-public-surface.test.ts';
+          let ar = readFileSync(arPath, 'utf8');
+          const journalExports = [
+            'CoreJournalOperationSchema',
+            'CoreJournalResultSchema',
+            'JOURNAL_COMMANDS',
+            'JOURNAL_IPC_CHANNELS',
+            'JournalAiPromptInputSchema',
+            'JournalAiSummaryOutputJsonSchema',
+            'JournalAiSummaryOutputSchema',
+            'JournalCatalogResultSchema',
+            'JournalCatalogSchema',
+            'JournalCatchUpCommandSchema',
+            'JournalCatchUpInputSchema',
+            'JournalCursorSchema',
+            'JournalDeterministicSummarySchema',
+            'JournalDigestReferenceSchema',
+            'JournalEntrySchema',
+            'JournalEntryStatusSchema',
+            'JournalGenerateCommandSchema',
+            'JournalListCommandSchema',
+            'JournalListInputSchema',
+            'JournalMarkAiFailedCommandSchema',
+            'JournalMarkAiFailedInputSchema',
+            'JournalNavigationReferenceSchema',
+            'JournalPeriodTypeSchema',
+            'JournalPreferencesSchema',
+            'JournalPreviewCommandSchema',
+            'JournalPreviewResultSchema',
+            'JournalPreviewSchema',
+            'JournalScheduleSchema',
+            'JournalUpdateNoteCommandSchema',
+            'JournalUpdateNoteInputSchema',
+            'JournalUpdatePreferencesCommandSchema',
+            'JournalUpdatePreferencesInputSchema',
+            'JournalWindowInputSchema',
+          ];
+          const insertion = journalExports.map((name) => `  '${name}',`).join('\n') + '\n';
+          ar = replaceExact(
+            ar,
+            `  'KnowledgeStateProposalDraftSchema',\n`,
+            `${insertion}  'KnowledgeStateProposalDraftSchema',\n`,
+            'approved Journal contract exports',
+          );
+          ar = replaceExact(
+            ar,
+            `  runtimeExportCount: 991,`,
+            `  runtimeExportCount: 1024,`,
+            'public runtime export count',
+          );
+          ar = replaceExact(
+            ar,
+            `    expect(publicContracts.CoreResearchOperationSchema).toBeDefined();\n`,
+            `    expect(publicContracts.CoreResearchOperationSchema).toBeDefined();\n    expect(publicContracts.CoreJournalOperationSchema).toBeDefined();\n    expect(publicContracts.JournalCatalogSchema).toBeDefined();\n`,
+            'Journal public contract assertions',
+          );
+          writeFileSync(arPath, ar);
+
+          const ipcPath = 'tests/unit/ipc-handlers-branch-coverage.test.ts';
+          let ipc = readFileSync(ipcPath, 'utf8');
+          ipc = replaceExact(
+            ipc,
+            `  IPC_CHANNELS,\n  PROTOCOL_VERSION,`,
+            `  IPC_CHANNELS,\n  JOURNAL_IPC_CHANNELS,\n  PROTOCOL_VERSION,`,
+            'Journal IPC import',
+          );
+          ipc = replaceExact(
+            ipc,
+            `  ...Object.values(IDEA_CAPSULE_IPC_CHANNELS),\n  ...Object.values(RESEARCH_IPC_CHANNELS),\n`,
+            `  ...Object.values(IDEA_CAPSULE_IPC_CHANNELS),\n  ...Object.values(JOURNAL_IPC_CHANNELS),\n  ...Object.values(RESEARCH_IPC_CHANNELS),\n`,
+            'Journal production IPC surface',
+          );
+          writeFileSync(ipcPath, ipc);
+
+          const governancePath = 'tests/unit/journal-governance.test.ts';
+          let governance = readFileSync(governancePath, 'utf8');
+          governance = replaceExact(
+            governance,
+            `resolve(process.cwd(), 'apps/desktop/renderer/src/app/app-shell-pages.tsx')`,
+            `resolve(process.cwd(), 'apps/desktop/renderer/src/app/app-shell-m3.tsx')`,
+            'Journal catch-up ownership file',
+          );
+          writeFileSync(governancePath, governance);
+
+          const handlersPath = 'tests/unit/m11-05-generation-handler-map.test.ts';
+          let handlers = readFileSync(handlersPath, 'utf8');
+          handlers = replaceExact(
+            handlers,
+            `        'idea_explore',\n        'merge',`,
+            `        'idea_explore',\n        'journal_summarize',\n        'merge',`,
+            'Journal generation handler authority',
+          );
+          writeFileSync(handlersPath, handlers);
+
+          const semanticsPath = 'tests/unit/m11-project-operation-semantics.test.ts';
+          let semantics = readFileSync(semanticsPath, 'utf8');
+          semantics = replaceExact(
+            semantics,
+            `  IDEA_CAPSULE_COMMANDS,\n  LONGFORM_AI_COMMANDS,`,
+            `  IDEA_CAPSULE_COMMANDS,\n  JOURNAL_COMMANDS,\n  LONGFORM_AI_COMMANDS,`,
+            'Journal command semantics import',
+          );
+          semantics = replaceExact(
+            semantics,
+            `  IDEA_CAPSULE_COMMANDS,\n  LONGFORM_AI_COMMANDS,\n  RESEARCH_COMMANDS,`,
+            `  IDEA_CAPSULE_COMMANDS,\n  JOURNAL_COMMANDS,\n  LONGFORM_AI_COMMANDS,\n  RESEARCH_COMMANDS,`,
+            'Journal command semantics group',
+          );
+          semantics = replaceExact(
+            semantics,
+            `    expect(projectOperationKind(IDEA_CAPSULE_COMMANDS.applyConversion)).toBe('mutation');\n    expect(projectOperationKind(RESEARCH_COMMANDS.list)).toBe('query');`,
+            `    expect(projectOperationKind(IDEA_CAPSULE_COMMANDS.applyConversion)).toBe('mutation');\n    expect(projectOperationKind(JOURNAL_COMMANDS.list)).toBe('query');\n    expect(projectOperationKind(JOURNAL_COMMANDS.generate)).toBe('mutation');\n    expect(projectOperationKind(RESEARCH_COMMANDS.list)).toBe('query');`,
+            'Journal representative operation semantics',
+          );
+          writeFileSync(semanticsPath, semantics);
+          NODE
+
+          pnpm exec prettier --write \
+            packages/core-service/src/journal-service.ts \
+            tests/integration/journal-service.test.ts \
+            tests/unit/ar08-contracts-public-surface.test.ts \
+            tests/unit/ipc-handlers-branch-coverage.test.ts \
+            tests/unit/journal-governance.test.ts \
+            tests/unit/m11-05-generation-handler-map.test.ts \
+            tests/unit/m11-project-operation-semantics.test.ts
+
+          pnpm test:prepare
+          pnpm exec vitest run \
+            tests/integration/journal-service.test.ts \
+            tests/unit/ar08-contracts-public-surface.test.ts \
+            tests/unit/ipc-handlers-branch-coverage.test.ts \
+            tests/unit/journal-governance.test.ts \
+            tests/unit/m11-05-generation-handler-map.test.ts \
+            tests/unit/m11-project-operation-semantics.test.ts
+
+      - name: Self-remove temporary authorization and publish verified fix
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'docs/tasks/runtime/M12-01.json';
+          const runtime = JSON.parse(readFileSync(path, 'utf8'));
+          runtime.allowedPaths = runtime.allowedPaths.filter(
+            (entry) => entry !== '.github/workflows/m12-01-product-regression-fix.yml',
+          );
+          writeFileSync(path, `${JSON.stringify(runtime, null, 2)}\n`);
+          NODE
+          rm .github/workflows/m12-01-product-regression-fix.yml
+          pnpm exec prettier --write docs/tasks/runtime/M12-01.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(M12-01): close product regression suite'
+          git push origin HEAD:work

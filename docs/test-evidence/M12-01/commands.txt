@@ -1,0 +1,36 @@
+M12-01 权威验证命令
+
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm check:docs
+pnpm check:governance
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:reliability
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+专项覆盖：
+- tests/integration/journal-service.test.ts
+- tests/integration/journal-ai-stale-result.test.ts
+- tests/integration/recovery-identity-remap.test.ts
+- tests/migration/m12-01-project-journal-migration.test.ts
+- tests/unit/journal-contracts.test.ts
+- tests/unit/journal-governance.test.ts
+- tests/unit/journal-period.test.ts
+- tests/unit/journal-renderer-routing.test.ts
+- tests/performance/m12-01-journal-window-performance.test.ts
+
+最终权威：
+- PR #402 Ready Head 的 Quality / Security / Performance
+- 合并后 main-verification
+- task-verification/M12-01

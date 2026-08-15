@@ -29,6 +29,7 @@ import {
 } from '@worldforge/contracts';
 
 import type { DatabaseClock } from './database/index.js';
+import { journalNavigationReferences } from './journal-navigation.js';
 import { journalCatchUpWindow } from './journal-period.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { stableJson } from './stable-json.js';
@@ -476,6 +477,7 @@ function deterministicSummary(
         end,
       ),
     },
+    navigationReferences: journalNavigationReferences(database, projectId, start, end),
     digestReferences: digestRows.map((row) => ({
       scopeType: row.scopeType,
       scopeId: row.scopeId,

@@ -24,6 +24,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: node tests/tools/m12-01-one-shot.mjs
+      - run: node tests/tools/m12-01-extra-coverage.mjs
       - run: pnpm exec prettier --write tests/unit/journal-content-router.test.ts tests/unit/journal-ipc-coverage.test.ts tests/unit/journal-workbench-boundaries.test.ts tests/e2e/visual-baselines/manifest.json
       - run: pnpm test:prepare
       - run: pnpm exec vitest run tests/unit/journal-content-router.test.ts tests/unit/journal-ipc-coverage.test.ts tests/unit/journal-workbench-boundaries.test.ts
@@ -33,10 +34,11 @@ jobs:
         shell: bash
         run: |
           rm tests/tools/m12-01-one-shot.mjs
+          rm tests/tools/m12-01-extra-coverage.mjs
           rm .github/workflows/m12-01-coverage-format.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/unit/journal-content-router.test.ts tests/unit/journal-ipc-coverage.test.ts tests/unit/journal-workbench-boundaries.test.ts tests/e2e/visual-baselines/manifest.json tests/tools/m12-01-one-shot.mjs .github/workflows/m12-01-coverage-format.yml
+          git add tests/unit/journal-content-router.test.ts tests/unit/journal-ipc-coverage.test.ts tests/unit/journal-workbench-boundaries.test.ts tests/e2e/visual-baselines/manifest.json tests/tools/m12-01-one-shot.mjs tests/tools/m12-01-extra-coverage.mjs .github/workflows/m12-01-coverage-format.yml
           git diff --cached --check
           git commit -m 'test(M12-01): close renderer coverage and visual baseline'
           git push origin HEAD:work

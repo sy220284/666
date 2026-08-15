@@ -57,6 +57,19 @@ describe('M12-01 Project Journal migration', () => {
         schema_version: BigInt(await latestProjectMigrationVersion()),
       });
 
+      const chapterColumns = database
+        .prepare('PRAGMA table_info(chapters)')
+        .all()
+        .map((row) => String(row.name));
+      expect(chapterColumns).toContain('finalized_at');
+      const finalizationTrigger = database
+        .prepare(
+          "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_chapters_final_version_timestamp'",
+        )
+        .get() as { readonly sql: string };
+      expect(finalizationTrigger.sql).toContain('AFTER UPDATE OF final_version_id');
+      expect(finalizationTrigger.sql).toContain('finalized_at');
+
       const insertTrigger = database
         .prepare(
           "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_generation_runs_scope_insert'",

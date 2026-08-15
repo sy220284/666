@@ -115,7 +115,7 @@ Runtime IMPLEMENTED
 | `M9-11` | [`AR-11 State Proposal与Generation拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#12-ar-11-state-proposal与generation拆分) | M9-03内部基线      | Removed（absorbed by M9-03） |
 | `M9-12` | [`AR-12 Project Workspace拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#13-ar-12-project-workspace拆分)                   | M9-03内部基线      | Removed（absorbed by M9-03） |
 | `M9-13` | [`AR-13 Recovery与工具域拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#14-ar-13-recovery与工具域拆分)                     | M9-03内部AR-12     | Removed（absorbed by M9-03） |
-| `M9-14` | [`AR-14 Legacy、CSS与最终结构收敛`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#15-ar-14-legacycss最终结构收敛)             | M9-03内部AR-03—13  | Removed（absorbed by M9-03） |
+| `M9-14` | [`AR-14 Legacy、CSS与最终结构收敛`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#15-ar-14-legacycss与最终结构收敛)             | M9-03内部AR-03—13  | Removed（absorbed by M9-03） |
 
 ### M10 稳定性与治理续作
 
@@ -171,7 +171,7 @@ Runtime IMPLEMENTED
 | 原ID  | 来源文件                                                                               | 原阶段 | 独立执行状态        | 统一归属 |
 | ----- | -------------------------------------------------------------------------------------- | ------ | ------------------- | -------- |
 | M4-05 | [`GenerationRun、流式运行与模型支持档案`](M4/M4-05_GENERATION_RUNTIME_EVAL.md)         | M4     | Removed（absorbed） | M4-04    |
-| M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md)             | M5     | Removed（absorbed） | M4-04    |
+| M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md)           | M5     | Removed（absorbed） | M4-04    |
 | M5-01 | [`T0多候选骨架`](M5/M5-01_T0_SKELETON.md)                                              | M5     | Removed（absorbed） | M4-04    |
 | M5-02 | [`T1章节扩写`](M5/M5-02_T1_CHAPTER_GENERATION.md)                                      | M5     | Removed（absorbed） | M4-04    |
 | M5-03 | [`快速改写与结构性改写`](M5/M5-03_REWRITE_WORKFLOWS.md)                                | M5     | Removed（absorbed） | M4-04    |

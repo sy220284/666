@@ -178,17 +178,22 @@ export const JournalPreferencesSchema = z.strictObject({
   updatedAt: z.iso.datetime(),
 });
 
+export const JournalCursorSchema = z.strictObject({
+  periodEnd: z.iso.datetime(),
+  id: z.uuid(),
+});
+
 export const JournalCatalogSchema = z.strictObject({
   projectId: ProjectIdSchema,
   entries: z.array(JournalEntrySchema).max(500),
   preferences: JournalPreferencesSchema,
-  nextCursor: z.string().min(1).max(256).nullable(),
+  nextCursor: JournalCursorSchema.nullable(),
 });
 
 export const JournalListInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   limit: z.number().int().min(1).max(100).default(30),
-  before: z.iso.datetime().nullable().default(null),
+  before: JournalCursorSchema.nullable().default(null),
 });
 
 export const JournalWindowInputSchema = z
@@ -384,6 +389,7 @@ export type JournalAiSummaryOutput = z.infer<typeof JournalAiSummaryOutputSchema
 export type JournalAiPromptInput = z.infer<typeof JournalAiPromptInputSchema>;
 export type JournalEntry = z.infer<typeof JournalEntrySchema>;
 export type JournalPreferences = z.infer<typeof JournalPreferencesSchema>;
+export type JournalCursor = z.infer<typeof JournalCursorSchema>;
 export type JournalCatalog = z.infer<typeof JournalCatalogSchema>;
 export type JournalListInput = z.input<typeof JournalListInputSchema>;
 export type JournalWindowInput = z.infer<typeof JournalWindowInputSchema>;

@@ -90,7 +90,8 @@ export interface GenerationInputSourceInput {
     | 'generation_run'
     | 'version'
     | 'scope'
-    | 'idea_card';
+    | 'idea_card'
+    | 'journal_entry';
   readonly sourceId: string;
   readonly sourceOrder: number;
   readonly contentHash?: string | null;
@@ -264,6 +265,8 @@ export function resultRefs(database: DatabaseSync, runId: string): GenerationRes
       refs.push({ resultType: 'validation_batch', resultId: row.resultId });
     } else if (row.resultType === 'idea_card') {
       refs.push({ resultType: 'idea_card', resultId: row.resultId });
+    } else if (row.resultType === 'journal_entry') {
+      refs.push({ resultType: 'journal_entry', resultId: row.resultId });
     }
   }
   return refs;
@@ -429,12 +432,12 @@ export function create(
   input: GenerationRunCreateInput,
 ): Promise<GenerationRun> {
   const constraints = input.constraintPackage;
-  if (input.runType === 'idea_explore') {
+  if (input.runType === 'idea_explore' || input.runType === 'journal_summarize') {
     if (constraints !== null) {
       return Promise.reject(
         new GenerationRunServiceError(
           'GENERATION_BASE_CONFLICT',
-          'Idea exploration uses generic scope context and must not persist a chapter ConstraintPackage.',
+          'Project-scoped Generation workflows must not persist a chapter ConstraintPackage.',
         ),
       );
     }

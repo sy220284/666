@@ -1,110 +1,83 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createRequire } from 'node:module';
 
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { JournalCatalog, JournalEntry } from '@worldforge/contracts';
+import type { createElement as createReactElement, ReactElement } from 'react';
+
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import { JournalWorkbench } from '../../apps/desktop/renderer/src/features/journal/journal-workbench.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
-const hooks = vi.hoisted(() => ({
-  cursor: 0,
-  values: [] as unknown[],
-  effects: [] as Array<() => unknown>,
-}));
+const rendererRequire = createRequire(
+  new URL('../../apps/desktop/renderer/package.json', import.meta.url),
+);
+const { createElement } = rendererRequire('react') as {
+  readonly createElement: typeof createReactElement;
+};
 
-vi.mock('react', () => ({
-  useCallback: (callback: unknown) => callback,
-  useMemo: (factory: () => unknown) => factory(),
-  useState: (initial: unknown) => {
-    const index = hooks.cursor;
-    hooks.cursor += 1;
-    if (!(index in hooks.values)) {
-      hooks.values[index] = typeof initial === 'function' ? initial() : initial;
-    }
-    const setValue = (next: unknown) => {
-      hooks.values[index] = typeof next === 'function' ? next(hooks.values[index]) : next;
-    };
-    return [hooks.values[index], setValue];
-  },
-  useEffect: (effect: () => unknown) => {
-    hooks.effects.push(effect);
-  },
-}));
+interface TestInstance {
+  readonly type: unknown;
+  readonly props: Record<string, unknown>;
+  readonly children: readonly (TestInstance | string)[];
+  findAll(predicate: (node: TestInstance) => boolean): TestInstance[];
+}
+interface TestRenderer {
+  readonly root: TestInstance;
+  unmount(): void;
+}
+const { act, create } = rendererRequire('react-test-renderer') as {
+  readonly act: (callback: () => void | Promise<void>) => Promise<void>;
+  readonly create: (element: ReactElement) => TestRenderer;
+};
 
 const projectId = '11111111-1111-4111-8111-111111111111';
 const entryId = '22222222-2222-4222-8222-222222222222';
 const periodStart = '2026-08-11T00:00:00.000Z';
 const periodEnd = '2026-08-12T00:00:00.000Z';
 const updatedAt = '2026-08-12T01:00:00.000Z';
-const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
 
-type ElementRecord = {
-  readonly type: unknown;
-  readonly props: Record<string, unknown>;
-};
+type NavigationReferences = JournalEntry['deterministicSummary']['navigationReferences'];
 
-function isElement(value: unknown): value is ElementRecord {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-  const record = contractInput<Record<string, unknown>>(value);
-  return 'type' in record && 'props' in record;
+function textContent(instance: TestInstance): string {
+  return instance.children
+    .map((child) => (typeof child === 'string' ? child : textContent(child)))
+    .join('');
 }
 
-function textOf(value: unknown): string {
-  if (typeof value === 'string' || typeof value === 'number') return String(value);
-  if (Array.isArray(value)) return value.map(textOf).join('');
-  if (!isElement(value)) return '';
-  return textOf(value.props.children);
-}
-
-function visit(value: unknown, matches: ElementRecord[]): void {
-  if (Array.isArray(value)) {
-    value.forEach((child) => visit(child, matches));
-    return;
-  }
-  if (!isElement(value)) return;
-  matches.push(value);
-  visit(value.props.children, matches);
-}
-
-function elements(tree: unknown, type: string): ElementRecord[] {
-  const matches: ElementRecord[] = [];
-  visit(tree, matches);
-  return matches.filter((element) => element.type === type);
-}
-
-function button(tree: unknown, label: string): ElementRecord {
-  const match = elements(tree, 'button').find((candidate) => textOf(candidate).includes(label));
-  if (!match) throw new Error(`BUTTON_NOT_FOUND:${label}`);
+function buttonContaining(root: TestInstance, text: string): TestInstance {
+  const match = root.findAll(
+    (node) => node.type === 'button' && textContent(node).includes(text),
+  )[0];
+  if (!match) throw new Error(`Missing button containing: ${text}`);
   return match;
 }
 
-async function invoke(element: ElementRecord, property: string, argument?: unknown): Promise<void> {
-  const handler = element.props[property];
-  if (typeof handler !== 'function') throw new Error(`HANDLER_NOT_FOUND:${property}`);
-  const result = handler(argument);
-  if (result instanceof Promise) await result;
-  await settle();
+function controlByLabel(root: TestInstance, label: string): TestInstance {
+  const field = root.findAll(
+    (node) => node.type === 'label' && textContent(node).startsWith(label),
+  )[0];
+  if (!field) throw new Error(`Missing field: ${label}`);
+  const control = field.findAll((node) =>
+    ['input', 'textarea', 'select'].includes(String(node.type)),
+  )[0];
+  if (!control) throw new Error(`Missing control: ${label}`);
+  return control;
 }
 
-async function settle(): Promise<void> {
+function invoke(node: TestInstance, name: 'onClick' | 'onChange', argument?: unknown): void {
+  const handler = node.props[name];
+  if (typeof handler !== 'function') throw new Error(`Missing ${name} handler.`);
+  (handler as (value?: unknown) => void)(argument);
+}
+
+async function flushPromises(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
-  await new Promise<void>((resolve) => queueMicrotask(resolve));
+  await Promise.resolve();
 }
 
-async function flushEffects(): Promise<void> {
-  const pending = hooks.effects.splice(0);
-  pending.forEach((effect) => effect());
-  await settle();
-}
-
-function render(bridge: RendererBridgeAdapter, readOnly = false, onNavigate = vi.fn()): unknown {
-  hooks.cursor = 0;
-  hooks.effects = [];
-  return JournalWorkbench({ bridge, projectId, readOnly, onNavigate });
-}
-
-function summary(navigationReferences: JournalEntry['deterministicSummary']['navigationReferences']) {
-  return {
+function summary(navigationReferences: NavigationReferences = []) {
+  return contractInput<JournalEntry['deterministicSummary']>({
     periodStart,
     periodEnd,
     writing: { sessions: 2, netCharacters: 1_280, activeSeconds: 780, touchedChapters: 2 },
@@ -135,14 +108,14 @@ function summary(navigationReferences: JournalEntry['deterministicSummary']['nav
     recovery: { backupsCreated: 1 },
     navigationReferences,
     digestReferences: [],
-  };
+  });
 }
 
 function entry(
   id: string,
   periodType: JournalEntry['periodType'],
   status: JournalEntry['status'],
-  navigationReferences: JournalEntry['deterministicSummary']['navigationReferences'] = [],
+  navigationReferences: NavigationReferences = [],
 ): JournalEntry {
   return contractInput<JournalEntry>({
     id,
@@ -162,7 +135,7 @@ function entry(
   });
 }
 
-const references = contractInput<JournalEntry['deterministicSummary']['navigationReferences']>([
+const references = contractInput<NavigationReferences>([
   {
     targetType: 'chapter',
     targetId: '33333333-3333-4333-8333-333333333333',
@@ -214,37 +187,44 @@ function catalog(options: { nextCursor?: boolean; schedule?: 'off' | 'daily' | '
   });
 }
 
-function installWindow(journal: Record<string, unknown>): void {
-  Object.defineProperty(globalThis, 'window', {
-    configurable: true,
-    value: {
-      worldforgeJournal: journal,
-      setTimeout: (handler: unknown) => {
-        if (typeof handler === 'function') queueMicrotask(() => handler());
-        return 1;
-      },
-      clearTimeout: () => undefined,
+function installWindow(journal: Record<string, unknown>, timers: Array<() => void> = []): void {
+  vi.stubGlobal('window', {
+    worldforgeJournal: journal,
+    setTimeout: (callback: () => void) => {
+      timers.push(callback);
+      return timers.length;
     },
+    clearTimeout: () => undefined,
   });
 }
 
-function createBridge() {
-  const providersList = vi.fn().mockResolvedValue({
-    state: 'success',
-    data: { providers: [{ id: 'provider-local', name: '本地模型' }] },
-  });
-  const generationStart = vi.fn().mockResolvedValue({
-    state: 'failure',
-    error: { code: 'MODEL_UNAVAILABLE', message: '本地模型暂不可用。', retryable: true },
-  });
-  const generationGetRun = vi.fn().mockResolvedValue({
-    state: 'success',
-    data: {
-      runId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      projectId,
-      status: 'succeeded',
+function createBridge(options: {
+  start?: ReturnType<typeof vi.fn>;
+  getRun?: ReturnType<typeof vi.fn>;
+  providerResult?: unknown;
+} = {}) {
+  const providersList = vi.fn().mockResolvedValue(
+    options.providerResult ?? {
+      state: 'success',
+      data: { providers: [{ id: 'provider-local', name: '本地模型' }] },
     },
-  });
+  );
+  const generationStart =
+    options.start ??
+    vi.fn().mockResolvedValue({
+      state: 'failure',
+      error: { code: 'MODEL_UNAVAILABLE', message: '本地模型暂不可用。', retryable: true },
+    });
+  const generationGetRun =
+    options.getRun ??
+    vi.fn().mockResolvedValue({
+      state: 'success',
+      data: {
+        runId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        projectId,
+        status: 'succeeded',
+      },
+    });
   return {
     bridge: contractInput<RendererBridgeAdapter>({
       providers: { list: providersList },
@@ -256,20 +236,26 @@ function createBridge() {
   };
 }
 
-beforeEach(() => {
-  hooks.cursor = 0;
-  hooks.values = [];
-  hooks.effects = [];
-  vi.restoreAllMocks();
-});
+async function renderWorkbench(
+  bridge: RendererBridgeAdapter,
+  readOnly = false,
+  onNavigate = vi.fn(),
+): Promise<TestRenderer> {
+  let renderer!: TestRenderer;
+  await act(async () => {
+    renderer = create(createElement(JournalWorkbench, { bridge, projectId, readOnly, onNavigate }));
+    await flushPromises();
+  });
+  return renderer;
+}
 
 afterEach(() => {
-  if (originalWindowDescriptor) Object.defineProperty(globalThis, 'window', originalWindowDescriptor);
-  else Reflect.deleteProperty(globalThis, 'window');
+  vi.unstubAllGlobals();
 });
 
-describe('M12-01 JournalWorkbench interactions', () => {
-  it('covers deterministic review, schedule, notes, navigation, pagination and AI failure', async () => {
+describe('M12-01 JournalWorkbench interaction coverage', () => {
+  it('covers deterministic generation, schedule, notes, navigation, pagination and AI failure', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const baseCatalog = catalog({ nextCursor: true });
     const olderCatalog = contractInput<JournalCatalog>({
       ...catalog(),
@@ -277,10 +263,7 @@ describe('M12-01 JournalWorkbench interactions', () => {
     });
     const generate = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        error: { message: '窗口生成失败。' },
-      })
+      .mockResolvedValueOnce({ ok: false, error: { message: '窗口生成失败。' } })
       .mockResolvedValue({ ok: true, data: baseCatalog });
     const updatePreferences = vi
       .fn()
@@ -295,77 +278,88 @@ describe('M12-01 JournalWorkbench interactions', () => {
       input.before === null ? { ok: true, data: baseCatalog } : { ok: true, data: olderCatalog },
     );
     const markAiFailed = vi.fn().mockResolvedValue({ ok: true, data: baseCatalog });
-    const journal = {
+    installWindow({
       catchUp: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
       list,
       generate,
       updatePreferences,
       updateNote,
       markAiFailed,
-    };
-    installWindow(journal);
+    });
     const { bridge, generationStart } = createBridge();
     const onNavigate = vi.fn();
+    const renderer = await renderWorkbench(bridge, false, onNavigate);
 
-    let tree = render(bridge, false, onNavigate);
-    await flushEffects();
-    tree = render(bridge, false, onNavigate);
+    expect(textContent(renderer.root)).toContain('创作日志');
+    expect(textContent(renderer.root)).toContain('智能复盘已生成');
+    expect(textContent(renderer.root)).toContain('智能复盘暂不可用');
+    expect(textContent(renderer.root)).toContain('智能复盘生成中');
+    expect(textContent(renderer.root)).toContain('确定性复盘');
 
-    expect(textOf(tree)).toContain('创作日志');
-    expect(textOf(tree)).toContain('智能复盘已生成');
-    expect(textOf(tree)).toContain('智能复盘暂不可用');
-    expect(textOf(tree)).toContain('智能复盘生成中');
-    expect(textOf(tree)).toContain('确定性复盘');
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '今日复盘'), 'onClick');
+      await flushPromises();
+    });
+    expect(textContent(renderer.root)).toContain('复盘生成失败：窗口生成失败。');
 
-    await invoke(button(tree, '今日复盘'), 'onClick');
-    tree = render(bridge, false, onNavigate);
-    expect(textOf(tree)).toContain('复盘生成失败：窗口生成失败。');
-
-    await invoke(button(tree, '本周复盘'), 'onClick');
-    tree = render(bridge, false, onNavigate);
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '本周复盘'), 'onClick');
+      await flushPromises();
+    });
     expect(generate).toHaveBeenCalledTimes(2);
-    expect(textOf(tree)).toContain('复盘已按真实项目记录生成。');
+    expect(textContent(renderer.root)).toContain('复盘已按真实项目记录生成。');
 
-    const selects = elements(tree, 'select');
-    await invoke(selects[0]!, 'onChange', { target: { value: 'daily' } });
-    tree = render(bridge, false, onNavigate);
-    expect(textOf(tree)).toContain('定时复盘设置已保存。');
+    await act(async () => {
+      invoke(controlByLabel(renderer.root, '定时复盘'), 'onChange', { target: { value: 'daily' } });
+      await flushPromises();
+    });
+    expect(textContent(renderer.root)).toContain('定时复盘设置已保存。');
 
-    await invoke(elements(tree, 'select')[0]!, 'onChange', { target: { value: 'off' } });
-    tree = render(bridge, false, onNavigate);
-    expect(textOf(tree)).toContain('定时复盘已关闭。');
+    await act(async () => {
+      invoke(controlByLabel(renderer.root, '定时复盘'), 'onChange', { target: { value: 'off' } });
+      await flushPromises();
+    });
+    expect(textContent(renderer.root)).toContain('定时复盘已关闭。');
 
-    await invoke(button(tree, '指定范围复盘'), 'onClick');
-    tree = render(bridge, false, onNavigate);
-    expect(textOf(tree)).toContain('请先选择复盘起止日期。');
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '指定范围复盘'), 'onClick');
+      await flushPromises();
+    });
+    expect(textContent(renderer.root)).toContain('请先选择复盘起止日期。');
 
-    let dateInputs = elements(tree, 'input');
-    await invoke(dateInputs[0]!, 'onChange', { target: { value: '2026-08-16' } });
-    tree = render(bridge, false, onNavigate);
-    dateInputs = elements(tree, 'input');
-    await invoke(dateInputs[1]!, 'onChange', { target: { value: '2026-08-14' } });
-    tree = render(bridge, false, onNavigate);
-    await invoke(button(tree, '指定范围复盘'), 'onClick');
-    tree = render(bridge, false, onNavigate);
-    expect(textOf(tree)).toContain('复盘结束日期必须晚于开始日期。');
+    await act(async () => {
+      invoke(controlByLabel(renderer.root, '起始日期'), 'onChange', {
+        target: { value: '2026-08-16' },
+      });
+      invoke(controlByLabel(renderer.root, '结束日期'), 'onChange', {
+        target: { value: '2026-08-14' },
+      });
+    });
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '指定范围复盘'), 'onClick');
+      await flushPromises();
+    });
+    expect(textContent(renderer.root)).toContain('复盘结束日期必须晚于开始日期。');
 
-    dateInputs = elements(tree, 'input');
-    await invoke(dateInputs[0]!, 'onChange', { target: { value: '2026-08-10' } });
-    tree = render(bridge, false, onNavigate);
-    dateInputs = elements(tree, 'input');
-    await invoke(dateInputs[1]!, 'onChange', { target: { value: '2026-08-12' } });
-    tree = render(bridge, false, onNavigate);
-    await invoke(button(tree, '指定范围复盘'), 'onClick');
-    tree = render(bridge, false, onNavigate);
+    await act(async () => {
+      invoke(controlByLabel(renderer.root, '起始日期'), 'onChange', {
+        target: { value: '2026-08-10' },
+      });
+      invoke(controlByLabel(renderer.root, '结束日期'), 'onChange', {
+        target: { value: '2026-08-12' },
+      });
+    });
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '指定范围复盘'), 'onClick');
+      await flushPromises();
+    });
     expect(generate).toHaveBeenCalledTimes(3);
 
-    await invoke(button(tree, '每日 ·'), 'onClick');
-    tree = render(bridge, false, onNavigate);
-    expect(textOf(tree)).toContain('关系变化 1');
+    await act(async () => invoke(buttonContaining(renderer.root, '每日 ·'), 'onClick'));
+    expect(textContent(renderer.root)).toContain('关系变化 1');
     for (const reference of ['第一章', '第一章定稿', '主角', '雨夜灵感', '连续性检查']) {
-      await invoke(button(tree, reference), 'onClick');
+      await act(async () => invoke(buttonContaining(renderer.root, reference), 'onClick'));
     }
-    expect(onNavigate).toHaveBeenCalledTimes(5);
     expect(onNavigate.mock.calls.map((call) => call[0]?.type)).toEqual([
       'research-link-target',
       'version',
@@ -374,38 +368,49 @@ describe('M12-01 JournalWorkbench interactions', () => {
       'validation-issue',
     ]);
 
-    const textarea = elements(tree, 'textarea')[0]!;
-    await invoke(textarea, 'onChange', { target: { value: '  新备注  ' } });
-    tree = render(bridge, false, onNavigate);
-    await invoke(button(tree, '保存备注'), 'onClick');
-    tree = render(bridge, false, onNavigate);
+    await act(async () => {
+      invoke(controlByLabel(renderer.root, '作者备注'), 'onChange', {
+        target: { value: '  新备注  ' },
+      });
+    });
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '保存备注'), 'onClick');
+      await flushPromises();
+    });
     expect(updateNote).toHaveBeenCalledWith(
       expect.objectContaining({ entryId, authorNote: '新备注', expectedUpdatedAt: updatedAt }),
     );
+    expect(textContent(renderer.root)).toContain('备注保存失败：备注冲突。');
     expect(list).toHaveBeenCalledWith({ projectId, limit: 30, before: null });
 
-    await invoke(button(tree, '保存备注'), 'onClick');
-    tree = render(bridge, false, onNavigate);
-    expect(textOf(tree)).toContain('作者备注已保存。');
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '保存备注'), 'onClick');
+      await flushPromises();
+    });
+    expect(textContent(renderer.root)).toContain('作者备注已保存。');
 
-    await invoke(button(tree, '生成智能复盘'), 'onClick');
-    tree = render(bridge, false, onNavigate);
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '生成智能复盘'), 'onClick');
+      await flushPromises();
+    });
     expect(generationStart).toHaveBeenCalledOnce();
     expect(markAiFailed).toHaveBeenCalledWith({ projectId, entryId, generationRunId: null });
-    expect(textOf(tree)).toContain('智能复盘未启动');
+    expect(textContent(renderer.root)).toContain('智能复盘未启动');
 
-    await invoke(button(tree, '加载更早日志'), 'onClick');
-    tree = render(bridge, false, onNavigate);
-    expect(textOf(tree)).toContain('每周');
-    expect(list).toHaveBeenCalledWith({
-      projectId,
-      limit: 30,
-      before: baseCatalog.nextCursor,
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '加载更早日志'), 'onClick');
+      await flushPromises();
     });
+    expect(list).toHaveBeenCalledWith({ projectId, limit: 30, before: baseCatalog.nextCursor });
+    expect(textContent(renderer.root)).toContain('每周');
+
+    await act(async () => renderer.unmount());
   });
 
-  it('covers catch-up fallback, read-only guards and successful AI polling', async () => {
+  it('covers catch-up fallback, successful AI polling and read-only guards', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const baseCatalog = catalog();
+    const timers: Array<() => void> = [];
     const list = vi.fn().mockResolvedValue({ ok: true, data: baseCatalog });
     const journal = {
       catchUp: vi.fn().mockResolvedValue({ ok: false, error: { message: '补偿失败。' } }),
@@ -415,9 +420,8 @@ describe('M12-01 JournalWorkbench interactions', () => {
       updateNote: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
       markAiFailed: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
     };
-    installWindow(journal);
-    const { bridge, generationStart, generationGetRun, providersList } = createBridge();
-    generationStart.mockResolvedValue({
+    installWindow(journal, timers);
+    const start = vi.fn().mockResolvedValue({
       state: 'success',
       data: {
         run: {
@@ -427,51 +431,78 @@ describe('M12-01 JournalWorkbench interactions', () => {
         },
       },
     });
+    const getRun = vi.fn().mockResolvedValue({
+      state: 'success',
+      data: {
+        runId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        projectId,
+        status: 'succeeded',
+      },
+    });
+    const { bridge } = createBridge({ start, getRun });
+    const renderer = await renderWorkbench(bridge);
 
-    let tree = render(bridge);
-    await flushEffects();
-    await settle();
-    tree = render(bridge);
-    expect(list).toHaveBeenCalled();
-    expect(providersList).toHaveBeenCalled();
+    expect(list).toHaveBeenCalledWith({ projectId, limit: 30, before: null });
+    await act(async () => invoke(buttonContaining(renderer.root, '每日 ·'), 'onClick'));
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '生成智能复盘'), 'onClick');
+      await flushPromises();
+    });
+    expect(start).toHaveBeenCalledOnce();
+    expect(textContent(renderer.root)).toContain('智能复盘已启动');
+    expect(timers.length).toBeGreaterThan(0);
 
-    await invoke(button(tree, '每日 ·'), 'onClick');
-    tree = render(bridge);
-    await invoke(button(tree, '生成智能复盘'), 'onClick');
-    tree = render(bridge);
-    await flushEffects();
-    await settle();
-    tree = render(bridge);
-    expect(generationGetRun).toHaveBeenCalledWith(
-      projectId,
-      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      { mode: 'share' },
-    );
-    expect(textOf(tree)).toContain('智能复盘已生成。');
+    await act(async () => {
+      timers.shift()?.();
+      await flushPromises();
+    });
+    expect(getRun).toHaveBeenCalledWith(projectId, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', {
+      mode: 'share',
+    });
+    expect(textContent(renderer.root)).toContain('智能复盘已生成。');
+    await act(async () => renderer.unmount());
 
-    tree = render(bridge, true);
-    await invoke(button(tree, '今日复盘'), 'onClick');
-    await invoke(elements(tree, 'select')[0]!, 'onChange', { target: { value: 'weekly' } });
+    installWindow(journal);
+    const readOnlyRenderer = await renderWorkbench(bridge, true);
+    expect(buttonContaining(readOnlyRenderer.root, '今日复盘').props.disabled).toBe(true);
+    expect(controlByLabel(readOnlyRenderer.root, '定时复盘').props.disabled).toBe(true);
+    await act(async () => {
+      invoke(buttonContaining(readOnlyRenderer.root, '今日复盘'), 'onClick');
+      invoke(controlByLabel(readOnlyRenderer.root, '定时复盘'), 'onChange', {
+        target: { value: 'weekly' },
+      });
+      await flushPromises();
+    });
     expect(journal.generate).not.toHaveBeenCalled();
     expect(journal.updatePreferences).not.toHaveBeenCalled();
+    await act(async () => readOnlyRenderer.unmount());
   });
 
-  it('surfaces journal list exceptions without corrupting the workbench', async () => {
-    const journal = {
+  it('surfaces read exceptions and empty catalogs without corrupting the workbench', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    installWindow({
       catchUp: vi.fn().mockResolvedValue({ ok: false, error: { message: '补偿失败。' } }),
       list: vi.fn().mockRejectedValue(new Error('日志数据库暂不可读。')),
-      generate: vi.fn(),
-      updatePreferences: vi.fn(),
-      updateNote: vi.fn(),
-      markAiFailed: vi.fn(),
-    };
-    installWindow(journal);
-    const { bridge } = createBridge();
+    });
+    const { bridge } = createBridge({
+      providerResult: { state: 'failure', error: { message: '模型列表失败。' } },
+    });
+    const failedRenderer = await renderWorkbench(bridge);
+    expect(textContent(failedRenderer.root)).toContain('日志数据库暂不可读。');
+    await act(async () => failedRenderer.unmount());
 
-    let tree = render(bridge);
-    await flushEffects();
-    await settle();
-    tree = render(bridge);
-    expect(textOf(tree)).toContain('日志数据库暂不可读。');
+    const emptyCatalog = contractInput<JournalCatalog>({
+      projectId,
+      entries: [],
+      preferences: { projectId, schedule: 'off', updatedAt },
+      nextCursor: null,
+    });
+    installWindow({
+      catchUp: vi.fn().mockResolvedValue({ ok: true, data: emptyCatalog }),
+      list: vi.fn().mockResolvedValue({ ok: true, data: emptyCatalog }),
+    });
+    const emptyRenderer = await renderWorkbench(createBridge().bridge);
+    expect(textContent(emptyRenderer.root)).toContain('还没有日志。');
+    await act(async () => emptyRenderer.unmount());
   });
 });

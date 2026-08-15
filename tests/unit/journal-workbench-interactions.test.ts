@@ -198,11 +198,13 @@ function installWindow(journal: Record<string, unknown>, timers: Array<() => voi
   });
 }
 
-function createBridge(options: {
-  start?: ReturnType<typeof vi.fn>;
-  getRun?: ReturnType<typeof vi.fn>;
-  providerResult?: unknown;
-} = {}) {
+function createBridge(
+  options: {
+    start?: ReturnType<typeof vi.fn>;
+    getRun?: ReturnType<typeof vi.fn>;
+    providerResult?: unknown;
+  } = {},
+) {
   const providersList = vi.fn().mockResolvedValue(
     options.providerResult ?? {
       state: 'success',
@@ -274,9 +276,11 @@ describe('M12-01 JournalWorkbench interaction coverage', () => {
       .fn()
       .mockResolvedValueOnce({ ok: false, error: { message: '备注冲突。' } })
       .mockResolvedValue({ ok: true, data: baseCatalog });
-    const list = vi.fn().mockImplementation(async (input: { before: unknown }) =>
-      input.before === null ? { ok: true, data: baseCatalog } : { ok: true, data: olderCatalog },
-    );
+    const list = vi
+      .fn()
+      .mockImplementation(async (input: { before: unknown }) =>
+        input.before === null ? { ok: true, data: baseCatalog } : { ok: true, data: olderCatalog },
+      );
     const markAiFailed = vi.fn().mockResolvedValue({ ok: true, data: baseCatalog });
     installWindow({
       catchUp: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
@@ -355,7 +359,7 @@ describe('M12-01 JournalWorkbench interaction coverage', () => {
     });
     expect(generate).toHaveBeenCalledTimes(3);
 
-    await act(async () => invoke(buttonContaining(renderer.root, '每日 ·'), 'onClick'));
+    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
     expect(textContent(renderer.root)).toContain('关系变化 1');
     for (const reference of ['第一章', '第一章定稿', '主角', '雨夜灵感', '连续性检查']) {
       await act(async () => invoke(buttonContaining(renderer.root, reference), 'onClick'));
@@ -443,7 +447,7 @@ describe('M12-01 JournalWorkbench interaction coverage', () => {
     const renderer = await renderWorkbench(bridge);
 
     expect(list).toHaveBeenCalledWith({ projectId, limit: 30, before: null });
-    await act(async () => invoke(buttonContaining(renderer.root, '每日 ·'), 'onClick'));
+    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
     await act(async () => {
       invoke(buttonContaining(renderer.root, '生成智能复盘'), 'onClick');
       await flushPromises();

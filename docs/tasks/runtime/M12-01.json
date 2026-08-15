@@ -30,8 +30,7 @@
     "docs/tasks/TASK_INDEX.md",
     "docs/tasks/M12/M12-01_PROJECT_JOURNAL.md",
     "docs/tasks/runtime/M12-01.json",
-    "docs/test-evidence/M12-01/",
-    ".github/workflows/m12-01-test-format-fix.yml"
+    "docs/test-evidence/M12-01/"
   ],
   "forbiddenPaths": [
     "migrations/app/",

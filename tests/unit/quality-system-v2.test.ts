@@ -6,8 +6,9 @@ import { validateGovernanceAuthorities } from '../../scripts/governance-self-che
 import { validateLicenseMetadata } from '../../scripts/license-policy.mjs';
 
 const platformExperienceViewports = [
-  { id: 'mainstream-fhd', width: 1920, height: 1080 },
-  { id: 'mid-high-qhd', width: 2560, height: 1440 },
+  { id: 'baseline-qhd', width: 2560, height: 1440 },
+  { id: 'laptop-qhd-plus', width: 2560, height: 1600 },
+  { id: 'ultrawide-uwqhd', width: 3440, height: 1440 },
   { id: 'high-end-4k', width: 3840, height: 2160 },
 ];
 
@@ -245,7 +246,7 @@ describe('Meta-Governance权威链', () => {
     ).toContain('Platform experience matrix must require exactly linux, macos and windows');
   });
 
-  it('三平台矩阵重新引入低分辨率时阻断', () => {
+  it('三平台矩阵重新引入FHD或更低物理分辨率时阻断', () => {
     expect(
       validateGovernanceAuthorities({
         ...sources,
@@ -256,14 +257,14 @@ describe('Meta-Governance权威链', () => {
           scenario: {
             spec: 'tests/e2e/platform-experience.spec.ts',
             viewports: [
-              { id: 'legacy-low', width: 1280, height: 800 },
-              ...platformExperienceViewports.slice(1),
+              { id: 'legacy-fhd', width: 1920, height: 1080 },
+              ...platformExperienceViewports,
             ],
           },
         }),
       }),
     ).toContain(
-      'Platform experience matrix must require exactly 1920x1080, 2560x1440 and 3840x2160 viewports',
+      'Platform experience matrix must require exactly 2560x1440, 2560x1600, 3440x1440 and 3840x2160 viewports',
     );
   });
 });

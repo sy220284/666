@@ -148,11 +148,15 @@ export function validateGovernanceAuthorities(sources) {
           width: viewport?.width,
           height: viewport?.height,
         }))
-        .sort((left, right) => Number(left.width) - Number(right.width))
+        .sort(
+          (left, right) =>
+            Number(left.width) - Number(right.width) || Number(left.height) - Number(right.height),
+        )
     : [];
   const requiredViewportProfiles = [
-    { id: 'mainstream-fhd', width: 1920, height: 1080 },
-    { id: 'mid-high-qhd', width: 2560, height: 1440 },
+    { id: 'baseline-qhd', width: 2560, height: 1440 },
+    { id: 'laptop-qhd-plus', width: 2560, height: 1600 },
+    { id: 'ultrawide-uwqhd', width: 3440, height: 1440 },
     { id: 'high-end-4k', width: 3840, height: 2160 },
   ];
   if (
@@ -160,7 +164,7 @@ export function validateGovernanceAuthorities(sources) {
     JSON.stringify(viewportProfiles) !== JSON.stringify(requiredViewportProfiles)
   ) {
     errors.push(
-      'Platform experience matrix must require exactly 1920x1080, 2560x1440 and 3840x2160 viewports',
+      'Platform experience matrix must require exactly 2560x1440, 2560x1600, 3440x1440 and 3840x2160 viewports',
     );
   }
 

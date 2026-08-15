@@ -34,14 +34,14 @@ const appearance = {
 
 describe('display and responsive layout performance', () => {
   it.each([
-    [1_280, 100, 'standard', 'sidebar', 'sidebar'],
     [2_560, 100, 'ultrawide', 'sidebar', 'sidebar'],
     [2_560, 125, 'wide', 'sidebar', 'sidebar'],
     [2_560, 150, 'two-k', 'sidebar', 'sidebar'],
+    [2_560, 200, 'standard', 'sidebar', 'sidebar'],
     [3_440, 100, 'ultrawide', 'sidebar', 'sidebar'],
     [3_840, 100, 'ultrawide', 'sidebar', 'sidebar'],
-    [1_024, 100, 'narrow', 'sidebar', 'drawer'],
-    [1_280, 150, 'compact', 'drawer', 'drawer'],
+    [3_840, 150, 'ultrawide', 'sidebar', 'sidebar'],
+    [3_840, 200, 'wide', 'sidebar', 'sidebar'],
   ] as const)(
     'maps %ipx at %i%% to %s without coupling physical pixels to breakpoints',
     (physicalWidth, scalePercent, mode, leftPanel, rightPanel) => {
@@ -52,6 +52,19 @@ describe('display and responsive layout performance', () => {
       });
     },
   );
+
+  it('keeps narrow CSS viewports as fallback without treating them as physical support tiers', () => {
+    expect(layoutPolicyForViewport(1_024)).toEqual({
+      mode: 'narrow',
+      leftPanel: 'sidebar',
+      rightPanel: 'drawer',
+    });
+    expect(layoutPolicyForViewport(840)).toEqual({
+      mode: 'compact',
+      leftPanel: 'drawer',
+      rightPanel: 'drawer',
+    });
+  });
 
   it('keeps every content-width preference within the frozen 680–860 CSS px range', () => {
     expect(contentWidthPixels('narrow', 3_440)).toBe(680);

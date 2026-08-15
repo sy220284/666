@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "status": "enforced",
   "authority": "github-actions",
-  "description": "Cross-platform author experience authority for Windows, macOS and Linux using current mainstream through high-end desktop viewports.",
+  "description": "Cross-platform author experience authority for QHD through high-end desktop viewports; FHD and lower physical displays are outside the formal support matrix.",
   "platforms": [
     {
       "id": "linux",
@@ -28,15 +28,21 @@
     "spec": "tests/e2e/platform-experience.spec.ts",
     "viewports": [
       {
-        "id": "mainstream-fhd",
-        "tier": "mainstream",
-        "width": 1920,
-        "height": 1080
+        "id": "baseline-qhd",
+        "tier": "supported-minimum",
+        "width": 2560,
+        "height": 1440
       },
       {
-        "id": "mid-high-qhd",
-        "tier": "mid-high",
+        "id": "laptop-qhd-plus",
+        "tier": "mid-high-16-10",
         "width": 2560,
+        "height": 1600
+      },
+      {
+        "id": "ultrawide-uwqhd",
+        "tier": "mid-high-ultrawide",
+        "width": 3440,
         "height": 1440
       },
       {
@@ -63,6 +69,7 @@
   "boundaries": {
     "visualRegression": "Linux strict screenshot baseline remains a separate pixel authority and is not part of the platform experience viewport matrix.",
     "windowsIme": "Real Microsoft Pinyin composition remains a dedicated Windows native IME gate.",
-    "packageSmoke": "Packaged startup remains independent and cannot substitute for the author experience flow."
+    "packageSmoke": "Packaged startup remains independent and cannot substitute for the author experience flow.",
+    "lowResolution": "FHD and lower physical displays are not formal support or release-blocking tiers; narrow CSS/DIP viewports remain fallback-only."
   }
 }

@@ -170,7 +170,7 @@ test.afterEach(async () => {
   );
 });
 
-test('M8-07中文作者体验视觉与1280×800布局矩阵', async () => {
+test('M8-07中文作者体验视觉与QHD布局矩阵', async () => {
   test.setTimeout(180_000);
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-m8-07-experience-'));
   temporaryDirectories.push(userDataPath);
@@ -180,7 +180,7 @@ test('M8-07中文作者体验视觉与1280×800布局矩阵', async () => {
 
   try {
     const page = await application.firstWindow();
-    await setViewport(application, 1280, 800);
+    await setViewport(application, 2560, 1440);
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
 
     await page.locator('[data-create-project]').click();
@@ -203,22 +203,22 @@ test('M8-07中文作者体验视觉与1280×800布局矩阵', async () => {
 
     await expectResponsiveWritingLayout(page);
     await expectReadableTheme(page);
-    await captureAcceptanceScreenshot(page, 'M8-07', 'theme-a-light-1280x800.png');
+    await captureAcceptanceScreenshot(page, 'M8-07', 'theme-a-light-2560x1440.png');
 
     await applyTheme(page, 'theme-a', 'dark');
     await expectResponsiveWritingLayout(page);
     await expectReadableTheme(page);
-    await captureAcceptanceScreenshot(page, 'M8-07', 'theme-a-dark-1280x800.png');
+    await captureAcceptanceScreenshot(page, 'M8-07', 'theme-a-dark-2560x1440.png');
 
     await applyTheme(page, 'theme-b', 'light');
     await expectResponsiveWritingLayout(page);
     await expectReadableTheme(page);
-    await captureAcceptanceScreenshot(page, 'M8-07', 'theme-b-light-1280x800.png');
+    await captureAcceptanceScreenshot(page, 'M8-07', 'theme-b-light-2560x1440.png');
 
     await applyTheme(page, 'theme-b', 'dark');
     await expectResponsiveWritingLayout(page);
     await expectReadableTheme(page);
-    await captureAcceptanceScreenshot(page, 'M8-07', 'theme-b-dark-1280x800.png');
+    await captureAcceptanceScreenshot(page, 'M8-07', 'theme-b-dark-2560x1440.png');
   } finally {
     await closeGracefully(application);
   }

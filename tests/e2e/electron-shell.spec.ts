@@ -908,11 +908,10 @@ test('keeps the React shell viewport matrix scroll-free and overlays visible', a
       : null;
     if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true });
     const matrix = [
-      { name: '1280x800-100', width: 1_280, height: 800, mode: 'standard' },
       { name: '2560x1440-100', width: 2_560, height: 1_440, mode: 'ultrawide' },
+      { name: '2560x1600-100', width: 2_560, height: 1_600, mode: 'ultrawide' },
       { name: '3440x1440-100', width: 3_440, height: 1_440, mode: 'ultrawide' },
-      { name: '3840x1600-100', width: 3_840, height: 1_600, mode: 'ultrawide' },
-      { name: 'effective-1024x640', width: 1_024, height: 640, mode: 'narrow' },
+      { name: '3840x2160-100', width: 3_840, height: 2_160, mode: 'ultrawide' },
     ] as const;
     await setAppearance(page, defaultAppearance);
 
@@ -972,8 +971,9 @@ test('keeps the React shell viewport matrix scroll-free and overlays visible', a
       );
     }
 
-    await setContentViewport(application, 1_280, 800);
-    await setAppearance(page, { ...defaultAppearance, uiScalePercent: 150 });
+    // Narrow-window fallback validates CSS/DIP degradation only; it is not a physical display support tier.
+    await setContentViewport(application, 840, 700);
+    await setAppearance(page, defaultAppearance);
     await page.waitForFunction(() => document.body.dataset.layoutMode === 'compact');
     const navToggle = page.getByRole('button', { name: '打开一级导航' });
     await navToggle.click();
@@ -1032,6 +1032,7 @@ test('uses real Chromium device scaling for the 2560×1440 DPI matrix', async ()
   for (const scenario of [
     { name: '2560x1440-125', scaleFactor: 1.25, mode: 'wide' },
     { name: '2560x1440-150', scaleFactor: 1.5, mode: 'two-k' },
+    { name: '2560x1440-200', scaleFactor: 2, mode: 'standard' },
   ] as const) {
     const application = await launch(await temporaryUserData(), scenario.scaleFactor);
     try {

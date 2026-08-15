@@ -61,7 +61,7 @@ async function setViewport(application: ElectronApplication): Promise<void> {
     if (!window) throw new Error('VISUAL_REGRESSION_WINDOW_MISSING');
     if (window.isMaximized()) window.unmaximize();
     window.setPosition(0, 0, false);
-    window.setContentSize(1280, 800, false);
+    window.setContentSize(2560, 1440, false);
   });
 }
 
@@ -182,7 +182,7 @@ test.afterEach(async () => {
 });
 
 if (process.platform === 'linux') {
-  test('Phase 3 Linux 1280×800四主题视觉基线', async () => {
+  test('Phase 3 Linux 2560×1440四主题视觉基线', async () => {
     test.setTimeout(180_000);
     const manifest = await loadVisualBaselineManifest(root);
     expect(manifest.baselines).toHaveLength(4);
@@ -223,13 +223,13 @@ if (process.platform === 'linux') {
         if (mismatch) mismatches.push(mismatch);
       };
 
-      await collect('theme-a-light-1280x800.png');
+      await collect('theme-a-light-2560x1440.png');
       await applyTheme(page, 'theme-a', 'dark');
-      await collect('theme-a-dark-1280x800.png');
+      await collect('theme-a-dark-2560x1440.png');
       await applyTheme(page, 'theme-b', 'light');
-      await collect('theme-b-light-1280x800.png');
+      await collect('theme-b-light-2560x1440.png');
       await applyTheme(page, 'theme-b', 'dark');
-      await collect('theme-b-dark-1280x800.png');
+      await collect('theme-b-dark-2560x1440.png');
       await assertNoVisualMismatches(mismatches);
     } finally {
       await closeGracefully(application);

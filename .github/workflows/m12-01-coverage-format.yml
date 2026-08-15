@@ -5,6 +5,7 @@ on:
     branches: [work]
     paths:
       - .github/workflows/m12-01-coverage-format.yml
+      - tests/tools/m12-01-extra-coverage.mjs
 
 permissions:
   contents: write

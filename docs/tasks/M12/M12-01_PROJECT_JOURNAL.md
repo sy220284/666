@@ -1,6 +1,6 @@
 # M12-01 创作日志与长期项目复盘
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M12 作者生产力与长期项目增强  
 > 优先级：P1  
 > 执行分支：`work`  
@@ -177,10 +177,12 @@ Journal 只读取现有记录，包括：
 
 ## 收口验证记录
 
-- 实现冻结点：`86623d672e9bdecd5d83bb182bec06183794f216`。
-- Schema 2 Evidence 已绑定实现冻结点，清单覆盖 `README.md`、`summary.md`、`commands.txt`、`known-risks.md`。
-- PR #402 保持 Draft 并启用完整验证路由；只有最新完整验证全部成功后才进入 Ready。
-- 实现冻结点之后只允许任务卡、Runtime、TASK_INDEX 与本任务 Evidence 等收口路径变化，不再混入产品代码。
+- 最终实现冻结点：`c183bf436ee4cad5a3682cd3bb7a7e96c4a324da`。
+- Schema 2 Evidence 已精确绑定该冻结点，清单覆盖 `README.md`、`summary.md`、`commands.txt`、`known-risks.md`。
+- 冻结点完整权威门已通过：Quality #5794（run `31894307123`）、Security #5586（run `31894307056`）、Performance #5550（run `31894307017`）。
+- Quality #5794 已实际通过静态检查、全量产品测试与覆盖率、可靠性、Electron 全量桌面端到端、Linux 作者体验、Windows 真实拼音验收和 macOS 作者体验；视觉基线由两个独立 Quality 运行的同尺寸、同 SHA-256 截图见证后更新，并在本轮正式 E2E 中通过。
+- 最终实现冻结点之后只允许任务卡、Runtime、`TASK_INDEX.md` 与本任务 Evidence 等收口路径变化，不再混入产品代码。
+- 当前状态为 Implemented；合并后的 `main-verification` 与 `task-verification/M12-01` 成功后才取得有效 VERIFIED。
 
 ## 回滚策略
 

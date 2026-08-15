@@ -3,10 +3,8 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  JournalService,
-  JournalServiceError,
-} from '../../packages/core-service/src/journal-service.js';
+import { JournalService } from '../../packages/core-service/src/journal-service.js';
+import type { JournalServiceError } from '../../packages/core-service/src/journal-service.js';
 import type { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 
 const PROJECT_ID = '00000000-0000-4000-8000-000000000001';

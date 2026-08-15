@@ -11,6 +11,7 @@ export const PromptTaskTypeSchema = z.enum([
   'validate',
   'state_extract',
   'idea_explore',
+  'journal_summarize',
 ]);
 export const PromptOutputModeSchema = z.enum(['structured', 'text']);
 export const ProviderProtocolSchema = z.enum(['openai_compatible', 'anthropic', 'custom']);

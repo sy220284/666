@@ -278,6 +278,7 @@ export function JournalWorkbench({
     setPending(null);
     if (result.state === 'success') {
       setActiveRun(result.data.run);
+      await reload();
       setNotice('智能复盘已启动；确定性日志可继续使用。');
     } else if (result.state === 'failure') {
       const failed = await journalBridge().markAiFailed({
@@ -304,6 +305,12 @@ export function JournalWorkbench({
           ...result.data,
           entries: [...catalog.entries, ...result.data.entries],
         });
+        setNoteDrafts((current) => ({
+          ...current,
+          ...Object.fromEntries(
+            result.data.entries.map((entry) => [entry.id, entry.authorNote ?? '']),
+          ),
+        }));
       }
     } finally {
       setPending(null);

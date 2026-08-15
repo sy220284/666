@@ -1,0 +1,224 @@
+name: M12-01 Migration Guardrail Repair
+
+on:
+  push:
+    branches: [work]
+    paths:
+      - '.github/workflows/m12-01-format.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m12-01-migration-guardrail-repair
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: work
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Rebuild generation scope triggers for Journal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          migration = Path('migrations/project/0036_project_journal.sql')
+          text = migration.read_text()
+          drop_anchor = 'DROP TRIGGER IF EXISTS trg_idea_card_generation_scope_insert;\n'
+          if 'DROP TRIGGER IF EXISTS trg_generation_runs_scope_insert;' not in text:
+              text = text.replace(
+                  drop_anchor,
+                  "DROP TRIGGER IF EXISTS trg_generation_runs_scope_insert;\n"
+                  "DROP TRIGGER IF EXISTS trg_generation_runs_scope_update;\n"
+                  + drop_anchor,
+                  1,
+              )
+
+          if 'GENERATION_JOURNAL_SCOPE_INVALID' not in text:
+              source = Path('migrations/project/0033_generation_scope_guardrails.sql').read_text()
+              start = source.index('CREATE TRIGGER trg_generation_runs_scope_insert')
+              end = source.index('UPDATE projects SET schema_version = 33;')
+              triggers = source[start:end]
+              triggers = triggers.replace(
+                  "NEW.run_type <> 'idea_explore'",
+                  "NEW.run_type NOT IN ('idea_explore', 'journal_summarize')",
+              )
+              legacy_tail = (
+                  "  ) THEN RAISE(ABORT, 'GENERATION_LEGACY_SCOPE_INVALID') END;\n\n"
+                  "  SELECT CASE WHEN NEW.scope_type = 'project'"
+              )
+              journal_guard = (
+                  "  ) THEN RAISE(ABORT, 'GENERATION_LEGACY_SCOPE_INVALID') END;\n\n"
+                  "  SELECT CASE WHEN NEW.run_type = 'journal_summarize' AND (\n"
+                  "    NEW.scope_type <> 'project'\n"
+                  "    OR NEW.scope_id <> NEW.project_id\n"
+                  "    OR NEW.chapter_id IS NOT NULL\n"
+                  "  ) THEN RAISE(ABORT, 'GENERATION_JOURNAL_SCOPE_INVALID') END;\n\n"
+                  "  SELECT CASE WHEN NEW.scope_type = 'project'"
+              )
+              if triggers.count(legacy_tail) != 2:
+                  raise SystemExit('expected two legacy trigger anchors')
+              triggers = triggers.replace(legacy_tail, journal_guard)
+              insert_anchor = 'ALTER TABLE generation_runs\nDROP COLUMN run_type_m12_01;\n\n'
+              if insert_anchor not in text:
+                  raise SystemExit('generation run migration anchor not found')
+              text = text.replace(insert_anchor, insert_anchor + triggers, 1)
+          migration.write_text(text)
+
+          legacy_test = Path('tests/migration/m11-05-generation-scope-guardrails.test.ts')
+          legacy = legacy_test.read_text()
+          legacy = legacy.replace(
+              'expect(sql).toContain("NEW.run_type <> \'idea_explore\'");',
+              'expect(sql).toContain("NEW.run_type NOT IN (\'idea_explore\', \'journal_summarize\')");',
+          )
+          legacy_test.write_text(legacy)
+
+          test = Path('tests/migration/m12-01-project-journal-migration.test.ts')
+          test.write_text("""import { randomUUID } from 'node:crypto';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
+import { latestProjectMigrationVersion } from '../../packages/testkit/src/index.js';
+
+const temporaryDirectories: string[] = [];
+const clock = { now: () => new Date('2026-08-15T07:15:00.000Z') };
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })),
+  );
+});
+
+describe('M12-01 Project Journal migration', () => {
+  it('keeps legacy runs chapter-scoped and permits Journal only at project scope', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-m12-01-journal-migration-'));
+    temporaryDirectories.push(root);
+    const parent = path.join(root, 'projects');
+    await mkdir(parent, { recursive: true });
+
+    const appRuntime = await openAppRuntime({
+      databasePath: path.join(root, 'app.sqlite'),
+      migrationsDirectory: 'migrations/app',
+      recoveryDirectory: path.join(root, 'app-recovery'),
+      appVersion: '0.1.0',
+      clock,
+    });
+    const workspace = new ProjectWorkspaceService({
+      projectMigrationsDirectory: 'migrations/project',
+      projectMigrationRecoveryDirectory: path.join(root, 'project-migration-recovery'),
+      appVersion: '0.1.0',
+      recentProjects: appRuntime.recentProjects,
+      clock,
+    });
+    const projectId = randomUUID();
+    const project = await workspace.create(
+      projectId,
+      { name: 'M12-01 日志迁移验证', channel: '长篇' },
+      parent,
+    );
+    await workspace.shutdown();
+    await appRuntime.close();
+
+    const database = new DatabaseSync(path.join(project.workspacePath, 'project.sqlite'), {
+      readBigInts: true,
+    });
+    try {
+      expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
+        schema_version: BigInt(await latestProjectMigrationVersion()),
+      });
+
+      const insertTrigger = database
+        .prepare(
+          "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_generation_runs_scope_insert'",
+        )
+        .get() as { readonly sql: string };
+      const updateTrigger = database
+        .prepare(
+          "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'trg_generation_runs_scope_update'",
+        )
+        .get() as { readonly sql: string };
+      for (const sql of [insertTrigger.sql, updateTrigger.sql]) {
+        expect(sql).toContain("NEW.run_type NOT IN ('idea_explore', 'journal_summarize')");
+        expect(sql).toContain("NEW.run_type = 'journal_summarize'");
+        expect(sql).toContain('GENERATION_JOURNAL_SCOPE_INVALID');
+      }
+
+      const insertRun = database.prepare(`
+        INSERT INTO generation_runs(
+          id, request_id, task_id, project_id, chapter_id,
+          scope_type, scope_id, run_type, prompt_id, prompt_version,
+          output_mode, provider_id, actual_model, support_status,
+          status, stage, retry_count, partial_status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertRun.run(
+        randomUUID(), randomUUID(), randomUUID(), projectId, null,
+        'project', projectId, 'journal_summarize', 'worldforge.journal-summarize', 1,
+        'structured', 'provider-fixture', 'model-fixture', 'unverified',
+        'queued', 'queued', 0, 'unavailable', clock.now().toISOString(),
+      );
+      expect(
+        database.prepare("SELECT count(*) AS count FROM generation_runs WHERE run_type = 'journal_summarize'").get(),
+      ).toEqual({ count: 1n });
+
+      expect(() =>
+        insertRun.run(
+          randomUUID(), randomUUID(), randomUUID(), projectId, 'legacy-chapter',
+          'project', projectId, 'journal_summarize', 'worldforge.journal-summarize', 1,
+          'structured', 'provider-fixture', 'model-fixture', 'unverified',
+          'queued', 'queued', 0, 'unavailable', clock.now().toISOString(),
+        ),
+      ).toThrow(/GENERATION_JOURNAL_SCOPE_INVALID/);
+
+      expect(() =>
+        insertRun.run(
+          randomUUID(), randomUUID(), randomUUID(), projectId, null,
+          'project', projectId, 'skeleton', 'worldforge.skeleton', 1,
+          'structured', 'provider-fixture', 'model-fixture', 'unverified',
+          'queued', 'queued', 0, 'unavailable', clock.now().toISOString(),
+        ),
+      ).toThrow(/GENERATION_LEGACY_SCOPE_INVALID/);
+
+      expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    } finally {
+      database.close();
+    }
+  });
+});
+""")
+          PY
+      - name: Apply repository locked Prettier
+        run: pnpm exec prettier --write tests/migration/m11-05-generation-scope-guardrails.test.ts tests/migration/m12-01-project-journal-migration.test.ts
+      - name: Verify type surface
+        run: pnpm typecheck
+      - name: Verify migration guardrails
+        run: pnpm exec vitest run tests/migration/m11-05-generation-scope-guardrails.test.ts tests/migration/m12-01-project-journal-migration.test.ts
+      - name: Commit verified migration repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add migrations/project/0036_project_journal.sql tests/migration/m11-05-generation-scope-guardrails.test.ts tests/migration/m12-01-project-journal-migration.test.ts
+          git commit -m 'fix(M12-01): preserve generation scope guardrails'
+          git push origin HEAD:work

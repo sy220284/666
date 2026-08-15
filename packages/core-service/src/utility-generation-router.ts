@@ -856,7 +856,7 @@ async function journalSummarizeWorkflow({
   });
   const bundle = journalSummaryPrompt.build(source);
   const provider = createProviderAdapter(operation.provider, operation.credential);
-  return services.runtime.startStructured({
+  const started = await services.runtime.startStructured({
     requestId,
     run: {
       projectId: input.projectId,
@@ -887,6 +887,13 @@ async function journalSummarizeWorkflow({
     provider,
     requestFor: (runId) => request(runId, operation.provider.model, bundle, 4_096),
     partialOnFailure: false,
+    onFailure: async (runId) => {
+      await services.journal.markAiFailed(randomUUID(), {
+        projectId: input.projectId,
+        entryId: intent.journalEntryId,
+        generationRunId: runId,
+      });
+    },
     complete: async (runId, raw, usage) => {
       const output = parseStructured(JournalAiSummaryOutputSchema, raw);
       await services.journal.completeAiSummary(requestId, {
@@ -900,6 +907,13 @@ async function journalSummarizeWorkflow({
       return { run, candidateIds: [], resultRefs: run.resultRefs };
     },
   });
+  await services.journal.markAiPending(randomUUID(), {
+    projectId: input.projectId,
+    entryId: intent.journalEntryId,
+    generationRunId: started.run.runId,
+    expectedSourceHash: source.constraintHash,
+  });
+  return started;
 }
 
 export const GenerationWorkflowHandlers = {

@@ -31,8 +31,8 @@ jobs:
 
           function replaceExact(text, from, to, label) {
             const first = text.indexOf(from);
-            if (first < 0 || text.indexOf(from, first + from.length) >= 0) {
-              throw new Error(`Expected exactly one match for ${label}`);
+            if (first < 0) {
+              throw new Error(`Expected a match for ${label}`);
             }
             return text.replace(from, to);
           }

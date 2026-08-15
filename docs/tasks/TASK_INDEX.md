@@ -160,7 +160,7 @@ Runtime IMPLEMENTED
 
 | ID     | 任务卡                                                                            | 依赖   | 状态        |
 | ------ | --------------------------------------------------------------------------------- | ------ | ----------- |
-| M12-01 | [`创作日志与长期项目复盘`](M12/M12-01_PROJECT_JOURNAL.md)                         | M11-07 | Planned     |
+| M12-01 | [`创作日志与长期项目复盘`](M12/M12-01_PROJECT_JOURNAL.md)                         | M11-07 | In Progress |
 | M12-02 | [`项目资产生命周期与研究资料库`](M12/M12-02_RESEARCH_LIBRARY_ATTACHMENTS.md)      | M11-07 | Implemented |
 | M12-03 | [`作者效率与专业写作增强`](M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md)     | M11-07 | Planned     |
 

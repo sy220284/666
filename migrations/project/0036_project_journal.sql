@@ -2,6 +2,10 @@
 -- M12-01: local Project Journal. Journal rows are derived review artifacts only;
 -- authoritative story facts remain in their existing domain tables.
 
+DROP TRIGGER IF EXISTS trg_generation_runs_scope_insert;
+DROP TRIGGER IF EXISTS trg_generation_runs_scope_update;
+DROP TRIGGER IF EXISTS trg_state_proposal_batch_scope_insert;
+DROP TRIGGER IF EXISTS trg_validation_batch_scope_insert;
 DROP TRIGGER IF EXISTS trg_idea_card_generation_scope_insert;
 
 ALTER TABLE generation_runs
@@ -27,6 +31,208 @@ SET run_type = run_type_m12_01;
 
 ALTER TABLE generation_runs
 DROP COLUMN run_type_m12_01;
+
+CREATE TRIGGER trg_generation_runs_scope_insert
+BEFORE INSERT ON generation_runs
+BEGIN
+  SELECT CASE WHEN NEW.scope_id IS NULL OR length(trim(NEW.scope_id)) = 0
+    THEN RAISE(ABORT, 'GENERATION_SCOPE_REQUIRED') END;
+
+  SELECT CASE WHEN NEW.run_type NOT IN ('idea_explore', 'journal_summarize') AND (
+    NEW.scope_type <> 'chapter'
+    OR NEW.chapter_id IS NULL
+    OR NEW.scope_id <> NEW.chapter_id
+  ) THEN RAISE(ABORT, 'GENERATION_LEGACY_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.run_type = 'journal_summarize' AND (
+    NEW.scope_type <> 'project'
+    OR NEW.scope_id <> NEW.project_id
+    OR NEW.chapter_id IS NOT NULL
+  ) THEN RAISE(ABORT, 'GENERATION_JOURNAL_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'project' AND NEW.scope_id <> NEW.project_id
+    THEN RAISE(ABORT, 'GENERATION_PROJECT_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'volume' AND NOT EXISTS (
+    SELECT 1 FROM volumes volume
+     WHERE volume.id = NEW.scope_id
+       AND volume.project_id = NEW.project_id
+       AND volume.deleted_at IS NULL
+  ) THEN RAISE(ABORT, 'GENERATION_VOLUME_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'chapter' AND NOT EXISTS (
+    SELECT 1
+      FROM chapters chapter
+      JOIN volumes volume ON volume.id = chapter.volume_id
+     WHERE chapter.id = NEW.scope_id
+       AND volume.project_id = NEW.project_id
+       AND chapter.deleted_at IS NULL
+       AND volume.deleted_at IS NULL
+       AND NEW.chapter_id = NEW.scope_id
+  ) THEN RAISE(ABORT, 'GENERATION_CHAPTER_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'scene' AND NOT EXISTS (
+    SELECT 1 FROM scene_beats beat
+     WHERE beat.id = NEW.scope_id
+       AND beat.project_id = NEW.project_id
+       AND beat.deleted_at IS NULL
+  ) THEN RAISE(ABORT, 'GENERATION_SCENE_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'entity' AND NOT EXISTS (
+    SELECT 1 FROM entities entity
+     WHERE entity.id = NEW.scope_id
+       AND entity.project_id = NEW.project_id
+       AND entity.status = 'active'
+  ) THEN RAISE(ABORT, 'GENERATION_ENTITY_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'selection' AND NOT EXISTS (
+    SELECT 1
+      FROM draft_blocks block
+      JOIN drafts draft ON draft.id = block.draft_id
+      JOIN chapters chapter ON chapter.id = draft.chapter_id
+      JOIN volumes volume ON volume.id = chapter.volume_id
+     WHERE block.logical_block_id = NEW.scope_id
+       AND volume.project_id = NEW.project_id
+       AND chapter.active_draft_id = draft.id
+       AND draft.status = 'active'
+       AND chapter.deleted_at IS NULL
+       AND volume.deleted_at IS NULL
+  ) THEN RAISE(ABORT, 'GENERATION_SELECTION_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.chapter_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1
+      FROM chapters chapter
+      JOIN volumes volume ON volume.id = chapter.volume_id
+     WHERE chapter.id = NEW.chapter_id
+       AND volume.project_id = NEW.project_id
+       AND chapter.deleted_at IS NULL
+       AND volume.deleted_at IS NULL
+  ) THEN RAISE(ABORT, 'GENERATION_COMPAT_CHAPTER_SCOPE_INVALID') END;
+END;
+
+CREATE TRIGGER trg_generation_runs_scope_update
+BEFORE UPDATE OF project_id, scope_type, scope_id, chapter_id, run_type ON generation_runs
+BEGIN
+  SELECT CASE WHEN NEW.scope_id IS NULL OR length(trim(NEW.scope_id)) = 0
+    THEN RAISE(ABORT, 'GENERATION_SCOPE_REQUIRED') END;
+
+  SELECT CASE WHEN NEW.run_type NOT IN ('idea_explore', 'journal_summarize') AND (
+    NEW.scope_type <> 'chapter'
+    OR NEW.chapter_id IS NULL
+    OR NEW.scope_id <> NEW.chapter_id
+  ) THEN RAISE(ABORT, 'GENERATION_LEGACY_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.run_type = 'journal_summarize' AND (
+    NEW.scope_type <> 'project'
+    OR NEW.scope_id <> NEW.project_id
+    OR NEW.chapter_id IS NOT NULL
+  ) THEN RAISE(ABORT, 'GENERATION_JOURNAL_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'project' AND NEW.scope_id <> NEW.project_id
+    THEN RAISE(ABORT, 'GENERATION_PROJECT_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'volume' AND NOT EXISTS (
+    SELECT 1 FROM volumes volume
+     WHERE volume.id = NEW.scope_id
+       AND volume.project_id = NEW.project_id
+       AND volume.deleted_at IS NULL
+  ) THEN RAISE(ABORT, 'GENERATION_VOLUME_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'chapter' AND NOT EXISTS (
+    SELECT 1
+      FROM chapters chapter
+      JOIN volumes volume ON volume.id = chapter.volume_id
+     WHERE chapter.id = NEW.scope_id
+       AND volume.project_id = NEW.project_id
+       AND chapter.deleted_at IS NULL
+       AND volume.deleted_at IS NULL
+       AND NEW.chapter_id = NEW.scope_id
+  ) THEN RAISE(ABORT, 'GENERATION_CHAPTER_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'scene' AND NOT EXISTS (
+    SELECT 1 FROM scene_beats beat
+     WHERE beat.id = NEW.scope_id
+       AND beat.project_id = NEW.project_id
+       AND beat.deleted_at IS NULL
+  ) THEN RAISE(ABORT, 'GENERATION_SCENE_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'entity' AND NOT EXISTS (
+    SELECT 1 FROM entities entity
+     WHERE entity.id = NEW.scope_id
+       AND entity.project_id = NEW.project_id
+       AND entity.status = 'active'
+  ) THEN RAISE(ABORT, 'GENERATION_ENTITY_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.scope_type = 'selection' AND NOT EXISTS (
+    SELECT 1
+      FROM draft_blocks block
+      JOIN drafts draft ON draft.id = block.draft_id
+      JOIN chapters chapter ON chapter.id = draft.chapter_id
+      JOIN volumes volume ON volume.id = chapter.volume_id
+     WHERE block.logical_block_id = NEW.scope_id
+       AND volume.project_id = NEW.project_id
+       AND chapter.active_draft_id = draft.id
+       AND draft.status = 'active'
+       AND chapter.deleted_at IS NULL
+       AND volume.deleted_at IS NULL
+  ) THEN RAISE(ABORT, 'GENERATION_SELECTION_SCOPE_INVALID') END;
+
+  SELECT CASE WHEN NEW.chapter_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1
+      FROM chapters chapter
+      JOIN volumes volume ON volume.id = chapter.volume_id
+     WHERE chapter.id = NEW.chapter_id
+       AND volume.project_id = NEW.project_id
+       AND chapter.deleted_at IS NULL
+       AND volume.deleted_at IS NULL
+  ) THEN RAISE(ABORT, 'GENERATION_COMPAT_CHAPTER_SCOPE_INVALID') END;
+END;
+
+CREATE TRIGGER trg_state_proposal_batch_scope_insert
+BEFORE INSERT ON state_proposal_batches
+BEGIN
+  SELECT CASE WHEN NOT EXISTS (
+    SELECT 1
+      FROM versions version
+      JOIN chapters chapter ON chapter.id = version.chapter_id
+      JOIN volumes volume ON volume.id = chapter.volume_id
+     WHERE version.id = NEW.source_version_id
+       AND chapter.id = NEW.chapter_id
+       AND volume.project_id = NEW.project_id
+       AND chapter.final_version_id = version.id
+  ) THEN RAISE(ABORT, 'STATE_PROPOSAL_BATCH_VERSION_SCOPE_INVALID') END;
+  SELECT CASE WHEN NEW.source = 'provider' AND NOT EXISTS (
+    SELECT 1
+      FROM generation_runs run
+     WHERE run.id = NEW.generation_run_id
+       AND run.project_id = NEW.project_id
+       AND run.chapter_id = NEW.chapter_id
+       AND run.run_type = 'state_extract'
+  ) THEN RAISE(ABORT, 'STATE_PROPOSAL_BATCH_RUN_SCOPE_INVALID') END;
+END;
+
+CREATE TRIGGER trg_validation_batch_scope_insert
+BEFORE INSERT ON validation_batches
+BEGIN
+  SELECT CASE WHEN NOT EXISTS (
+    SELECT 1
+      FROM versions version
+      JOIN chapters chapter ON chapter.id = version.chapter_id
+      JOIN volumes volume ON volume.id = chapter.volume_id
+     WHERE version.id = NEW.source_version_id
+       AND chapter.id = NEW.chapter_id
+       AND volume.project_id = NEW.project_id
+       AND chapter.final_version_id = version.id
+  ) THEN RAISE(ABORT, 'VALIDATION_BATCH_VERSION_SCOPE_INVALID') END;
+  SELECT CASE WHEN NEW.source = 'ai' AND NOT EXISTS (
+    SELECT 1
+      FROM generation_runs run
+     WHERE run.id = NEW.generation_run_id
+       AND run.project_id = NEW.project_id
+       AND run.chapter_id = NEW.chapter_id
+       AND run.run_type = 'validate'
+  ) THEN RAISE(ABORT, 'VALIDATION_BATCH_RUN_SCOPE_INVALID') END;
+END;
 
 CREATE TRIGGER trg_idea_card_generation_scope_insert
 BEFORE INSERT ON idea_cards

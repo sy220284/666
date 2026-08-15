@@ -15,6 +15,7 @@
     "migrations/project/",
     "packages/contracts/src/",
     "packages/core-service/src/",
+    "packages/prompts/src/",
     "apps/desktop/main/src/",
     "apps/desktop/preload/src/",
     "apps/desktop/renderer/src/",

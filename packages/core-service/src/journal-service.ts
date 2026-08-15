@@ -96,12 +96,20 @@ interface DigestRow {
   readonly updatedAt: string;
 }
 
-function count(database: ProjectDatabase, sql: string, ...parameters: unknown[]): number {
+function count(
+  database: ProjectDatabase,
+  sql: string,
+  ...parameters: (string | number | bigint | null)[]
+): number {
   const row = database.prepare(sql).get(...parameters) as CountRow | undefined;
   return Number(row?.count ?? 0);
 }
 
-function sum(database: ProjectDatabase, sql: string, ...parameters: unknown[]): number {
+function sum(
+  database: ProjectDatabase,
+  sql: string,
+  ...parameters: (string | number | bigint | null)[]
+): number {
   const row = database.prepare(sql).get(...parameters) as SumRow | undefined;
   return Number(row?.total ?? 0);
 }

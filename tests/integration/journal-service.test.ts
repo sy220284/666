@@ -26,7 +26,8 @@ function schema(database: DatabaseSync): void {
       id TEXT PRIMARY KEY,
       volume_id TEXT NOT NULL,
       title TEXT NOT NULL,
-      final_version_id TEXT
+      final_version_id TEXT,
+      finalized_at TEXT
     );
     CREATE TABLE versions(id TEXT PRIMARY KEY, chapter_id TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE writing_sessions(
@@ -161,8 +162,10 @@ function seed(database: DatabaseSync): void {
     .run(PROJECT_ID, '2026-08-01T00:00:00.000Z', OTHER_PROJECT_ID, '2026-08-01T00:00:00.000Z');
   database.prepare('INSERT INTO volumes(id, project_id) VALUES(?, ?)').run(VOLUME_ID, PROJECT_ID);
   database
-    .prepare('INSERT INTO chapters(id, volume_id, title, final_version_id) VALUES(?, ?, ?, ?)')
-    .run(CHAPTER_ID, VOLUME_ID, '第一章', VERSION_ID);
+    .prepare(
+      'INSERT INTO chapters(id, volume_id, title, final_version_id, finalized_at) VALUES(?, ?, ?, ?, ?)',
+    )
+    .run(CHAPTER_ID, VOLUME_ID, '第一章', VERSION_ID, '2026-08-15T01:30:00.000Z');
   database
     .prepare('INSERT INTO versions(id, chapter_id, created_at) VALUES(?, ?, ?)')
     .run(VERSION_ID, CHAPTER_ID, '2026-08-15T01:00:00.000Z');
@@ -232,6 +235,21 @@ describe('JournalService', () => {
     );
   });
 
+  it('counts the finalization action by its authoritative timestamp', () => {
+    database
+      .prepare('UPDATE versions SET created_at = ? WHERE id = ?')
+      .run('2026-08-13T01:00:00.000Z', VERSION_ID);
+
+    const preview = service.preview({
+      projectId: PROJECT_ID,
+      periodType: 'manual',
+      periodStart: START,
+      periodEnd: END,
+    });
+
+    expect(preview.deterministicSummary.versions).toEqual({ created: 0, finalized: 1 });
+  });
+
   it('refreshes the deterministic source hash when existing authority changes', async () => {
     const first = await service.generate(randomUUID(), {
       projectId: PROJECT_ID,
@@ -283,6 +301,52 @@ describe('JournalService', () => {
         authorNote: '过期写入',
       }),
     ).rejects.toBeInstanceOf(JournalServiceError);
+  });
+
+  it('uses a compound cursor so equal period ends are never skipped', async () => {
+    await service.generate(randomUUID(), {
+      projectId: PROJECT_ID,
+      periodType: 'manual',
+      periodStart: START,
+      periodEnd: END,
+    });
+    await service.generate(randomUUID(), {
+      projectId: PROJECT_ID,
+      periodType: 'daily',
+      periodStart: START,
+      periodEnd: END,
+    });
+
+    const first = service.list({ projectId: PROJECT_ID, limit: 1, before: null });
+    expect(first.entries).toHaveLength(1);
+    expect(first.nextCursor).not.toBeNull();
+    const second = service.list({ projectId: PROJECT_ID, limit: 1, before: first.nextCursor });
+    expect(second.entries).toHaveLength(1);
+    expect(second.entries[0]?.id).not.toBe(first.entries[0]?.id);
+  });
+
+  it('persists the Journal AI run identity while generation is active', async () => {
+    const catalog = await service.generate(randomUUID(), {
+      projectId: PROJECT_ID,
+      periodType: 'manual',
+      periodStart: START,
+      periodEnd: END,
+    });
+    const entry = catalog.entries[0]!;
+    const runId = randomUUID();
+
+    await service.markAiPending(randomUUID(), {
+      projectId: PROJECT_ID,
+      entryId: entry.id,
+      generationRunId: runId,
+      expectedSourceHash: entry.sourceHash,
+    });
+
+    expect(service.list({ projectId: PROJECT_ID, limit: 30, before: null }).entries[0]).toMatchObject({
+      id: entry.id,
+      generationRunId: runId,
+      status: 'ai_pending',
+    });
   });
 
   it('catches up the previous completed local day once when daily scheduling is enabled', async () => {

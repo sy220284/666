@@ -63,7 +63,11 @@ function controlByLabel(root: TestInstance, label: string): TestInstance {
   return control;
 }
 
-function invoke(node: TestInstance, name: 'onClick' | 'onChange', argument?: unknown): void {
+function invoke(
+  node: TestInstance,
+  name: 'onClick' | 'onChange',
+  argument?: unknown,
+): void {
   const handler = node.props[name];
   if (typeof handler !== 'function') throw new Error(`Missing ${name} handler.`);
   (handler as (value?: unknown) => void)(argument);
@@ -153,11 +157,13 @@ function installWindow(
   });
 }
 
-function createBridge(options: {
-  providers?: readonly { id: string; name: string }[];
-  start?: ReturnType<typeof vi.fn>;
-  getRun?: ReturnType<typeof vi.fn>;
-} = {}) {
+function createBridge(
+  options: {
+    providers?: readonly { id: string; name: string }[];
+    start?: ReturnType<typeof vi.fn>;
+    getRun?: ReturnType<typeof vi.fn>;
+  } = {},
+) {
   const providers = options.providers ?? [{ id: 'provider-local', name: '本地模型' }];
   const start =
     options.start ??
@@ -235,7 +241,9 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
     });
     expect(textContent(renderer.root)).toContain('定时设置保存失败。');
 
-    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
+    await act(async () =>
+      invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'),
+    );
     const aiButton = buttonContaining(renderer.root, '生成智能复盘');
     expect(aiButton.props.disabled).toBe(true);
     await act(async () => {
@@ -254,11 +262,17 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
       await flushPromises();
     });
     expect(updateNote).toHaveBeenCalledWith(
-      expect.objectContaining({ entryId, authorNote: null, expectedUpdatedAt: updatedAt }),
+      expect.objectContaining({
+        entryId,
+        authorNote: null,
+        expectedUpdatedAt: updatedAt,
+      }),
     );
 
-    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
-    expect(textContent(renderer.root)).not.toContain('作者备注');
+    await act(async () =>
+      invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'),
+    );
+    expect(renderer.root.findAll((node) => node.type === 'textarea')).toHaveLength(0);
     await act(async () => renderer.unmount());
 
     const readOnlyUpdateNote = vi.fn().mockResolvedValue({ ok: true, data: baseCatalog });
@@ -266,7 +280,9 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
     installWindow(readOnlyJournal);
     const writableProvider = createBridge();
     const readOnlyRenderer = await renderWorkbench(writableProvider.bridge, true);
-    await act(async () => invoke(buttonContaining(readOnlyRenderer.root, '确定性复盘'), 'onClick'));
+    await act(async () =>
+      invoke(buttonContaining(readOnlyRenderer.root, '确定性复盘'), 'onClick'),
+    );
     await act(async () => {
       invoke(buttonContaining(readOnlyRenderer.root, '保存备注'), 'onClick');
       invoke(buttonContaining(readOnlyRenderer.root, '生成智能复盘'), 'onClick');
@@ -289,7 +305,10 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
         notice: '智能复盘未完成',
       },
       {
-        outcome: { state: 'success', data: { runId, projectId, status: 'cancelled' } },
+        outcome: {
+          state: 'success',
+          data: { runId, projectId, status: 'cancelled' },
+        },
         notice: '智能复盘未完成',
       },
       {
@@ -315,7 +334,9 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
       const bridge = createBridge({ getRun });
       const renderer = await renderWorkbench(bridge.bridge);
 
-      await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
+      await act(async () =>
+        invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'),
+      );
       await act(async () => {
         invoke(buttonContaining(renderer.root, '生成智能复盘'), 'onClick');
         await flushPromises();
@@ -326,9 +347,14 @@ describe('M12-01 JournalWorkbench boundary coverage', () => {
         await flushPromises();
       });
       expect(getRun).toHaveBeenCalled();
-      if (scenario.notice) expect(textContent(renderer.root)).toContain(scenario.notice);
+      if (scenario.notice) {
+        expect(textContent(renderer.root)).toContain(scenario.notice);
+      }
       await act(async () => renderer.unmount());
-      if (scenario.outcome.state === 'success' && scenario.outcome.data.status === 'running') {
+      if (
+        scenario.outcome.state === 'success' &&
+        scenario.outcome.data.status === 'running'
+      ) {
         expect(clearTimeout).toHaveBeenCalled();
       }
     }

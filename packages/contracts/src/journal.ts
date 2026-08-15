@@ -43,6 +43,38 @@ export const JournalDigestReferenceSchema = z.strictObject({
   updatedAt: z.iso.datetime(),
 });
 
+export const JournalNavigationReferenceSchema = z.discriminatedUnion('targetType', [
+  z.strictObject({
+    targetType: z.literal('chapter'),
+    targetId: z.uuid(),
+    label: z.string().trim().min(1).max(512),
+  }),
+  z.strictObject({
+    targetType: z.literal('version'),
+    targetId: z.uuid(),
+    chapterId: z.uuid(),
+    label: z.string().trim().min(1).max(512),
+  }),
+  z.strictObject({
+    targetType: z.literal('entity'),
+    targetId: z.uuid(),
+    label: z.string().trim().min(1).max(512),
+  }),
+  z.strictObject({
+    targetType: z.literal('validation'),
+    targetId: z.uuid(),
+    chapterId: z.uuid().nullable(),
+    versionId: z.uuid().nullable(),
+    logicalBlockId: z.uuid().nullable(),
+    label: z.string().trim().min(1).max(512),
+  }),
+  z.strictObject({
+    targetType: z.literal('idea'),
+    targetId: z.uuid(),
+    label: z.string().trim().min(1).max(512),
+  }),
+]);
+
 export const JournalDeterministicSummarySchema = z.strictObject({
   periodStart: z.iso.datetime(),
   periodEnd: z.iso.datetime(),
@@ -85,6 +117,7 @@ export const JournalDeterministicSummarySchema = z.strictObject({
   recovery: z.strictObject({
     backupsCreated: JournalCountSchema,
   }),
+  navigationReferences: z.array(JournalNavigationReferenceSchema).max(100),
   digestReferences: z.array(JournalDigestReferenceSchema).max(10_000),
 });
 
@@ -345,6 +378,7 @@ export interface JournalBridge {
 export type JournalPeriodType = z.infer<typeof JournalPeriodTypeSchema>;
 export type JournalSchedule = z.infer<typeof JournalScheduleSchema>;
 export type JournalEntryStatus = z.infer<typeof JournalEntryStatusSchema>;
+export type JournalNavigationReference = z.infer<typeof JournalNavigationReferenceSchema>;
 export type JournalDeterministicSummary = z.infer<typeof JournalDeterministicSummarySchema>;
 export type JournalAiSummaryOutput = z.infer<typeof JournalAiSummaryOutputSchema>;
 export type JournalAiPromptInput = z.infer<typeof JournalAiPromptInputSchema>;

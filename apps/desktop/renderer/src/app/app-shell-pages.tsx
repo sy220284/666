@@ -20,6 +20,7 @@ import {
 } from '../features/data-tools/data-tools-workbench.js';
 import { RecoveryOverviewGate } from '../features/data-tools/recovery-overview-gate.js';
 import { HomePage, type OnboardingProjectPlan } from '../features/home/home-page.js';
+import { JournalWorkbench } from '../features/journal/journal-workbench.js';
 import { PlanningWorkbench } from '../features/planning/planning-workbench.js';
 import { ResearchWorkbench } from '../features/research/research-workbench.js';
 import { SettingsPage } from '../features/settings/settings-page.js';
@@ -195,6 +196,15 @@ export function AppShellPages(props: AppShellPagesProps) {
             });
           }}
           onClose={() => void props.onTransitionToRoute('writing')}
+        />
+      ) : null}
+
+      {props.route === 'journal' && props.activeProject ? (
+        <JournalWorkbench
+          bridge={props.bridge}
+          projectId={props.activeProject.projectId}
+          readOnly={readOnly}
+          onNavigate={props.onNavigateToAuthorTarget}
         />
       ) : null}
 

@@ -295,8 +295,9 @@ function deterministicSummary(
         `SELECT COUNT(*) AS count
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
-           JOIN versions version ON version.id = chapter.final_version_id
-          WHERE volume.project_id = ? AND version.created_at >= ? AND version.created_at < ?`,
+          WHERE volume.project_id = ?
+            AND chapter.final_version_id IS NOT NULL
+            AND chapter.finalized_at >= ? AND chapter.finalized_at < ?`,
         projectId,
         start,
         end,
@@ -664,6 +665,53 @@ export class JournalService {
     });
   }
 
+  async markAiPending(
+    requestId: string,
+    input: {
+      readonly projectId: string;
+      readonly entryId: string;
+      readonly generationRunId: string;
+      readonly expectedSourceHash: string;
+    },
+  ): Promise<void> {
+    const now = this.#clock.now().toISOString();
+    await this.#workspace.writeProject(requestId, input.projectId, (database) => {
+      const entry = readEntry(database, input.projectId, input.entryId);
+      if (entry.sourceHash !== input.expectedSourceHash) {
+        throw new JournalServiceError(
+          'JOURNAL_AI_CONFLICT',
+          'Journal source changed before the AI run was bound.',
+        );
+      }
+      if (
+        entry.status === 'ai_pending' &&
+        entry.generationRunId &&
+        entry.generationRunId !== input.generationRunId
+      ) {
+        throw new JournalServiceError('JOURNAL_AI_CONFLICT', 'Another Journal AI run is active.');
+      }
+      if (
+        entry.generationRunId === input.generationRunId &&
+        (entry.status === 'ready' || entry.status === 'ai_failed')
+      ) {
+        return;
+      }
+      database
+        .prepare(
+          `UPDATE project_journal_entries
+              SET generation_run_id = ?, status = 'ai_pending', updated_at = ?
+            WHERE id = ? AND project_id = ? AND source_hash = ?`,
+        )
+        .run(
+          input.generationRunId,
+          now,
+          input.entryId,
+          input.projectId,
+          input.expectedSourceHash,
+        );
+    });
+  }
+
   async markAiFailed(requestId: string, raw: JournalMarkAiFailedInput): Promise<JournalCatalog> {
     const input = JournalMarkAiFailedInputSchema.parse(raw);
     const now = this.#clock.now().toISOString();
@@ -676,13 +724,15 @@ export class JournalService {
       ) {
         throw new JournalServiceError('JOURNAL_AI_CONFLICT', 'Journal AI run identity changed.');
       }
+      if (entry.status === 'ready') return;
       database
         .prepare(
           `UPDATE project_journal_entries
-              SET status = 'ai_failed', updated_at = ?
+              SET generation_run_id = COALESCE(generation_run_id, ?),
+                  status = 'ai_failed', updated_at = ?
             WHERE id = ? AND project_id = ?`,
         )
-        .run(now, input.entryId, input.projectId);
+        .run(input.generationRunId, now, input.entryId, input.projectId);
     });
     return this.list({ projectId: input.projectId, limit: 30, before: null });
   }
@@ -721,6 +771,13 @@ export class JournalService {
     const now = this.#clock.now().toISOString();
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
       const entry = readEntry(database, input.projectId, input.entryId);
+      if (
+        entry.status === 'ai_pending' &&
+        entry.generationRunId &&
+        entry.generationRunId !== input.runId
+      ) {
+        throw new JournalServiceError('JOURNAL_AI_CONFLICT', 'Journal AI run identity changed.');
+      }
       const run = database
         .prepare(
           `SELECT id, project_id AS projectId, scope_type AS scopeType, scope_id AS scopeId,
@@ -799,6 +856,8 @@ export class JournalService {
 
   #catalog(database: ProjectDatabase, input: JournalListInput): JournalCatalog {
     const parsed = JournalListInputSchema.parse(input);
+    const cursorPeriodEnd = parsed.before?.periodEnd ?? null;
+    const cursorId = parsed.before?.id ?? null;
     const rows = database
       .prepare(
         `SELECT id, project_id AS projectId, period_type AS periodType,
@@ -809,22 +868,31 @@ export class JournalService {
                 generation_run_id AS generationRunId, status,
                 created_at AS createdAt, updated_at AS updatedAt
            FROM project_journal_entries
-          WHERE project_id = ? AND (? IS NULL OR period_end < ?)
+          WHERE project_id = ?
+            AND (
+              ? IS NULL
+              OR period_end < ?
+              OR (period_end = ? AND id < ?)
+            )
           ORDER BY period_end DESC, id DESC
           LIMIT ?`,
       )
       .all(
         parsed.projectId,
-        parsed.before,
-        parsed.before,
+        cursorPeriodEnd,
+        cursorPeriodEnd,
+        cursorPeriodEnd,
+        cursorId,
         parsed.limit + 1,
       ) as unknown as JournalRow[];
     const page = rows.slice(0, parsed.limit);
+    const last = page.at(-1);
     return JournalCatalogSchema.parse({
       projectId: parsed.projectId,
       entries: page.map(entryFromRow),
       preferences: preference(database, parsed.projectId),
-      nextCursor: rows.length > parsed.limit ? (page.at(-1)?.periodEnd ?? null) : null,
+      nextCursor:
+        rows.length > parsed.limit && last ? { periodEnd: last.periodEnd, id: last.id } : null,
     });
   }
 }

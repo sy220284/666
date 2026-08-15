@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M12-01",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M12/M12-01_PROJECT_JOURNAL.md",
   "priority": "P1",
   "startedAt": "2026-08-15T11:36:00+08:00",
+  "implementedAt": "2026-08-16T00:23:47+08:00",
   "dependencies": ["M11-07"],
   "baseline": {
     "main": "6dfd29cc4a286224957b773699958b35823a622f",
@@ -60,5 +61,9 @@
     "pnpm build",
     "pnpm test:e2e"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 402,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M12-01"
+  }
 }

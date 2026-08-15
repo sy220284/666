@@ -92,9 +92,9 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
     id: 'canon',
     route: 'canon',
     label: authorTerm('canon'),
-    beginnerDescription: '管理人物、地点、关系、世界设定和研究资料',
+    beginnerDescription: '管理人物、地点、关系、世界设定、研究资料和创作复盘',
     professionalDescription:
-      '人物、地点、组织、动态状态、时间线、知情状态、伏笔、人物成长线与研究资料',
+      '人物、地点、组织、动态状态、时间线、知情状态、伏笔、人物成长线、研究资料与创作日志',
     requiresProject: true,
   },
   {
@@ -130,6 +130,7 @@ const PRIMARY_NAVIGATION_BY_ROUTE: Readonly<Partial<Record<RendererRouteId, Prim
     candidates: 'writing',
     canon: 'canon',
     research: 'canon',
+    journal: 'canon',
     checks: 'checks',
     recovery: 'checks',
     settings: 'settings',

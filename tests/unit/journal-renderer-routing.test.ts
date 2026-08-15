@@ -13,7 +13,8 @@ describe('M12-01 journal renderer routing', () => {
   it('adds Journal to the single existing Command Catalog', () => {
     expect(
       COMMAND_CATALOG.some(
-        (entry) => entry.id === 'route.journal' && entry.kind === 'route' && entry.route === 'journal',
+        (entry) =>
+          entry.id === 'route.journal' && entry.kind === 'route' && entry.route === 'journal',
       ),
     ).toBe(true);
     expect(COMMAND_CATALOG.filter((entry) => entry.id === 'route.journal')).toHaveLength(1);

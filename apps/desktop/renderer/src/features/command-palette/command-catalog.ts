@@ -56,6 +56,13 @@ export const COMMAND_CATALOG: readonly CommandCatalogEntry[] = [
     ['资料', '研究', '附件', '参考'],
     true,
   ),
+  route(
+    'journal',
+    '打开创作日志',
+    '查看今日、本周与长期项目复盘',
+    ['日志', '复盘', '字数', '创作记录'],
+    true,
+  ),
   navigation('checks', '打开检查', '搜索、校验与故事任务', ['搜索', '校验', '任务'], true),
   route('recovery', '打开恢复与导出', '备份、恢复和导入导出', ['备份', '导出'], true),
   navigation('settings', '打开设置', '管理显示与智能连接', ['偏好', '模型', '连接'], false),
@@ -118,7 +125,7 @@ function route(
         ? 'home'
         : route === 'structure'
           ? 'planning'
-          : route === 'research'
+          : route === 'research' || route === 'journal'
             ? 'canon'
             : route === 'recovery'
               ? 'checks'

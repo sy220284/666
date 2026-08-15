@@ -36,8 +36,8 @@ jobs:
           python3 <<'PY'
           from pathlib import Path
 
-          path = Path('packages/core-service/src/journal-service.ts')
-          text = path.read_text()
+          service_path = Path('packages/core-service/src/journal-service.ts')
+          text = service_path.read_text()
 
           if "import { journalCatchUpWindow } from './journal-period.js';" not in text:
               anchor = "import type { ProjectWorkspaceService } from './project-workspace.js';"
@@ -71,7 +71,47 @@ jobs:
                   raise SystemExit('digestReferences anchor not found')
               text = text.replace(digest_anchor, nav_line + digest_anchor, 1)
 
-          path.write_text(text)
+          stale_guard_marker = "Journal AI source changed before completion."
+          if stale_guard_marker not in text:
+              status_anchor = "      if (run.status !== 'queued' && run.status !== 'running') {"
+              if status_anchor not in text:
+                  raise SystemExit('AI status anchor not found')
+              guard = """      const source = database
+            .prepare(
+              `SELECT content_hash AS contentHash
+                 FROM generation_input_sources
+                WHERE run_id = ? AND source_type = 'journal_entry' AND source_id = ?
+                ORDER BY source_order
+                LIMIT 1`,
+            )
+            .get(input.runId, entry.id) as { readonly contentHash?: string | null } | undefined;
+          if (!source?.contentHash || source.contentHash !== entry.sourceHash) {
+            throw new JournalServiceError(
+              'JOURNAL_AI_CONFLICT',
+              'Journal AI source changed before completion.',
+            );
+          }
+"""
+              text = text.replace(status_anchor, guard + status_anchor, 1)
+
+          service_path.write_text(text)
+
+          shell_path = Path('apps/desktop/renderer/src/app/app-shell-m3.tsx')
+          shell = shell_path.read_text()
+          catchup_marker = "window.worldforgeJournal.catchUp({ projectId })"
+          if catchup_marker not in shell:
+              keydown_anchor = "  useEffect(() => {\n    const onKeyDown = (event: KeyboardEvent): void => {"
+              if keydown_anchor not in shell:
+                  raise SystemExit('AppShell keydown anchor not found')
+              effect = """  useEffect(() => {
+    const projectId = activeProject?.projectId;
+    if (!projectId || activeProject?.databaseMode === 'read-only' || !window.worldforgeJournal) return;
+    void window.worldforgeJournal.catchUp({ projectId }).catch(() => undefined);
+  }, [activeProject?.databaseMode, activeProject?.projectId]);
+
+"""
+              shell = shell.replace(keydown_anchor, effect + keydown_anchor, 1)
+              shell_path.write_text(shell)
           PY
       - name: Apply repository locked Prettier
         shell: bash
@@ -89,6 +129,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/core-service/src/journal-service.ts -- '*.ts' '*.tsx' '*.d.ts'
-          git commit -m "fix(M12-01): wire journal closure helpers"
+          git add packages/core-service/src/journal-service.ts apps/desktop/renderer/src/app/app-shell-m3.tsx -- '*.ts' '*.tsx' '*.d.ts'
+          git commit -m "fix(M12-01): close journal lifecycle races"
           git push origin HEAD:work

@@ -28,7 +28,16 @@ jobs:
       - run: pnpm exec prettier --write tests/unit/journal-content-router.test.ts tests/unit/journal-ipc-coverage.test.ts tests/unit/journal-workbench-boundaries.test.ts tests/e2e/visual-baselines/manifest.json
       - run: pnpm test:prepare
       - run: pnpm exec vitest run tests/unit/journal-content-router.test.ts tests/unit/journal-ipc-coverage.test.ts tests/unit/journal-workbench-boundaries.test.ts
-      - run: pnpm exec vitest run --config vitest.coverage.config.ts
+      - name: Run full product coverage gate
+        run: pnpm exec vitest run --config vitest.coverage.config.ts
+      - name: Upload one-shot coverage diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: m12-01-one-shot-coverage
+          path: coverage/
+          if-no-files-found: error
+          retention-days: 1
       - run: pnpm exec prettier --check tests/unit/journal-content-router.test.ts tests/unit/journal-ipc-coverage.test.ts tests/unit/journal-workbench-boundaries.test.ts tests/e2e/visual-baselines/manifest.json
       - name: Commit verified repair and remove one-shot tools
         shell: bash

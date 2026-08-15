@@ -5,6 +5,9 @@ import {
   IdeaExploreOutputJsonSchema,
   IdeaExploreOutputSchema,
   IdeaExplorePromptInputSchema,
+  JournalAiPromptInputSchema,
+  JournalAiSummaryOutputJsonSchema,
+  JournalAiSummaryOutputSchema,
   MergePromptInputSchema,
   ProductionChapterPromptInputSchema,
   ProductionSkeletonPromptInputSchema,
@@ -26,6 +29,8 @@ import {
   type ChapterPromptInput,
   type IdeaExploreOutput,
   type IdeaExplorePromptInput,
+  type JournalAiPromptInput,
+  type JournalAiSummaryOutput,
   type MergePromptInput,
   type ProductionChapterPromptInput,
   type ProductionSkeletonPromptInput,
@@ -56,6 +61,7 @@ export const MERGE_PROMPT_ID = 'worldforge.merge' as const;
 export const VALIDATE_PROMPT_ID = 'worldforge.validate' as const;
 export const STATE_EXTRACT_PROMPT_ID = 'worldforge.state-extract' as const;
 export const IDEA_EXPLORE_PROMPT_ID = 'worldforge.idea-explore' as const;
+export const JOURNAL_SUMMARY_PROMPT_ID = 'worldforge.journal-summarize' as const;
 
 export const SKELETON_SPIKE_PROMPT_IDENTITY = {
   promptId: SKELETON_SPIKE_PROMPT_ID,
@@ -111,6 +117,11 @@ export const IDEA_EXPLORE_PROMPT_IDENTITY = {
   promptId: IDEA_EXPLORE_PROMPT_ID,
   version: 1,
   taskType: 'idea_explore',
+} as const satisfies PromptIdentity;
+export const JOURNAL_SUMMARY_PROMPT_IDENTITY = {
+  promptId: JOURNAL_SUMMARY_PROMPT_ID,
+  version: 1,
+  taskType: 'journal_summarize',
 } as const satisfies PromptIdentity;
 
 export const skeletonSpikePrompt = definePrompt<SkeletonPromptInput, SkeletonCandidateOutput>(
@@ -378,6 +389,37 @@ export const ideaExplorePrompt = definePrompt<IdeaExplorePromptInput, IdeaExplor
   },
 );
 
+export const journalSummaryPrompt = definePrompt<JournalAiPromptInput, JournalAiSummaryOutput>(
+  JOURNAL_SUMMARY_PROMPT_IDENTITY,
+  {
+    inputSchema: JournalAiPromptInputSchema,
+    outputSchema: JournalAiSummaryOutputSchema,
+    supportedModes: ['structured'],
+    build(input): PromptBundle {
+      const validated = JournalAiPromptInputSchema.parse(input);
+      return withPromptIdentity(JOURNAL_SUMMARY_PROMPT_IDENTITY, validated.constraintHash, {
+        system:
+          '你是中文长篇小说项目复盘编辑。只能依据确定性创作统计与已给出的项目摘要组织复盘；不得补造未发生事件、不得把推测写成事实、不得产生任何设定或正文写入。summary应简洁说明本周期实际进展，highlights只提来源可证实的变化，nextFocus只提出基于现有待处理信息的建议。',
+        messages: [
+          {
+            role: 'user',
+            content: JSON.stringify({
+              journalEntryId: validated.journalEntryId,
+              periodType: validated.periodType,
+              deterministicSummary: validated.deterministicSummary,
+              projectDigest: validated.projectDigest,
+            }),
+          },
+        ],
+        structuredOutput: {
+          name: 'journal_summary_v1',
+          schema: JournalAiSummaryOutputJsonSchema,
+        },
+      });
+    },
+  },
+);
+
 export const promptRegistry = [
   skeletonSpikePrompt,
   chapterSpikePrompt,
@@ -390,6 +432,7 @@ export const promptRegistry = [
   stateExtractPromptV1,
   stateExtractPrompt,
   ideaExplorePrompt,
+  journalSummaryPrompt,
 ] as const;
 
 type RegisteredPrompt = (typeof promptRegistry)[number];

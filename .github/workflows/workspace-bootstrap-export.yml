@@ -59,16 +59,15 @@ jobs:
         env:
           STORE_DIR: ${{ runner.temp }}/worldforge-pnpm-store
           OUTPUT_DIR: ${{ runner.temp }}/worldforge-workspace-bootstrap
+          METADATA_DIR: ${{ runner.temp }}/worldforge-bootstrap-metadata
         run: |
           set -euo pipefail
-          mkdir -p "$OUTPUT_DIR"
-          metadata_dir='.worldforge-bootstrap-export'
-          mkdir -p "$metadata_dir"
-          pnpm list -r --depth -1 --json > "$metadata_dir/workspace-packages.json"
-          find . -type d -name node_modules -prune -print | sort > "$metadata_dir/node-modules-paths.txt"
-          git ls-files 'apps/**/package.json' 'packages/**/package.json' | sort > "$metadata_dir/workspace-manifests.txt"
+          mkdir -p "$OUTPUT_DIR" "$METADATA_DIR"
+          pnpm list -r --depth -1 --json > "$METADATA_DIR/workspace-packages.json"
+          find . -type d -name node_modules -prune -print | sort > "$METADATA_DIR/node-modules-paths.txt"
+          git ls-files 'apps/**/package.json' 'packages/**/package.json' | sort > "$METADATA_DIR/workspace-manifests.txt"
 
-          cat > "$metadata_dir/MANIFEST.json" <<EOF
+          cat > "$METADATA_DIR/MANIFEST.json" <<EOF
           {
             "schemaVersion": 1,
             "repository": "sy220284/666",
@@ -88,13 +87,12 @@ jobs:
 
           {
             printf '%s\n' package.json pnpm-lock.yaml pnpm-workspace.yaml
-            cat "$metadata_dir/workspace-manifests.txt"
-            cat "$metadata_dir/node-modules-paths.txt"
-            printf '%s\n' "$metadata_dir"
-          } | awk 'NF && !seen[$0]++' > "$metadata_dir/archive-paths.txt"
+            cat "$METADATA_DIR/workspace-manifests.txt"
+            cat "$METADATA_DIR/node-modules-paths.txt"
+          } | awk 'NF && !seen[$0]++' > "$METADATA_DIR/archive-paths.txt"
           dependency_archive="worldforge-workspace-dependencies-linux-x64-${BASELINE_SHA}.tar.zst"
           dependency_tar="$OUTPUT_DIR/worldforge-workspace-dependencies-linux-x64-${BASELINE_SHA}.tar"
-          tar -cf "$dependency_tar" -C "$GITHUB_WORKSPACE" -T "$GITHUB_WORKSPACE/$metadata_dir/archive-paths.txt"
+          tar -cf "$dependency_tar" -C "$GITHUB_WORKSPACE" -T "$METADATA_DIR/archive-paths.txt"
           tar -rf "$dependency_tar" -C "${RUNNER_TEMP}" worldforge-pnpm-store
           zstd -T0 -3 --rm "$dependency_tar" -o "$OUTPUT_DIR/$dependency_archive"
 
@@ -106,7 +104,8 @@ jobs:
           node_archive="worldforge-node-v24.18.1-linux-x64-${BASELINE_SHA}.tar.zst"
           tar -C "$runtime_root" -cf - runtime | zstd -T0 -3 -o "$OUTPUT_DIR/$node_archive"
 
-          cp "$metadata_dir/MANIFEST.json" "$OUTPUT_DIR/BOOTSTRAP_MANIFEST.json"
+          cp "$METADATA_DIR/MANIFEST.json" "$OUTPUT_DIR/BOOTSTRAP_MANIFEST.json"
+          cp "$METADATA_DIR/workspace-packages.json" "$OUTPUT_DIR/workspace-packages.json"
           (
             cd "$OUTPUT_DIR"
             sha256sum "$source_archive" "$dependency_archive" "$node_archive" > SHA256SUMS.txt

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 const targets = [
   'tests/integration/generation-source-resolver-extra-coverage.test.ts',
+  'tests/integration/project-artifact-backup-behavior-coverage.test.ts',
   'tests/unit/app-shell-m3-coverage.test.ts',
   'tests/unit/app-shell-wrapper-coverage.test.ts',
   'tests/unit/data-tools-workbench-coverage.test.ts',

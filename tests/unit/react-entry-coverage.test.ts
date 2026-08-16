@@ -1,4 +1,13 @@
+import { realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const rendererRequire = createRequire(
+  new URL('../../apps/desktop/renderer/package.json', import.meta.url),
+);
+const reactDomClientPath = rendererRequire.resolve('react-dom/client');
+const reactDomClientRealPath = realpathSync(reactDomClientPath);
 
 const entry = vi.hoisted(() => ({
   rootElement: null as null | { dataset: Record<string, string> },
@@ -19,9 +28,6 @@ const entry = vi.hoisted(() => ({
   beforeUnload: null as null | (() => void),
 }));
 
-vi.mock('react-dom/client', () => ({
-  createRoot: entry.createRoot,
-}));
 vi.mock('../../apps/desktop/renderer/src/app/renderer-application-controller.js', () => ({
   createRendererApplicationController: () => entry.applicationController,
 }));
@@ -54,6 +60,15 @@ vi.mock('../../apps/desktop/renderer/src/app/renderer-foundation-app.js', () => 
   RendererFoundationApp: () => null,
 }));
 
+function installCreateRootMock(): void {
+  const factory = () => ({ createRoot: entry.createRoot });
+  vi.doMock('react-dom/client', factory);
+  vi.doMock(reactDomClientPath, factory);
+  if (reactDomClientRealPath !== reactDomClientPath) {
+    vi.doMock(reactDomClientRealPath, factory);
+  }
+}
+
 async function flush(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
@@ -61,6 +76,8 @@ async function flush(): Promise<void> {
 }
 
 beforeEach(() => {
+  vi.resetModules();
+  installCreateRootMock();
   entry.rootElement = { dataset: {} };
   entry.render.mockClear();
   entry.createRoot.mockReset();
@@ -100,6 +117,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.doUnmock('react-dom/client');
+  vi.doUnmock(reactDomClientPath);
+  if (reactDomClientRealPath !== reactDomClientPath) {
+    vi.doUnmock(reactDomClientRealPath);
+  }
   vi.unstubAllGlobals();
 });
 
@@ -162,7 +184,6 @@ describe('renderer react entry coverage', () => {
   });
 
   it('rejects a missing React root', async () => {
-    vi.resetModules();
     entry.rootElement = null;
     await expect(import('../../apps/desktop/renderer/src/react-entry.js')).rejects.toThrow(
       'RENDERER_REACT_ROOT_MISSING',
@@ -170,7 +191,6 @@ describe('renderer react entry coverage', () => {
   });
 
   it('rejects duplicate React mounting', async () => {
-    vi.resetModules();
     entry.rootElement = { dataset: { reactMounted: 'true' } };
     await expect(import('../../apps/desktop/renderer/src/react-entry.js')).rejects.toThrow(
       'RENDERER_REACT_ROOT_DUPLICATE',

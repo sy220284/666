@@ -376,8 +376,9 @@ describe('DataToolsWorkbench coverage', () => {
     const chapterTitles = dataNodes(renderer.root, 'data-import-chapter-title');
     await change(chapterTitles[0]!, '新第一章');
     await click(dataNodes(renderer.root, 'data-import-plan-action')[0]!);
-    expect(dataNodes(renderer.root, 'data-import-chapter-title')).toHaveLength(3);
-    expect(text(renderer.root)).toContain('新第一章（续）');
+    const splitChapterTitles = dataNodes(renderer.root, 'data-import-chapter-title');
+    expect(splitChapterTitles).toHaveLength(3);
+    expect(splitChapterTitles[1]!.props.value).toBe('新第一章（续）');
 
     const mergeButtons = renderer.root.findAll(
       (node) => node.props['data-import-plan-action'] === 'merge',

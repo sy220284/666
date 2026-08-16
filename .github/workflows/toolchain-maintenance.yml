@@ -1,0 +1,59 @@
+name: Toolchain Snapshot Maintenance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json
+      - docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md
+      - docs/process/TOOLCHAIN_SNAPSHOT_MAINTENANCE.md
+      - docs/process/CI_RISK_MATRIX.json
+      - scripts/toolchain-policy.mjs
+      - .github/governance/toolchain-bundle.mjs
+      - .github/workflows/quality.yml
+      - .github/workflows/toolchain-export.yml
+      - .github/workflows/workspace-bootstrap-export.yml
+      - .github/workflows/toolchain-maintenance.yml
+  schedule:
+    - cron: '17 3 * * 1,4'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: toolchain-snapshot-maintenance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  policy:
+    name: toolchain-policy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate snapshot maintenance authority
+        run: node scripts/toolchain-policy.mjs
+
+  refresh-toolchain:
+    name: refresh-quality-toolchain
+    needs: policy
+    uses: ./.github/workflows/toolchain-export.yml
+    with:
+      source_sha: ${{ github.sha }}
+      profile: quality
+      runner: ubuntu-24.04
+
+  refresh-workspace:
+    name: refresh-workspace-bootstrap
+    needs: policy
+    uses: ./.github/workflows/workspace-bootstrap-export.yml
+    with:
+      source_sha: ${{ github.sha }}

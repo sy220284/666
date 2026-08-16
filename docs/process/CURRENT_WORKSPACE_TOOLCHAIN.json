@@ -3,16 +3,51 @@
   "authorityDocument": "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md",
   "callerWorkflow": ".github/workflows/quality.yml",
   "exportWorkflow": ".github/workflows/toolchain-export.yml",
+  "workspaceBootstrapWorkflow": ".github/workflows/workspace-bootstrap-export.yml",
+  "workspaceBootstrapRunner": "ubuntu-24.04",
+  "workspaceBootstrapArtifactName": "worldforge-workspace-bootstrap-Linux-X64-{sourceSha}",
+  "maintenanceWorkflow": ".github/workflows/toolchain-maintenance.yml",
+  "maintenanceDocument": "docs/process/TOOLCHAIN_SNAPSHOT_MAINTENANCE.md",
+  "maintenanceScheduleUtc": "17 3 * * 1,4",
+  "maintenanceProfile": "quality",
+  "maintenanceRunner": "ubuntu-24.04",
+  "maintenancePushPaths": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json",
+    "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md",
+    "docs/process/TOOLCHAIN_SNAPSHOT_MAINTENANCE.md",
+    "docs/process/CI_RISK_MATRIX.json",
+    "scripts/toolchain-policy.mjs",
+    ".github/governance/toolchain-bundle.mjs",
+    ".github/workflows/quality.yml",
+    ".github/workflows/toolchain-export.yml",
+    ".github/workflows/workspace-bootstrap-export.yml",
+    ".github/workflows/toolchain-maintenance.yml"
+  ],
   "generator": ".github/governance/toolchain-bundle.mjs",
   "defaultProfile": "quality",
   "trustedPullRequestBranch": "work",
   "bundledPnpmVersion": "11.21.0",
   "profiles": {
     "formatter": {
-      "packages": ["prettier"],
+      "packages": [
+        "prettier"
+      ],
       "commands": [
-        ["pnpm", ["--version"]],
-        ["prettier", ["--version"]]
+        [
+          "pnpm",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "prettier",
+          [
+            "--version"
+          ]
+        ]
       ]
     },
     "quality": {
@@ -25,10 +60,30 @@
         "typescript-eslint"
       ],
       "commands": [
-        ["pnpm", ["--version"]],
-        ["prettier", ["--version"]],
-        ["eslint", ["--version"]],
-        ["tsc", ["--version"]]
+        [
+          "pnpm",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "prettier",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "eslint",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "tsc",
+          [
+            "--version"
+          ]
+        ]
       ]
     }
   },
@@ -43,6 +98,6 @@
     "SHA256SUMS.txt"
   ],
   "artifactName": "worldforge-toolchain-{profile}-{os}-{arch}-{sourceSha}",
-  "retentionDays": 7,
+  "retentionDays": 14,
   "nodeRuntimeVersion": "24.18.1"
 }

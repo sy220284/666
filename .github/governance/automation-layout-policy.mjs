@@ -22,7 +22,9 @@ export const PERMANENT_WORKFLOWS = Object.freeze([
   'security.yml',
   'task-governance.yml',
   'toolchain-export.yml',
+  'toolchain-maintenance.yml',
   'work-synchronization.yml',
+  'workspace-bootstrap-export.yml',
 ]);
 
 export const PERMANENT_GOVERNANCE_FILES = Object.freeze([

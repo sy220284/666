@@ -19,9 +19,6 @@ const entry = vi.hoisted(() => ({
   beforeUnload: null as null | (() => void),
 }));
 
-vi.mock('react-dom/client', () => ({
-  createRoot: entry.createRoot,
-}));
 vi.mock('../../apps/desktop/renderer/src/app/renderer-application-controller.js', () => ({
   createRendererApplicationController: () => entry.applicationController,
 }));
@@ -62,6 +59,7 @@ async function flush(): Promise<void> {
 
 beforeEach(() => {
   vi.resetModules();
+  vi.doMock('react-dom/client', () => ({ createRoot: entry.createRoot }));
   entry.rootElement = { dataset: {} };
   entry.render.mockClear();
   entry.createRoot.mockReset();
@@ -101,6 +99,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.doUnmock('react-dom/client');
   vi.unstubAllGlobals();
 });
 

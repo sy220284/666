@@ -1,7 +1,12 @@
 import { createRequire } from 'node:module';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Chapter, DraftDocument, StructureOperationPreview, Volume } from '@worldforge/contracts';
+import type {
+  Chapter,
+  DraftDocument,
+  StructureOperationPreview,
+  Volume,
+} from '@worldforge/contracts';
 import type { createElement as createReactElement, ReactElement } from 'react';
 
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
@@ -107,7 +112,9 @@ function preview(canExecute = true, planHash = 'plan-hash'): StructureOperationP
 }
 
 function createBridge() {
-  const deleteVolume = vi.fn().mockResolvedValue({ state: 'success', data: { id: sourceVolumeId } });
+  const deleteVolume = vi
+    .fn()
+    .mockResolvedValue({ state: 'success', data: { id: sourceVolumeId } });
   const deleteChapter = vi
     .fn()
     .mockResolvedValue({ state: 'success', data: { id: sourceChapterId } });
@@ -123,19 +130,28 @@ function createBridge() {
     .mockResolvedValue({ state: 'success', data: preview(true, 'split-plan') });
   const splitChapter = vi
     .fn()
-    .mockResolvedValue({ state: 'success', data: { backupId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' } });
+    .mockResolvedValue({
+      state: 'success',
+      data: { backupId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
+    });
   const previewMergeChapters = vi
     .fn()
     .mockResolvedValue({ state: 'success', data: preview(true, 'merge-plan') });
   const mergeChapters = vi
     .fn()
-    .mockResolvedValue({ state: 'success', data: { backupId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' } });
+    .mockResolvedValue({
+      state: 'success',
+      data: { backupId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' },
+    });
   const previewMoveBlocks = vi
     .fn()
     .mockResolvedValue({ state: 'success', data: preview(true, 'move-plan') });
   const moveBlocks = vi
     .fn()
-    .mockResolvedValue({ state: 'success', data: { backupId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' } });
+    .mockResolvedValue({
+      state: 'success',
+      data: { backupId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' },
+    });
   const moveVolume = vi.fn().mockResolvedValue({ state: 'success', data: volume() });
   return {
     bridge: contractInput<RendererBridgeAdapter>({

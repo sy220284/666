@@ -500,8 +500,19 @@ describe('GenerationSourceResolver extra coverage', () => {
 
       await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
         database
-          .prepare('UPDATE version_blocks SET content_hash = ? WHERE version_id = ? LIMIT 1')
-          .run('bad-hash', version.versionId);
+          .prepare(
+            `UPDATE version_blocks
+                SET content_hash = ?
+              WHERE version_id = ?
+                AND logical_block_id = (
+                  SELECT logical_block_id
+                    FROM version_blocks
+                   WHERE version_id = ?
+                   ORDER BY order_key
+                   LIMIT 1
+                )`,
+          )
+          .run('bad-hash', version.versionId, version.versionId);
       });
       expect(() =>
         resolver.resolveFinalVersion(project.projectId, chapter.id, version.versionId),

@@ -132,6 +132,7 @@ for (const expected of [
   'contents: read',
   'SOURCE_SHA: ${{ inputs.source_sha || github.sha }}',
   'pnpm install --frozen-lockfile --prefer-offline --store-dir "$STORE_DIR"',
+  'rm -rf "$STORE_DIR/v11/projects"',
   'sha256sum -c SHA256SUMS.txt',
   'Verify clean-room restore',
   'find "$RESTORE_ROOT/source" -xtype l -print -quit',

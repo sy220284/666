@@ -95,6 +95,9 @@ jobs:
           source_archive="worldforge-source-linux-x64-${SOURCE_SHA}.tar.zst"
           git archive --format=tar HEAD | zstd -T0 -3 -o "$OUTPUT_DIR/$source_archive"
 
+          # pnpm keeps host-local project registration symlinks here. They are not package data
+          # and would become broken links after a portable restore, so never archive them.
+          rm -rf "$STORE_DIR/v11/projects"
           {
             printf '%s\n' package.json pnpm-lock.yaml pnpm-workspace.yaml
             cat "$METADATA_DIR/workspace-manifests.txt"

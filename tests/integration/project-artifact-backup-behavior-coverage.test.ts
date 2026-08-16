@@ -1,14 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import {
-  lstat,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  symlink,
-  writeFile,
-} from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -144,7 +135,9 @@ async function writeManifest(filePath: string, manifest: MutableArtifactManifest
 async function assertNoArtifactPartials(value: Harness, backupId: string): Promise<void> {
   const entries = await readdir(path.join(value.backupRoot, value.project.projectId));
   expect(entries.some((entry) => entry.includes(`${backupId}.artifacts.partial-`))).toBe(false);
-  expect(entries.some((entry) => entry.includes(`${backupId}.artifacts.json.partial-`))).toBe(false);
+  expect(entries.some((entry) => entry.includes(`${backupId}.artifacts.json.partial-`))).toBe(
+    false,
+  );
 }
 
 afterEach(async () => {
@@ -169,7 +162,9 @@ describe('project artifact backup failure boundaries', () => {
       const restored = artifactPath(target, value.attachment.managedRelativePath);
       expect(await readFile(restored, 'utf8')).toBe('artifact-integrity-0001');
       expect(
-        (await readdir(path.dirname(restored))).some((entry) => entry.includes('.restore-partial-')),
+        (await readdir(path.dirname(restored))).some((entry) =>
+          entry.includes('.restore-partial-'),
+        ),
       ).toBe(false);
     });
   });
@@ -287,7 +282,11 @@ describe('project artifact backup failure boundaries', () => {
         await symlink(linkTarget, backedUp);
 
         await expect(
-          restoreArtifactBackup(value.runtime, checkpoint, path.join(value.root, 'symlink-restore')),
+          restoreArtifactBackup(
+            value.runtime,
+            checkpoint,
+            path.join(value.root, 'symlink-restore'),
+          ),
         ).rejects.toMatchObject({ code: 'RESTORE_SOURCE_INVALID' });
       });
     },

@@ -153,14 +153,14 @@ function stableMatchPositions(matches: readonly DirectMatch[]): ReadonlySet<numb
       else high = middle;
     }
     tails[low] = match.currentIndex;
-    if (low > 0) previous[position] = tailPositions[low - 1] ?? -1;
+    if (low > 0) previous[position] = tailPositions[low - 1]!;
     tailPositions[low] = position;
   }
   const result = new Set<number>();
   let cursor = tailPositions[tails.length - 1] ?? -1;
   while (cursor >= 0) {
     result.add(cursor);
-    cursor = previous[cursor] ?? -1;
+    cursor = previous[cursor]!;
   }
   return result;
 }
@@ -245,9 +245,8 @@ function analyzeCandidateDiff(
   for (const [candidateIndex, block] of candidate.entries()) {
     const sources = block.sourceLogicalBlockIds ?? [];
     if (sources.length <= 1) continue;
-    const records = sources.map((source) => currentById.get(source));
-    if (records.some((record) => !record)) continue;
-    if (records.some((record) => record && consumedCurrent.has(record.index))) {
+    const records = sources.map((source) => currentById.get(source)!);
+    if (records.some((record) => consumedCurrent.has(record.index))) {
       throw new RangeError('Source logicalBlockId participates in multiple structural groups.');
     }
     structure.push({
@@ -257,10 +256,10 @@ function analyzeCandidateDiff(
       candidateIndex,
     });
     consumedCandidate.add(candidateIndex);
-    for (const record of records) if (record) consumedCurrent.add(record.index);
+    for (const record of records) consumedCurrent.add(record.index);
     jobs.push({
       key: `merge:${sources.join('+')}`,
-      before: records.map((record) => record?.block.content ?? '').join(''),
+      before: records.map((record) => record.block.content).join(''),
       after: block.content,
     });
   }
@@ -276,9 +275,8 @@ function analyzeCandidateDiff(
   }
   for (const [source, indexes] of bySingleSource) {
     if (indexes.length <= 1) continue;
-    const record = currentById.get(source);
-    if (!record) continue;
-    const blocks = indexes.flatMap((index) => (candidate[index] ? [candidate[index]] : []));
+    const record = currentById.get(source)!;
+    const blocks = indexes.map((index) => candidate[index]!);
     structure.push({
       kind: 'split',
       sourceLogicalBlockId: source,
@@ -307,9 +305,8 @@ function analyzeCandidateDiff(
   }
   const stable = stableMatchPositions(matches);
   for (const [position, match] of matches.entries()) {
-    const currentBlock = current[match.currentIndex];
-    const candidateBlock = candidate[match.candidateIndex];
-    if (!currentBlock || !candidateBlock) continue;
+    const currentBlock = current[match.currentIndex]!;
+    const candidateBlock = candidate[match.candidateIndex]!;
     const contentChanged = currentBlock.content !== candidateBlock.content;
     structure.push(
       stable.has(position)
@@ -376,8 +373,6 @@ async function cooperativeCharacterDiff(
   const yieldControl = options.yieldControl ?? defaultYieldControl;
   let scannedSinceYield = 0;
   const checkpoint = async (): Promise<void> => {
-    scannedSinceYield += 1;
-    if (scannedSinceYield < 2_048) return;
     scannedSinceYield = 0;
     await yieldControl();
     throwIfCancelled(options.signal);
@@ -413,9 +408,11 @@ async function cooperativeCharacterDiff(
 }
 
 function workerModuleUrl(): URL {
-  return import.meta.url.endsWith('.ts')
-    ? new URL('../dist/candidate-diff-worker.js', import.meta.url)
-    : new URL('./candidate-diff-worker.js', import.meta.url);
+  const url = new URL(import.meta.url);
+  url.pathname = url.pathname
+    .replace(/\/src\/candidate-apply-diff\.ts$/u, '/dist/candidate-diff-worker.js')
+    .replace(/\/candidate-apply-diff\.js$/u, '/candidate-diff-worker.js');
+  return url;
 }
 
 function computeCandidateDiffInWorker(

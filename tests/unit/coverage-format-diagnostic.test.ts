@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-import { format } from 'prettier';
+import { format, resolveConfig } from 'prettier';
 import { describe, expect, it } from 'vitest';
 
 const targets = [
@@ -17,10 +17,11 @@ const targets = [
 ] as const;
 
 describe('coverage formatter diagnostic', () => {
-  it('emits the exact Prettier output for the first coverage batch', async () => {
+  it('emits the exact repository-configured Prettier output for the first coverage batch', async () => {
     const formatted: Record<string, string> = {};
     for (const path of targets) {
-      formatted[path] = await format(readFileSync(path, 'utf8'), { filepath: path });
+      const config = (await resolveConfig(path)) ?? {};
+      formatted[path] = await format(readFileSync(path, 'utf8'), { ...config, filepath: path });
     }
     const payload = gzipSync(Buffer.from(JSON.stringify(formatted), 'utf8')).toString('base64');
     console.log(`COVERAGE_FORMAT_DUMP:${payload}`);

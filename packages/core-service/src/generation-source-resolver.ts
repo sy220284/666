@@ -820,7 +820,7 @@ export class GenerationSourceResolver {
                   content_hash AS contentHash
              FROM version_blocks
             WHERE version_id = ?
-            ORDER BY order_key, id`,
+            ORDER BY order_key, logical_block_id`,
           )
           .all(sourceVersionId),
       );

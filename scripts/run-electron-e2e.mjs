@@ -3,12 +3,16 @@ import process from 'node:process';
 import { URL, fileURLToPath } from 'node:url';
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
+const defaultConfigPath = 'tests/e2e/playwright.config.ts';
+const platformExperienceSpec = 'tests/e2e/platform-experience.spec.ts';
+const platformExperienceConfigPath = 'tests/e2e/playwright.platform-experience.config.ts';
 
 export function resolveElectronE2EInvocation({
   platform,
   display,
   xvfbAvailable,
   pnpmCommand,
+  configPath = defaultConfigPath,
   additionalArguments = [],
 }) {
   const playwrightArguments = [
@@ -16,7 +20,7 @@ export function resolveElectronE2EInvocation({
     'playwright',
     'test',
     '--config',
-    'tests/e2e/playwright.config.ts',
+    configPath,
     ...additionalArguments,
   ];
   if (platform === 'linux' && !display) {
@@ -41,14 +45,18 @@ function hasXvfb() {
 
 export function parseRunnerArguments(argumentsList) {
   const ciOnly = argumentsList.includes('--ci-only');
+  const playwrightArguments = argumentsList.filter((argument) => argument !== '--ci-only');
   return {
     ciOnly,
-    playwrightArguments: argumentsList.filter((argument) => argument !== '--ci-only'),
+    configPath: playwrightArguments.includes(platformExperienceSpec)
+      ? platformExperienceConfigPath
+      : defaultConfigPath,
+    playwrightArguments,
   };
 }
 
 function run() {
-  const { ciOnly, playwrightArguments } = parseRunnerArguments(process.argv.slice(2));
+  const { ciOnly, configPath, playwrightArguments } = parseRunnerArguments(process.argv.slice(2));
   if (ciOnly && process.env.CI !== 'true') {
     process.stdout.write('Electron E2E skipped outside CI.\n');
     return;
@@ -62,6 +70,7 @@ function run() {
       display: process.env.DISPLAY,
       xvfbAvailable: process.platform !== 'linux' || Boolean(process.env.DISPLAY) || hasXvfb(),
       pnpmCommand,
+      configPath,
       additionalArguments: playwrightArguments,
     });
   } catch (error) {

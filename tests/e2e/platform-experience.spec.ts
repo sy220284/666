@@ -2,7 +2,13 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test';
 
 const root = process.cwd();
 const temporaryDirectories: string[] = [];
@@ -19,6 +25,7 @@ type ViewportProfile = (typeof VIEWPORTS)[number];
 type ScenarioEvidence = {
   viewport: ViewportProfile;
   assertions: string[];
+  screenshot: string;
   passed: true;
 };
 
@@ -27,6 +34,13 @@ function platformId(): 'linux' | 'windows' | 'macos' {
   if (process.platform === 'win32') return 'windows';
   if (process.platform === 'darwin') return 'macos';
   throw new Error(`PLATFORM_EXPERIENCE_UNSUPPORTED:${process.platform}`);
+}
+
+function evidenceDirectory(): string {
+  return (
+    process.env.WORLDFORGE_PLATFORM_EXPERIENCE_EVIDENCE_DIR ??
+    path.join(root, 'test-results', 'platform-experience')
+  );
 }
 
 async function launch(userDataPath: string, createParent: string): Promise<ElectronApplication> {
@@ -63,17 +77,29 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   await closed;
 }
 
+async function captureScreenshot(page: Page, viewport: ViewportProfile) {
+  const directory = path.join(evidenceDirectory(), 'screenshots', platformId());
+  await mkdir(directory, { recursive: true });
+  const filename = `${viewport.id}-theme-b-dark.png`;
+  const screenshotPath = path.join(directory, filename);
+  await page.screenshot({
+    path: screenshotPath,
+    animations: 'disabled',
+    fullPage: false,
+    scale: 'device',
+  });
+  return path.posix.join('screenshots', platformId(), filename);
+}
+
 async function writeEvidence(scenarios: readonly ScenarioEvidence[]): Promise<void> {
   const platform = platformId();
-  const directory =
-    process.env.WORLDFORGE_PLATFORM_EXPERIENCE_EVIDENCE_DIR ??
-    path.join(root, 'test-results', 'platform-experience');
+  const directory = evidenceDirectory();
   await mkdir(directory, { recursive: true });
   await writeFile(
     path.join(directory, `${platform}.json`),
     `${JSON.stringify(
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         platform,
         arch: process.arch,
         scenarios,
@@ -148,10 +174,13 @@ async function runScenario(viewport: ViewportProfile): Promise<ScenarioEvidence>
     await expect(page.locator('[data-writing-workbench]')).toBeVisible();
     assertions.push('theme-roundtrip');
 
+    const screenshot = await captureScreenshot(page, viewport);
+    assertions.push('screenshot-captured');
+
     await closeGracefully(application);
     closed = true;
     assertions.push('graceful-close');
-    return { viewport, assertions, passed: true };
+    return { viewport, assertions, screenshot, passed: true };
   } finally {
     if (!closed) await closeGracefully(application);
   }

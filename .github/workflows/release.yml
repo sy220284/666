@@ -28,6 +28,7 @@ permissions:
   statuses: read
 
 env:
+  CI: true
   DISTRIBUTION_TRUST_MODE: ${{ (inputs.release_kind == 'stable' || inputs.require_distribution_trust) && 'required' || 'allow-unsigned' }}
   GITHUB_TOKEN: ${{ github.token }}
   RELEASE_KIND: ${{ inputs.release_kind }}
@@ -65,9 +66,237 @@ jobs:
     needs: release-status-start
     uses: ./.github/workflows/quality-core.yml
     with:
+      desktop_e2e: false
       package_smoke: false
       security_suite: true
       performance_eval: true
+
+  release-core-e2e:
+    name: release-core-${{ matrix.platform }}-${{ matrix.shard }}-of-3
+    needs: release-status-start
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            shard: 1
+          - os: ubuntu-24.04
+            platform: linux
+            shard: 2
+          - os: ubuntu-24.04
+            platform: linux
+            shard: 3
+          - os: windows-latest
+            platform: windows
+            shard: 1
+          - os: windows-latest
+            platform: windows
+            shard: 2
+          - os: windows-latest
+            platform: windows
+            shard: 3
+          - os: macos-latest
+            platform: macos
+            shard: 1
+          - os: macos-latest
+            platform: macos
+            shard: 2
+          - os: macos-latest
+            platform: macos
+            shard: 3
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - name: Assert clean working tree before release E2E
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install Linux display dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          fc-match "Noto Serif CJK SC"
+      - name: Build desktop
+        run: pnpm build
+      - name: Run sharded desktop E2E
+        shell: bash
+        env:
+          WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
+          WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          node scripts/run-electron-e2e.mjs --shard=${{ matrix.shard }}/3 2>&1 | tee test-results/ci/release-e2e.log
+      - name: Assert clean working tree after release E2E
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload release E2E evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-e2e-${{ matrix.platform }}-${{ matrix.shard }}-of-3
+          path: |
+            test-results/ci/release-e2e.log
+            test-results/electron/
+            test-results/display-matrix/
+          if-no-files-found: warn
+          retention-days: 14
+
+  release-platform-experience:
+    name: release-platform-experience-${{ matrix.platform }}
+    needs: release-status-start
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - name: Assert clean working tree before platform experience
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install Linux display dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          fc-match "Noto Serif CJK SC"
+      - name: Build desktop
+        run: pnpm build
+      - name: Run platform author experience and capture screenshots
+        env:
+          WORLDFORGE_PLATFORM_EXPERIENCE_EVIDENCE_DIR: ${{ github.workspace }}/test-results/platform-experience
+        run: node scripts/run-electron-e2e.mjs tests/e2e/platform-experience.spec.ts
+      - name: Assert clean working tree after platform experience
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload platform experience evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-platform-experience-${{ matrix.platform }}
+          path: |
+            test-results/platform-experience/
+            test-results/electron/
+          if-no-files-found: error
+          retention-days: 14
+
+  release-windows-native-ime:
+    name: release-windows-native-ime
+    needs: release-status-start
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - name: Assert clean working tree before Windows IME
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Verify built-in Microsoft Pinyin input profile
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path test-results/windows-ime | Out-Null
+          $tipId = '{81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E}'
+          $profileId = '{FA550B04-5AD7-411F-A5AC-CA038EC515D7}'
+          $inputTip = "0804:$tipId$profileId"
+          $profilePath = "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$tipId\LanguageProfile\0x00000804\$profileId"
+          if (-not (Test-Path $profilePath)) {
+            throw "M8_07_MICROSOFT_PINYIN_PROFILE_MISSING: $profilePath"
+          }
+          $registry = Get-ItemProperty -Path $profilePath
+          $values = [ordered]@{}
+          foreach ($property in $registry.PSObject.Properties) {
+            if ($property.Name -notlike 'PS*') {
+              $values[$property.Name] = [string]$property.Value
+            }
+          }
+          [pscustomobject]@{
+            inputTip = $inputTip
+            profilePath = $profilePath
+            registryValues = $values
+          } |
+            ConvertTo-Json -Depth 3 |
+            Out-File -FilePath test-results/windows-ime/microsoft-pinyin-profile.json -Encoding utf8
+          Start-Process "$env:WINDIR\System32\ctfmon.exe"
+          Start-Sleep -Seconds 2
+      - name: Build desktop
+        run: pnpm build
+      - name: Run real Windows Pinyin acceptance
+        shell: powershell
+        env:
+          WORLDFORGE_WINDOWS_IME_EVIDENCE_DIR: ${{ github.workspace }}\test-results\windows-ime
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pnpm exec playwright test --config tests/e2e/playwright.windows-ime.config.ts --workers=1 2>&1 |
+            Tee-Object -FilePath test-results/windows-ime/windows-ime-e2e.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Assert clean working tree after Windows IME
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload Windows IME evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-windows-native-ime
+          path: test-results/windows-ime/
+          if-no-files-found: error
+          retention-days: 30
+
+  release-e2e-authority:
+    name: Release three-platform E2E authority
+    if: always()
+    needs:
+      - release-core-e2e
+      - release-platform-experience
+      - release-windows-native-ime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CORE_RESULT: ${{ needs.release-core-e2e.result }}
+      PLATFORM_RESULT: ${{ needs.release-platform-experience.result }}
+      WINDOWS_IME_RESULT: ${{ needs.release-windows-native-ime.result }}
+    steps:
+      - name: Enforce three-platform release E2E authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'core=%s\nplatform=%s\nwindows-ime=%s\n' "$CORE_RESULT" "$PLATFORM_RESULT" "$WINDOWS_IME_RESULT"
+          test "$CORE_RESULT" = success
+          test "$PLATFORM_RESULT" = success
+          test "$WINDOWS_IME_RESULT" = success
 
   release-gate:
     name: Release acceptance gate
@@ -158,8 +387,6 @@ jobs:
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
           fc-match "Noto Serif CJK SC"
       - run: pnpm build
-      - name: Run platform startup smoke
-        run: node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
       - name: Prepare Windows signing certificate
         if: matrix.platform == 'windows' && env.DISTRIBUTION_TRUST_MODE == 'required'
         shell: pwsh
@@ -298,6 +525,7 @@ jobs:
     name: Mark release ready to publish
     needs:
       - quality
+      - release-e2e-authority
       - release-gate
       - build
     runs-on: ubuntu-24.04
@@ -317,13 +545,14 @@ jobs:
           "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}"
           -f state=pending
           -f context="$STATUS_CONTEXT"
-          -f description="Artifacts built; awaiting publish"
+          -f description="Artifacts built and three-platform E2E passed; awaiting publish"
           -f target_url="$STATUS_TARGET_URL"
 
   publish:
     name: Publish GitHub Release
     needs:
       - quality
+      - release-e2e-authority
       - release-gate
       - build
       - release-status-ready
@@ -397,6 +626,7 @@ jobs:
     if: always()
     needs:
       - quality
+      - release-e2e-authority
       - release-gate
       - build
       - publish
@@ -406,6 +636,7 @@ jobs:
       statuses: write
     env:
       BUILD_RESULT: ${{ needs.build.result }}
+      E2E_RESULT: ${{ needs.release-e2e-authority.result }}
       GATE_RESULT: ${{ needs.release-gate.result }}
       PUBLISH_RESULT: ${{ needs.publish.result }}
       QUALITY_RESULT: ${{ needs.quality.result }}
@@ -420,6 +651,7 @@ jobs:
           state=failure
           description="Release failed before tag publication"
           if [ "$QUALITY_RESULT" = success ] && \
+             [ "$E2E_RESULT" = success ] && \
              [ "$GATE_RESULT" = success ] && \
              [ "$BUILD_RESULT" = success ] && \
              [ "$PUBLISH_RESULT" = success ]; then

@@ -166,7 +166,9 @@ describe('utility error mapping coverage', () => {
     ['NARRATIVE_AUTHOR_REQUIRED', 'COMMON_INVALID_INPUT_001'],
     ['NARRATIVE_CONFLICT', 'COMMON_CONFLICT_003'],
   ] as const)('maps narrative error %s', (source, expected) => {
-    expect(projectOperationError(new NarrativePlanningServiceError(source, message))).toBe(expected);
+    expect(projectOperationError(new NarrativePlanningServiceError(source, message))).toBe(
+      expected,
+    );
   });
 
   it.each([

@@ -37,7 +37,9 @@ describe('AppShell placement lifecycle coverage', () => {
   it('refreshes placement on mount, resize and presentation changes and cleans listeners', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const listeners = new Map<string, () => void>();
-    const addEventListener = vi.fn((name: string, handler: () => void) => listeners.set(name, handler));
+    const addEventListener = vi.fn((name: string, handler: () => void) =>
+      listeners.set(name, handler),
+    );
     const removeEventListener = vi.fn();
     vi.stubGlobal('window', { addEventListener, removeEventListener });
     vi.stubGlobal('document', { documentElement: {} });
@@ -50,7 +52,9 @@ describe('AppShell placement lifecycle coverage', () => {
     vi.stubGlobal('MutationObserver', MutationObserver);
 
     const refreshPlacement = vi.fn();
-    const applicationController = contractInput<RendererApplicationController>({ refreshPlacement });
+    const applicationController = contractInput<RendererApplicationController>({
+      refreshPlacement,
+    });
     const bridge = contractInput<RendererBridgeAdapter>({});
     let renderer!: { unmount(): void };
     await act(async () => {

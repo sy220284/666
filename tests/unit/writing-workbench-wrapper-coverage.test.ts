@@ -17,15 +17,12 @@ vi.mock('../../apps/desktop/renderer/src/state/ui-store.js', () => ({
   useRendererUiStore: (selector: (state: unknown) => unknown) =>
     selector({ returnLocation: capture.returnLocation }),
 }));
-vi.mock(
-  '../../apps/desktop/renderer/src/features/writing/historical-navigation-notice.js',
-  () => ({
-    HistoricalNavigationNotice: (props: Record<string, unknown>) => {
-      capture.historical(props);
-      return null;
-    },
-  }),
-);
+vi.mock('../../apps/desktop/renderer/src/features/writing/historical-navigation-notice.js', () => ({
+  HistoricalNavigationNotice: (props: Record<string, unknown>) => {
+    capture.historical(props);
+    return null;
+  },
+}));
 vi.mock('../../apps/desktop/renderer/src/features/writing/writing-core-workbench.js', () => ({
   WritingWorkbench: (props: Record<string, unknown>) => {
     capture.core(props);
@@ -43,7 +40,10 @@ const { createElement } = rendererRequire('react') as {
 };
 const { act, create } = rendererRequire('react-test-renderer') as {
   readonly act: (callback: () => void | Promise<void>) => Promise<void>;
-  readonly create: (element: ReactElement) => { update(element: ReactElement): void; unmount(): void };
+  readonly create: (element: ReactElement) => {
+    update(element: ReactElement): void;
+    unmount(): void;
+  };
 };
 
 const projectId = '11111111-1111-4111-8111-111111111111';
@@ -110,9 +110,9 @@ function makeBridge(overrides: Record<string, object> = {}) {
     ...(overrides.project ?? {}),
   };
   const draft = {
-    open: vi.fn().mockResolvedValue(
-      success({ draftId: '66666666-6666-4666-8666-666666666666', revision: 8 }),
-    ),
+    open: vi
+      .fn()
+      .mockResolvedValue(success({ draftId: '66666666-6666-4666-8666-666666666666', revision: 8 })),
     ...(overrides.draft ?? {}),
   };
   const version = {
@@ -276,10 +276,9 @@ describe('WritingWorkbench wrapper coverage', () => {
       await bridged.project.saveContinuation(continuation('editor'), { mode: 'replace' });
       await flush();
     });
-    expect(saveContinuation).toHaveBeenCalledWith(
-      expect.objectContaining({ panel: 'versions' }),
-      { mode: 'replace' },
-    );
+    expect(saveContinuation).toHaveBeenCalledWith(expect.objectContaining({ panel: 'versions' }), {
+      mode: 'replace',
+    });
     expect(lastCore().initialContinuation).toEqual(saved);
     expect(bridged.project.passthrough).toBe(adapter.project.passthrough);
     await act(async () => renderer.unmount());
@@ -289,7 +288,9 @@ describe('WritingWorkbench wrapper coverage', () => {
     const createVersion = vi.fn().mockResolvedValue(success({ versionId }));
     const open = vi
       .fn()
-      .mockResolvedValueOnce(success({ draftId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', revision: 9 }))
+      .mockResolvedValueOnce(
+        success({ draftId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', revision: 9 }),
+      )
       .mockResolvedValueOnce(failure());
     const { adapter } = makeBridge({ draft: { open }, version: { create: createVersion } });
     let renderer!: { unmount(): void };

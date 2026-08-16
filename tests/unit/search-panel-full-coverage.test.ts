@@ -279,9 +279,7 @@ function replacePlan(status: ReplacePlan['status'] = 'preview'): ReplacePlan {
 function createBridge(overrides: Record<string, unknown> = {}) {
   const methods = {
     getIndexState: vi.fn().mockResolvedValue(success(indexState())),
-    listDictionary: vi
-      .fn()
-      .mockResolvedValue(success({ projectId, entries: dictionary })),
+    listDictionary: vi.fn().mockResolvedValue(success({ projectId, entries: dictionary })),
     search: vi.fn().mockResolvedValue(success(searchResult('fts', 'ready'))),
     previewReplace: vi.fn().mockResolvedValue(success(replacePlan())),
     applyReplace: vi.fn().mockResolvedValue(
@@ -290,9 +288,7 @@ function createBridge(overrides: Record<string, unknown> = {}) {
         changedDrafts: [{ draftId, chapterId }],
       }),
     ),
-    upsertDictionary: vi
-      .fn()
-      .mockResolvedValue(success({ projectId, entries: dictionary })),
+    upsertDictionary: vi.fn().mockResolvedValue(success({ projectId, entries: dictionary })),
     deleteDictionary: vi
       .fn()
       .mockResolvedValue(success({ projectId, entries: dictionary.slice(1) })),
@@ -329,9 +325,7 @@ async function render(
 ): Promise<TestRenderer> {
   let renderer!: TestRenderer;
   await act(async () => {
-    renderer = create(
-      createElement(SearchPanel, { bridge, projectId, readOnly, onNavigate }),
-    );
+    renderer = create(createElement(SearchPanel, { bridge, projectId, readOnly, onNavigate }));
     await flush();
   });
   return renderer;
@@ -379,31 +373,23 @@ describe('SearchPanel coverage', () => {
       (node) => node.type === 'input' && node.props['aria-label'] === '全文搜索词',
       'search input',
     );
-    await act(async () =>
-      invoke(queryInput, 'onChange', { target: { value: 'keyword' } }),
-    );
+    await act(async () => invoke(queryInput, 'onChange', { target: { value: 'keyword' } }));
 
     const checkboxes = renderer.root.findAll(
       (node) => node.type === 'input' && node.props.type === 'checkbox',
     );
     for (const checkbox of checkboxes.slice(0, 3)) {
-      await act(async () =>
-        invoke(checkbox, 'onChange', { target: { checked: false } }),
-      );
+      await act(async () => invoke(checkbox, 'onChange', { target: { checked: false } }));
     }
     await act(async () => invoke(searchForm, 'onSubmit', submitEvent()));
     expect(search).not.toHaveBeenCalled();
-    await act(async () =>
-      invoke(checkboxes[0]!, 'onChange', { target: { checked: true } }),
-    );
+    await act(async () => invoke(checkboxes[0]!, 'onChange', { target: { checked: true } }));
 
     await act(async () => {
       invoke(searchForm, 'onSubmit', submitEvent());
       await flush();
     });
-    expect(textContent(renderer.root)).toContain(
-      '找到 5 项 · 全文搜索 · 全文搜索已就绪',
-    );
+    expect(textContent(renderer.root)).toContain('找到 5 项 · 全文搜索 · 全文搜索已就绪');
     expect(textContent(renderer.root)).toContain('当前稿');
     expect(textContent(renderer.root)).toContain('历史版本 · 只读');
     expect(textContent(renderer.root)).toContain('人物世界设定 · 专用编辑入口');
@@ -509,9 +495,7 @@ describe('SearchPanel coverage', () => {
       );
       await flush();
     });
-    expect(previewReplace).toHaveBeenCalledWith(
-      expect.objectContaining({ matchCase: true }),
-    );
+    expect(previewReplace).toHaveBeenCalledWith(expect.objectContaining({ matchCase: true }));
     expect(textContent(renderer.root)).toContain('等待确认 · 命中 2');
     expect(textContent(renderer.root)).toContain('已锁定，跳过 · 旧词 → 新词');
 
@@ -530,9 +514,7 @@ describe('SearchPanel coverage', () => {
       );
       await flush();
     });
-    expect(previewReplace).toHaveBeenLastCalledWith(
-      expect.objectContaining({ matchCase: false }),
-    );
+    expect(previewReplace).toHaveBeenLastCalledWith(expect.objectContaining({ matchCase: false }));
     expect(textContent(renderer.root)).toContain('预览已经过期');
 
     await act(async () => {
@@ -564,11 +546,7 @@ describe('SearchPanel coverage', () => {
     expect(textContent(renderer.root)).toContain('作品词典已保存');
 
     await act(async () => {
-      invoke(
-        dictionaryForm,
-        'onSubmit',
-        submitEvent({ term: 'Omega', action: 'canonical' }),
-      );
+      invoke(dictionaryForm, 'onSubmit', submitEvent({ term: 'Omega', action: 'canonical' }));
       await flush();
     });
     expect(upsertDictionary).toHaveBeenLastCalledWith(
@@ -631,9 +609,7 @@ describe('SearchPanel coverage', () => {
 
     const rejecting = createBridge({
       getIndexState: vi.fn().mockRejectedValue(new Error('boom')),
-      listDictionary: vi
-        .fn()
-        .mockResolvedValue(success({ projectId, entries: [] })),
+      listDictionary: vi.fn().mockResolvedValue(success({ projectId, entries: [] })),
     });
     const rejectedRenderer = await render(rejecting.bridge);
     expect(textContent(rejectedRenderer.root)).toContain('搜索工具读取异常');
@@ -648,9 +624,7 @@ describe('SearchPanel coverage', () => {
       (node) => node.type === 'input' && node.props['aria-label'] === '全文搜索词',
       'search input',
     );
-    await act(async () =>
-      invoke(input, 'onChange', { target: { value: 'keyword' } }),
-    );
+    await act(async () => invoke(input, 'onChange', { target: { value: 'keyword' } }));
     await act(async () =>
       invoke(form(staleRenderer.root, 'filter-bar'), 'onSubmit', submitEvent()),
     );

@@ -260,7 +260,8 @@ describe('SearchPanel pending and stale request coverage', () => {
     const searchPending = deferred<ReturnType<typeof success<SearchProjectResult>>>();
     const previewPending = deferred<ReturnType<typeof success<ReplacePlan>>>();
     const applyPending = deferred<ReturnType<typeof failure>>();
-    const dictionaryPending = deferred<ReturnType<typeof success<{ projectId: string; entries: readonly [] }>>>();
+    const dictionaryPending =
+      deferred<ReturnType<typeof success<{ projectId: string; entries: readonly [] }>>>();
     const rebuildPending = deferred<
       ReturnType<
         typeof success<{
@@ -336,11 +337,7 @@ describe('SearchPanel pending and stale request coverage', () => {
     expect(textContent(renderer.root)).toContain('操作未完成');
 
     await act(async () => {
-      void invoke(
-        replaceForm,
-        'onSubmit',
-        submitEvent({ query: '旧词', replacement: '新词' }),
-      );
+      void invoke(replaceForm, 'onSubmit', submitEvent({ query: '旧词', replacement: '新词' }));
       await flush();
     });
     expect(textContent(renderer.root)).toContain('已取消');
@@ -428,9 +425,8 @@ describe('SearchPanel pending and stale request coverage', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.stubGlobal('FormData', FakeFormData);
     const oldIndex = deferred<ReturnType<typeof success<SearchIndexState>>>();
-    const oldDictionary = deferred<
-      ReturnType<typeof success<{ projectId: string; entries: readonly [] }>>
-    >();
+    const oldDictionary =
+      deferred<ReturnType<typeof success<{ projectId: string; entries: readonly [] }>>>();
     const oldBridge = createBridge({
       getIndexState: vi.fn(() => oldIndex.promise),
       listDictionary: vi.fn(() => oldDictionary.promise),

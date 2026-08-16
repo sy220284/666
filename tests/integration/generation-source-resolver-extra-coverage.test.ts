@@ -16,8 +16,7 @@ import {
   createTwoBlockDraft,
 } from './candidate-apply-fixture.js';
 
-const hash = (value: string): string =>
-  createHash('sha256').update(value, 'utf8').digest('hex');
+const hash = (value: string): string => createHash('sha256').update(value, 'utf8').digest('hex');
 
 function errorCode(code: GenerationSourceResolverError['code']) {
   return expect.objectContaining<Partial<GenerationSourceResolverError>>({ code });
@@ -32,12 +31,12 @@ describe('GenerationSourceResolver extra coverage', () => {
       const { project, chapter, draft } = await createTwoBlockDraft(harness);
       const resolver = new GenerationSourceResolver(harness.workspace, harness.candidates);
 
-      expect(
-        resolver.resolveSkeleton(project.projectId, chapter.id, [], '继续推进'),
-      ).toMatchObject({
-        requiredBeats: [],
-        inputSources: [{ sourceType: 'chapter_goal', sourceId: chapter.id }],
-      });
+      expect(resolver.resolveSkeleton(project.projectId, chapter.id, [], '继续推进')).toMatchObject(
+        {
+          requiredBeats: [],
+          inputSources: [{ sourceType: 'chapter_goal', sourceId: chapter.id }],
+        },
+      );
       expect(
         resolver.resolveChapter(project.projectId, chapter.id, {
           sourceType: 'direct_chapter_goal',
@@ -260,10 +259,7 @@ describe('GenerationSourceResolver extra coverage', () => {
           },
         ],
       });
-      expect(merged.sources.map((source) => source.text)).toEqual([
-        '候选正文',
-        secondBlock.text,
-      ]);
+      expect(merged.sources.map((source) => source.text)).toEqual(['候选正文', secondBlock.text]);
       expect(merged.inputSources.map((source) => source.sourceType)).toEqual([
         'candidate',
         'current_draft',

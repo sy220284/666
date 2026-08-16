@@ -62,7 +62,11 @@ function find(root: TestInstance, predicate: (node: TestInstance) => boolean, la
   return node;
 }
 function button(root: TestInstance, label: string) {
-  return find(root, (node) => node.type === 'button' && text(node).includes(label), `button ${label}`);
+  return find(
+    root,
+    (node) => node.type === 'button' && text(node).includes(label),
+    `button ${label}`,
+  );
 }
 function dataNode(root: TestInstance, name: string) {
   return find(root, (node) => node.props[name] !== undefined, name);
@@ -173,7 +177,10 @@ const exportVersions = {
 function importPlan(blockMode: 'single' | 'multi' | 'short' | 'empty' = 'single') {
   const firstBlocks =
     blockMode === 'multi'
-      ? [{ blockType: 'paragraph', text: '甲段' }, { blockType: 'paragraph', text: '乙段' }]
+      ? [
+          { blockType: 'paragraph', text: '甲段' },
+          { blockType: 'paragraph', text: '乙段' },
+        ]
       : blockMode === 'short'
         ? [{ blockType: 'paragraph', text: '甲' }]
         : blockMode === 'empty'
@@ -211,9 +218,9 @@ function bridge(overrides: Record<string, unknown> = {}): RendererBridgeAdapter 
         ],
       }),
     ),
-    applyCleanup: vi.fn().mockResolvedValue(
-      success({ deletedBackupIds: [backupB], releasedBytes: 1536 }),
-    ),
+    applyCleanup: vi
+      .fn()
+      .mockResolvedValue(success({ deletedBackupIds: [backupB], releasedBytes: 1536 })),
     restoreCheckpoint: vi.fn().mockResolvedValue(success({ name: '恢复项目' })),
     exportVersion: vi
       .fn()
@@ -222,9 +229,9 @@ function bridge(overrides: Record<string, unknown> = {}): RendererBridgeAdapter 
   const textIo = {
     listExportVersions: vi.fn().mockResolvedValue(success(exportVersions)),
     previewImport: vi.fn().mockResolvedValue(success(importPlan())),
-    commitImport: vi.fn().mockResolvedValue(
-      success({ importedChapterCount: 2, checkpointId: backupA }),
-    ),
+    commitImport: vi
+      .fn()
+      .mockResolvedValue(success({ importedChapterCount: 2, checkpointId: backupA })),
     exportVersions: vi.fn().mockResolvedValue(success({ fileName: 'book.txt', sizeBytes: 2048 })),
   };
   return contractInput<RendererBridgeAdapter>({

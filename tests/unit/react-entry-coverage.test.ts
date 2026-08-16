@@ -35,7 +35,10 @@ vi.mock('../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js', () 
   createWindowRendererBridgeAdapter: () => entry.bridge,
 }));
 vi.mock('../../apps/desktop/renderer/src/runtime/core-recovery-supervisor.js', () => ({
-  createCoreRecoverySupervisor: () => ({ start: entry.recoveryStart, dispose: entry.recoveryDispose }),
+  createCoreRecoverySupervisor: () => ({
+    start: entry.recoveryStart,
+    dispose: entry.recoveryDispose,
+  }),
 }));
 vi.mock('../../apps/desktop/renderer/src/runtime/global-error-boundary.js', () => ({
   installGlobalRendererErrorBoundary: () => entry.stopGlobalBoundary,
@@ -153,8 +156,7 @@ describe('renderer react entry coverage', () => {
     expect(entry.render).toHaveBeenCalledOnce();
 
     const shutdownHandler = entry.onShutdownPrepare.handler as
-      | ((request: Record<string, unknown>) => void)
-      | undefined;
+      ((request: Record<string, unknown>) => void) | undefined;
     expect(shutdownHandler).toBeTypeOf('function');
     shutdownHandler?.({ requestId: 'request-1' });
     await flush();

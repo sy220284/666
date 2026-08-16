@@ -270,11 +270,15 @@ describe('AppShell M3 orchestration coverage', () => {
     expect(journal.catchUp).toHaveBeenCalledWith({ projectId });
 
     const layout = lastProps(shell.layout);
-    await act(async () => callback<(value: string) => void>(layout, 'onOpenCanonSection')('proposals'));
+    await act(async () =>
+      callback<(value: string) => void>(layout, 'onOpenCanonSection')('proposals'),
+    );
     expect(shell.navigation.transitionToRoute).toHaveBeenCalledWith('canon');
     expect(lastProps(shell.pages).canonSection).toBe('proposals');
 
-    await act(async () => callback<(value: string) => void>(layout, 'onOpenDataToolsSection')('import-export'));
+    await act(async () =>
+      callback<(value: string) => void>(layout, 'onOpenDataToolsSection')('import-export'),
+    );
     expect(shell.navigation.transitionToRoute).toHaveBeenCalledWith('recovery');
     expect(lastProps(shell.pages).dataToolsSection).toBe('import-export');
 
@@ -289,7 +293,9 @@ describe('AppShell M3 orchestration coverage', () => {
 
   it('skips journal catch-up for read-only projects and when bridge is absent', async () => {
     const fakeWindow = contractInput<Record<string, unknown>>(globalThis.window);
-    const journal = contractInput<{ catchUp: ReturnType<typeof vi.fn> }>(fakeWindow.worldforgeJournal);
+    const journal = contractInput<{ catchUp: ReturnType<typeof vi.fn> }>(
+      fakeWindow.worldforgeJournal,
+    );
     const renderer = await renderShell();
     const setActiveProject = callback<(value: unknown) => void>(
       contractInput<Record<string, unknown>>(shell.projectArgs),
@@ -313,24 +319,60 @@ describe('AppShell M3 orchestration coverage', () => {
     const renderer = await renderShell();
     expect(keydown).not.toBeNull();
     const prevent = vi.fn();
-    keydown?.({ isComposing: true, key: 'k', ctrlKey: true, metaKey: false, preventDefault: prevent });
-    keydown?.({ isComposing: false, key: 'x', ctrlKey: true, metaKey: false, preventDefault: prevent });
+    keydown?.({
+      isComposing: true,
+      key: 'k',
+      ctrlKey: true,
+      metaKey: false,
+      preventDefault: prevent,
+    });
+    keydown?.({
+      isComposing: false,
+      key: 'x',
+      ctrlKey: true,
+      metaKey: false,
+      preventDefault: prevent,
+    });
     expect(prevent).not.toHaveBeenCalled();
 
-    keydown?.({ isComposing: false, key: 'k', ctrlKey: true, metaKey: false, preventDefault: prevent });
+    keydown?.({
+      isComposing: false,
+      key: 'k',
+      ctrlKey: true,
+      metaKey: false,
+      preventDefault: prevent,
+    });
     await act(flush);
     expect(prevent).toHaveBeenCalledTimes(1);
     expect(lastProps(shell.palette).open).toBe(true);
 
-    keydown?.({ isComposing: false, key: 'Escape', ctrlKey: false, metaKey: false, preventDefault: prevent });
+    keydown?.({
+      isComposing: false,
+      key: 'Escape',
+      ctrlKey: false,
+      metaKey: false,
+      preventDefault: prevent,
+    });
     await act(flush);
     expect(prevent).toHaveBeenCalledTimes(2);
     expect(lastProps(shell.palette).open).toBe(false);
 
-    keydown?.({ isComposing: false, key: 'K', ctrlKey: false, metaKey: true, preventDefault: prevent });
+    keydown?.({
+      isComposing: false,
+      key: 'K',
+      ctrlKey: false,
+      metaKey: true,
+      preventDefault: prevent,
+    });
     await act(flush);
     expect(lastProps(shell.palette).open).toBe(true);
-    keydown?.({ isComposing: false, key: 'k', ctrlKey: true, metaKey: false, preventDefault: prevent });
+    keydown?.({
+      isComposing: false,
+      key: 'k',
+      ctrlKey: true,
+      metaKey: false,
+      preventDefault: prevent,
+    });
     await act(flush);
     expect(lastProps(shell.palette).open).toBe(false);
     await act(async () => renderer.unmount());
@@ -351,7 +393,9 @@ describe('AppShell M3 orchestration coverage', () => {
   ] as const)('maps global status %s to its action', async (id, label, target) => {
     shell.globalStatus = { id };
     const renderer = await renderShell();
-    const action = contractInput<{ label: string; run: () => void }>(lastProps(shell.layout).globalStatusAction);
+    const action = contractInput<{ label: string; run: () => void }>(
+      lastProps(shell.layout).globalStatusAction,
+    );
     expect(action.label).toBe(label);
     await act(async () => {
       action.run();

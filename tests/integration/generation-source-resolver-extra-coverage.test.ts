@@ -512,7 +512,7 @@ describe('GenerationSourceResolver extra coverage', () => {
                    LIMIT 1
                 )`,
           )
-          .run('bad-hash', version.versionId, version.versionId);
+          .run('g'.repeat(64), version.versionId, version.versionId);
       });
       expect(() =>
         resolver.resolveFinalVersion(project.projectId, chapter.id, version.versionId),

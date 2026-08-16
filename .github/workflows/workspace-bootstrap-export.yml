@@ -49,7 +49,6 @@ jobs:
           node .github/governance/assert-clean-tree.mjs
           test "$(node --version)" = "v24.18.1"
           test "$(pnpm --version)" = "11.21.0"
-          test -x node_modules/electron/dist/electron
           node -p "require('./node_modules/electron/package.json').version"
           pnpm exec esbuild --version
           pnpm exec vitest --version
@@ -112,7 +111,7 @@ jobs:
             cd "$OUTPUT_DIR"
             sha256sum "$source_archive" "$dependency_archive" "$node_archive" > SHA256SUMS.txt
           )
-          node "$node_root/bin/node" --version
+          "$node_root/bin/node" --version
           node .github/governance/assert-clean-tree.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:

@@ -222,6 +222,8 @@ describe('WritingWorkbench wrapper coverage', () => {
     await act(async () => {
       renderer.update(element(adapter, { initial: null, onPanelChange: second }));
       await flush();
+    });
+    await act(async () => {
       fn<(panel: 'versions') => void>(lastCore().onPanelChange)('versions');
       await flush();
     });

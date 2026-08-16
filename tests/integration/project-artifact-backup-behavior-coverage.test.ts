@@ -1,5 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -80,7 +89,9 @@ async function harness() {
     { projectId: project.projectId, noteId: note.id },
     sourcePath,
   );
-  const attachment = catalog.attachments.find((candidate) => candidate.displayName === 'artifact.txt');
+  const attachment = catalog.attachments.find(
+    (candidate) => candidate.displayName === 'artifact.txt',
+  );
   if (!attachment) throw new Error('Research attachment was not imported.');
   const workspacePath = workspace.assertActiveProject(project.projectId).workspacePath;
   const runtime = createRecoveryRuntime(workspace, { backupRootDirectory: backupRoot, clock });
@@ -224,7 +235,9 @@ describe('project artifact backup failure boundaries', () => {
         item.mutate(manifest);
         await writeManifest(manifestFile, manifest);
         const target = path.join(value.root, `restore-${item.name}`);
-        await expect(restoreArtifactBackup(value.runtime, checkpoint, target)).rejects.toMatchObject({
+        await expect(
+          restoreArtifactBackup(value.runtime, checkpoint, target),
+        ).rejects.toMatchObject({
           code: item.code,
         });
         expect(await exists(target)).toBe(false);

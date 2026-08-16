@@ -94,7 +94,10 @@ function invoke(node: TestInstance, name: 'onClick' | 'onChange', argument?: unk
 async function submit(
   node: TestInstance,
   values: Readonly<Record<string, unknown>>,
-): Promise<{ readonly preventDefault: ReturnType<typeof vi.fn>; readonly reset: ReturnType<typeof vi.fn> }> {
+): Promise<{
+  readonly preventDefault: ReturnType<typeof vi.fn>;
+  readonly reset: ReturnType<typeof vi.fn>;
+}> {
   const handler = node.props.onSubmit;
   if (typeof handler !== 'function') throw new Error('Missing onSubmit handler.');
   const preventDefault = vi.fn();
@@ -115,9 +118,7 @@ async function flushPromises(): Promise<void> {
   await Promise.resolve();
 }
 
-function entity(
-  overrides: Partial<Entity> = {},
-): Entity {
+function entity(overrides: Partial<Entity> = {}): Entity {
   return contractInput<Entity>({
     id: entityId,
     projectId,
@@ -275,7 +276,7 @@ describe('EntityCanonPanel author behavior coverage', () => {
     await submit(newForm, {
       entityType: 'location',
       name: '听雨楼',
-      aliases: '旧楼、雨楼',
+      aliases: '旧楼\n雨楼',
       summary: '城南旧楼',
     });
     expect(harness.createEntity).toHaveBeenCalledWith({

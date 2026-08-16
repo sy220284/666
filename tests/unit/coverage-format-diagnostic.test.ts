@@ -9,6 +9,7 @@ const targets = [
   'tests/unit/app-shell-m3-coverage.test.ts',
   'tests/unit/app-shell-wrapper-coverage.test.ts',
   'tests/unit/data-tools-workbench-coverage.test.ts',
+  'tests/unit/entity-canon-panel-behavior-coverage.test.ts',
   'tests/unit/react-entry-coverage.test.ts',
   'tests/unit/search-panel-full-coverage.test.ts',
   'tests/unit/search-panel-pending-coverage.test.ts',

@@ -12,6 +12,7 @@ const targets = [
   'tests/unit/react-entry-coverage.test.ts',
   'tests/unit/search-panel-full-coverage.test.ts',
   'tests/unit/search-panel-pending-coverage.test.ts',
+  'tests/unit/structure-operation-dialog-behavior-coverage.test.ts',
   'tests/unit/utility-errors-full-coverage.test.ts',
   'tests/unit/writing-workbench-wrapper-coverage.test.ts',
 ] as const;

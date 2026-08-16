@@ -346,13 +346,14 @@ describe('VersionPanel critical author behavior coverage', () => {
         description: '恢复前留档',
       },
     };
+    type FakeFormValues = typeof fakeForm.values;
     class FakeFormData {
       readonly #form: typeof fakeForm;
       constructor(form: typeof fakeForm) {
         this.#form = form;
       }
       get(name: string): string | null {
-        return this.#form.values[name as keyof typeof this.#form.values] ?? null;
+        return this.#form.values[name as keyof FakeFormValues] ?? null;
       }
     }
     vi.stubGlobal('FormData', FakeFormData);

@@ -172,6 +172,6 @@ export function createPinnedProviderFetch(
         lastError = failure.cause;
       }
     }
-    throw lastError ?? new Error('PROVIDER_CONNECTION_ADDRESS_UNAVAILABLE');
+    throw lastError;
   }) as typeof fetch;
 }

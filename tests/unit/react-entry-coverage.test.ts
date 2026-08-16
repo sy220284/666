@@ -19,6 +19,9 @@ const entry = vi.hoisted(() => ({
   beforeUnload: null as null | (() => void),
 }));
 
+vi.mock('react-dom/client', () => ({
+  createRoot: entry.createRoot,
+}));
 vi.mock('../../apps/desktop/renderer/src/app/renderer-application-controller.js', () => ({
   createRendererApplicationController: () => entry.applicationController,
 }));
@@ -58,8 +61,6 @@ async function flush(): Promise<void> {
 }
 
 beforeEach(() => {
-  vi.resetModules();
-  vi.doMock('react-dom/client', () => ({ createRoot: entry.createRoot }));
   entry.rootElement = { dataset: {} };
   entry.render.mockClear();
   entry.createRoot.mockReset();
@@ -99,27 +100,14 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.doUnmock('react-dom/client');
   vi.unstubAllGlobals();
 });
 
 describe('renderer react entry coverage', () => {
-  it('rejects a missing React root', async () => {
-    entry.rootElement = null;
-    await expect(import('../../apps/desktop/renderer/src/react-entry.js')).rejects.toThrow(
-      'RENDERER_REACT_ROOT_MISSING',
-    );
-  });
-
-  it('rejects duplicate React mounting', async () => {
-    entry.rootElement = { dataset: { reactMounted: 'true' } };
-    await expect(import('../../apps/desktop/renderer/src/react-entry.js')).rejects.toThrow(
-      'RENDERER_REACT_ROOT_DUPLICATE',
-    );
-  });
-
-  it('starts the renderer, registers lifecycle cleanup and acknowledges successful shutdown save', async () => {
-    entry.flushPendingDraft.mockResolvedValue(true);
+  it('starts the renderer and covers both shutdown-save outcomes before unloading', async () => {
+    entry.flushPendingDraft
+      .mockResolvedValueOnce(true)
+      .mockRejectedValueOnce(new Error('save failed'));
     await import('../../apps/desktop/renderer/src/react-entry.js');
 
     expect(entry.createRoot).toHaveBeenCalledWith(entry.rootElement);
@@ -153,29 +141,39 @@ describe('renderer react entry coverage', () => {
       saved: true,
     });
 
-    const recoveryCleanup = entry.lifecycleRegister.mock.calls.find(
-      (call) => call[1] === 'core-recovery-supervisor',
-    )?.[2];
-    if (typeof recoveryCleanup !== 'function') throw new Error('Missing recovery cleanup');
-    recoveryCleanup();
-    expect(entry.recoveryDispose).toHaveBeenCalledOnce();
-  });
-
-  it('acknowledges failed shutdown save and disposes runtime before unload', async () => {
-    entry.flushPendingDraft.mockRejectedValue(new Error('save failed'));
-    await import('../../apps/desktop/renderer/src/react-entry.js');
-    const shutdownHandler = entry.onShutdownPrepare.handler as
-      | ((request: Record<string, unknown>) => void)
-      | undefined;
     shutdownHandler?.({ requestId: 'request-2' });
     await flush();
     expect(entry.acknowledgeShutdown).toHaveBeenCalledWith({
       requestId: 'request-2',
       saved: false,
     });
+
+    const recoveryCleanup = entry.lifecycleRegister.mock.calls.find(
+      (call) => call[1] === 'core-recovery-supervisor',
+    )?.[2];
+    if (typeof recoveryCleanup !== 'function') throw new Error('Missing recovery cleanup');
+    recoveryCleanup();
+    expect(entry.recoveryDispose).toHaveBeenCalledOnce();
+
     expect(entry.beforeUnload).toBeTypeOf('function');
     entry.beforeUnload?.();
     await flush();
     expect(entry.runtimeDispose).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a missing React root', async () => {
+    vi.resetModules();
+    entry.rootElement = null;
+    await expect(import('../../apps/desktop/renderer/src/react-entry.js')).rejects.toThrow(
+      'RENDERER_REACT_ROOT_MISSING',
+    );
+  });
+
+  it('rejects duplicate React mounting', async () => {
+    vi.resetModules();
+    entry.rootElement = { dataset: { reactMounted: 'true' } };
+    await expect(import('../../apps/desktop/renderer/src/react-entry.js')).rejects.toThrow(
+      'RENDERER_REACT_ROOT_DUPLICATE',
+    );
   });
 });

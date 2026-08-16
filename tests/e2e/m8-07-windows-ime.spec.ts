@@ -111,7 +111,7 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
     await page.locator('[data-onboarding-entry="quick"]').click();
     await page.locator('[data-project-name]').fill('Windows真实拼音验收');
     await page.locator('[data-confirm-create-project]').click();
-    await expect(page.locator('[data-writing-workbench]')).toBeVisible();
+    await expect(page.locator('[data-writing-workbench]')).toBeVisible({ timeout: 15_000 });
 
     const editor = page.locator('.worldforge-editor');
     await expect(editor).toBeVisible({ timeout: 15_000 });

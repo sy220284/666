@@ -26,7 +26,6 @@ export default defineConfig({
     'm11-07-longform-ai.spec.ts',
     'visual-regression.spec.ts',
     'accessibility.spec.ts',
-    'platform-experience.spec.ts',
     'writing-focus-assistance.spec.ts',
   ],
   fullyParallel: false,

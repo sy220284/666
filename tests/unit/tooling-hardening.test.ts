@@ -11,10 +11,16 @@ import {
 } from '../../scripts/run-electron-e2e.mjs';
 
 describe('tooling hardening', () => {
-  it('uses one Electron E2E runner and strips its private CI flag', async () => {
+  it('uses one Electron E2E runner, strips its private CI flag and routes platform experience', async () => {
     expect(parseRunnerArguments(['--ci-only', 'tests/e2e/electron-shell.spec.ts'])).toEqual({
       ciOnly: true,
+      configPath: 'tests/e2e/playwright.config.ts',
       playwrightArguments: ['tests/e2e/electron-shell.spec.ts'],
+    });
+    expect(parseRunnerArguments(['tests/e2e/platform-experience.spec.ts'])).toEqual({
+      ciOnly: false,
+      configPath: 'tests/e2e/playwright.platform-experience.config.ts',
+      playwrightArguments: ['tests/e2e/platform-experience.spec.ts'],
     });
     const manifest = JSON.parse(await readFile('package.json', 'utf8'));
     expect(manifest.scripts.test).toContain('pnpm test:e2e -- --ci-only');
@@ -83,12 +89,13 @@ describe('tooling hardening', () => {
     ]);
   });
 
-  it('paginates rulesets and verifies release assets', async () => {
+  it('paginates rulesets, verifies release assets and avoids duplicate source startup smoke', async () => {
     const ruleset = await readFile('scripts/ruleset-policy.mjs', 'utf8');
     const release = await readFile('.github/workflows/release.yml', 'utf8');
     expect(ruleset).toContain('per_page=100&page=');
     expect(ruleset).toContain('pageItems.length < 100');
-    expect(release).toContain('Run platform startup smoke');
+    expect(release).not.toContain('Run platform startup smoke');
     expect(release).toContain('verify-package-assets.mjs');
+    expect(release).toContain('smoke-packaged-desktop.mjs');
   });
 });

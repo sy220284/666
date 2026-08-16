@@ -14,7 +14,12 @@ on:
         type: boolean
         default: false
       full_suite:
-        description: Run product tests and Electron E2E for code-bearing Ready PRs
+        description: Run product tests and full desktop validation for code-bearing Ready PRs
+        required: false
+        type: boolean
+        default: true
+      desktop_e2e:
+        description: Run sharded Linux Electron E2E when the full suite is enabled
         required: false
         type: boolean
         default: true
@@ -39,7 +44,7 @@ on:
         type: boolean
         default: false
       linux_platform_experience:
-        description: Reuse the Linux Electron build for platform experience validation
+        description: Run Linux platform experience validation as an isolated lane
         required: false
         type: boolean
         default: false
@@ -267,40 +272,36 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  desktop-e2e:
-    name: desktop-e2e
-    if: ${{ inputs.draft_mode == false }}
+  desktop-e2e-shard:
+    name: desktop-e2e-${{ matrix.shard }}-of-3
+    if: ${{ inputs.draft_mode == false && inputs.full_suite && inputs.desktop_e2e }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
-      - name: Skip Linux desktop validation for lightweight Ready PR
-        if: ${{ inputs.full_suite == false && inputs.linux_platform_experience == false }}
-        run: echo "Linux Electron validation is not required for this lightweight change."
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
         with:
           node-version: 24.18.1
           cache: pnpm
       - name: Assert clean working tree before desktop validation
-        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
-        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
       - name: Install Electron display dependencies
-        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
           fc-match "Noto Serif CJK SC"
-      - name: Run Electron E2E and capture diagnostics
-        if: ${{ inputs.full_suite }}
+      - name: Build desktop
+        run: pnpm build
+      - name: Run Electron E2E shard and capture diagnostics
         shell: bash
         env:
           WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
@@ -308,27 +309,80 @@ jobs:
         run: |
           mkdir -p test-results/ci
           set -o pipefail
-          pnpm test:e2e 2>&1 | tee test-results/ci/desktop-e2e.log
-      - name: Run Linux platform author experience on the existing build
-        if: ${{ inputs.linux_platform_experience }}
-        env:
-          WORLDFORGE_PLATFORM_EXPERIENCE_EVIDENCE_DIR: ${{ github.workspace }}/test-results/platform-experience
-        run: node scripts/run-electron-e2e.mjs tests/e2e/platform-experience.spec.ts
+          node scripts/run-electron-e2e.mjs --shard=${{ matrix.shard }}/3 2>&1 | tee test-results/ci/desktop-e2e.log
       - name: Assert clean working tree after desktop validation
-        if: ${{ always() && (inputs.full_suite || inputs.linux_platform_experience) }}
+        if: always()
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Upload Electron and Linux platform evidence
-        if: ${{ always() && (inputs.full_suite || inputs.linux_platform_experience) }}
+      - name: Upload Electron shard evidence
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: desktop-e2e-evidence
+          name: desktop-e2e-evidence-${{ matrix.shard }}-of-3
           path: |
             test-results/ci/desktop-e2e.log
             test-results/electron/
             test-results/display-matrix/
-            test-results/platform-experience/
           if-no-files-found: warn
           retention-days: 7
+
+  desktop-e2e:
+    name: desktop-e2e
+    if: ${{ always() && inputs.draft_mode == false && inputs.full_suite && inputs.desktop_e2e }}
+    needs: desktop-e2e-shard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      SHARDS_RESULT: ${{ needs.desktop-e2e-shard.result }}
+    steps:
+      - name: Run Electron E2E and capture diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "desktop-e2e-shards=$SHARDS_RESULT"
+          test "$SHARDS_RESULT" = success
+
+  linux-platform-experience:
+    name: linux-platform-experience
+    if: ${{ inputs.draft_mode == false && inputs.linux_platform_experience }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - name: Assert clean working tree before Linux platform experience
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install Electron display dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          fc-match "Noto Serif CJK SC"
+      - name: Build desktop
+        run: pnpm build
+      - name: Run Linux platform author experience
+        env:
+          WORLDFORGE_PLATFORM_EXPERIENCE_EVIDENCE_DIR: ${{ github.workspace }}/test-results/platform-experience
+        run: node scripts/run-electron-e2e.mjs tests/e2e/platform-experience.spec.ts
+      - name: Assert clean working tree after Linux platform experience
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload Linux platform experience evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: platform-experience-linux
+          path: |
+            test-results/platform-experience/
+            test-results/electron/
+          if-no-files-found: error
+          retention-days: 14
 
   package-smoke:
     name: package-smoke-${{ matrix.platform }}
@@ -419,11 +473,15 @@ jobs:
       - security-tests
       - performance-eval
       - desktop-e2e
+      - linux-platform-experience
       - package-smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       DRAFT_MODE: ${{ inputs.draft_mode }}
+      FULL_SUITE: ${{ inputs.full_suite }}
+      E2E_REQUIRED: ${{ inputs.desktop_e2e }}
+      LINUX_PLATFORM_REQUIRED: ${{ inputs.linux_platform_experience }}
       PACKAGE_REQUIRED: ${{ inputs.package_smoke }}
       RELIABILITY_REQUIRED: ${{ inputs.reliability_suite }}
       SECURITY_REQUIRED: ${{ inputs.security_suite }}
@@ -434,19 +492,21 @@ jobs:
       SECURITY_RESULT: ${{ needs.security-tests.result }}
       PERFORMANCE_RESULT: ${{ needs.performance-eval.result }}
       E2E_RESULT: ${{ needs.desktop-e2e.result }}
+      LINUX_PLATFORM_RESULT: ${{ needs.linux-platform-experience.result }}
       PACKAGE_RESULT: ${{ needs.package-smoke.result }}
     steps:
       - name: Enforce aggregate quality result
         shell: bash
         run: |
           set -euo pipefail
-          printf 'draft=%s\nstatic=%s\nproduct=%s\nreliability=%s\nsecurity=%s\nperformance=%s\ne2e=%s\npackage=%s\n' \
-            "$DRAFT_MODE" "$STATIC_RESULT" "$PRODUCT_RESULT" "$RELIABILITY_RESULT" \
-            "$SECURITY_RESULT" "$PERFORMANCE_RESULT" "$E2E_RESULT" "$PACKAGE_RESULT"
+          printf 'draft=%s\nfull-suite=%s\nstatic=%s\nproduct=%s\nreliability=%s\nsecurity=%s\nperformance=%s\ne2e-required=%s\ne2e=%s\nlinux-platform-required=%s\nlinux-platform=%s\npackage=%s\n' \
+            "$DRAFT_MODE" "$FULL_SUITE" "$STATIC_RESULT" "$PRODUCT_RESULT" "$RELIABILITY_RESULT" \
+            "$SECURITY_RESULT" "$PERFORMANCE_RESULT" "$E2E_REQUIRED" "$E2E_RESULT" \
+            "$LINUX_PLATFORM_REQUIRED" "$LINUX_PLATFORM_RESULT" "$PACKAGE_RESULT"
           test "$STATIC_RESULT" = success
           if [ "$DRAFT_MODE" = true ]; then
             for result in "$PRODUCT_RESULT" "$RELIABILITY_RESULT" "$SECURITY_RESULT" \
-              "$PERFORMANCE_RESULT" "$E2E_RESULT" "$PACKAGE_RESULT"; do
+              "$PERFORMANCE_RESULT" "$E2E_RESULT" "$LINUX_PLATFORM_RESULT" "$PACKAGE_RESULT"; do
               case "$result" in
                 success|skipped) ;;
                 *) exit 1 ;;
@@ -456,7 +516,6 @@ jobs:
           fi
 
           test "$PRODUCT_RESULT" = success
-          test "$E2E_RESULT" = success
 
           require_optional_job() {
             required="$1"
@@ -478,6 +537,12 @@ jobs:
             esac
           }
 
+          if [ "$FULL_SUITE" = true ]; then
+            require_optional_job "$E2E_REQUIRED" "$E2E_RESULT" desktop-e2e
+          else
+            require_optional_job false "$E2E_RESULT" desktop-e2e
+          fi
+          require_optional_job "$LINUX_PLATFORM_REQUIRED" "$LINUX_PLATFORM_RESULT" linux-platform-experience
           require_optional_job "$RELIABILITY_REQUIRED" "$RELIABILITY_RESULT" reliability-tests
           require_optional_job "$SECURITY_REQUIRED" "$SECURITY_RESULT" security-tests
           require_optional_job "$PERFORMANCE_REQUIRED" "$PERFORMANCE_RESULT" performance-eval

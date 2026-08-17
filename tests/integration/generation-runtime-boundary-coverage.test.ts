@@ -234,7 +234,10 @@ describe('GenerationRuntime boundary coverage', () => {
         },
       );
       const structuredRequestId = randomUUID();
-      const structuredCreated = await harness.runs.createWithReplay(structuredRequestId, structuredRun);
+      const structuredCreated = await harness.runs.createWithReplay(
+        structuredRequestId,
+        structuredRun,
+      );
       const replayedStructured = await harness.runtime.startStructured({
         requestId: structuredRequestId,
         run: structuredRun,

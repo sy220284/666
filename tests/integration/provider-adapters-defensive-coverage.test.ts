@@ -80,13 +80,19 @@ async function collect(provider: AIProvider, request: GenerationRequest): Promis
   return events;
 }
 
+function eventIterator(
+  provider: AIProvider,
+  request: GenerationRequest,
+  signal: AbortSignal = new AbortController().signal,
+) {
+  return provider.generate(request, signal)[Symbol.asyncIterator]();
+}
+
 async function expectStreamFailure(status: number, code: string): Promise<void> {
   const provider = createProviderAdapter(config(), null, {
     fetch: async () => new Response(null, { status }),
   });
-  const iterator = provider
-    .generate(generation('writer-model'), new AbortController().signal)
-    [Symbol.asyncIterator]();
+  const iterator = eventIterator(provider, generation('writer-model'));
 
   await expect(iterator.next()).resolves.toMatchObject({
     value: { type: 'connected' },
@@ -124,9 +130,7 @@ describe('Provider adapter defensive coverage', () => {
     const empty = createProviderAdapter(config(), null, {
       fetch: async () => new Response(null, { status: 200 }),
     });
-    const emptyIterator = empty
-      .generate(generation('writer-model'), new AbortController().signal)
-      [Symbol.asyncIterator]();
+    const emptyIterator = eventIterator(empty, generation('writer-model'));
     await expect(emptyIterator.next()).resolves.toMatchObject({
       value: { type: 'connected' },
     });
@@ -145,9 +149,7 @@ describe('Provider adapter defensive coverage', () => {
           { status: 200 },
         ),
     });
-    const brokenIterator = broken
-      .generate(generation('writer-model'), new AbortController().signal)
-      [Symbol.asyncIterator]();
+    const brokenIterator = eventIterator(broken, generation('writer-model'));
     await expect(brokenIterator.next()).resolves.toMatchObject({
       value: { type: 'connected' },
     });
@@ -328,9 +330,7 @@ describe('Provider adapter defensive coverage', () => {
     const errorProvider = createProviderAdapter(config('anthropic'), null, {
       fetch: async () => sse(`data: ${JSON.stringify({ type: 'error' })}\n\n`),
     });
-    const errorIterator = errorProvider
-      .generate(generation('claude-test'), new AbortController().signal)
-      [Symbol.asyncIterator]();
+    const errorIterator = eventIterator(errorProvider, generation('claude-test'));
     await expect(errorIterator.next()).resolves.toMatchObject({
       value: { type: 'connected' },
     });

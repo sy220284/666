@@ -4,6 +4,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProviderEndpointBinding } from '../../packages/core-service/src/provider-endpoint.js';
 
+type RequestSocket = {
+  connecting: boolean;
+  once(event: string, listener: () => void): void;
+};
+
+type RequestEventValue = RequestSocket | Error;
+
 type RequestFactory = (
   options: Record<string, unknown>,
   callback: (
@@ -15,7 +22,7 @@ type RequestFactory = (
     },
   ) => void,
 ) => {
-  once(event: string, listener: (value: never) => void): unknown;
+  once(event: string, listener: (value: RequestEventValue) => void): unknown;
   end(body?: unknown): void;
 };
 
@@ -67,21 +74,21 @@ function successfulRequest(config: {
   expectedSocketEvent?: 'connect' | 'secureConnect';
 }): RequestFactory {
   return (_options, callback) => {
-    let socketListener: ((socket: never) => void) | undefined;
+    let socketListener: ((value: RequestEventValue) => void) | undefined;
     return {
       once(event, listener) {
         if (event === 'socket') socketListener = listener;
         return this;
       },
       end() {
-        const socket = {
+        const socket: RequestSocket = {
           connecting: config.connecting,
           once: (event: string, listener: () => void) => {
             if (config.expectedSocketEvent) expect(event).toBe(config.expectedSocketEvent);
             listener();
           },
         };
-        socketListener?.(socket as never);
+        socketListener?.(socket);
         callback(config.response);
       },
     };
@@ -90,7 +97,7 @@ function successfulRequest(config: {
 
 function errorRequest(error: Error, options: { throwFromEnd?: boolean } = {}): RequestFactory {
   return () => {
-    let errorListener: ((error: never) => void) | undefined;
+    let errorListener: ((value: RequestEventValue) => void) | undefined;
     return {
       once(event, listener) {
         if (event === 'error') errorListener = listener;
@@ -98,7 +105,7 @@ function errorRequest(error: Error, options: { throwFromEnd?: boolean } = {}): R
       },
       end() {
         if (options.throwFromEnd) throw error;
-        errorListener?.(error as never);
+        errorListener?.(error);
       },
     };
   };

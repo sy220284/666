@@ -47,18 +47,26 @@ function iterator(
 
 describe('Provider adapter tail coverage', () => {
   it('keeps an already normalized base path and reports JSON body timeouts', async () => {
-    const normalized = createProviderAdapter(config({ baseUrl: 'https://provider.example/v1/' }), null, {
-      fetch: async (input) => {
-        expect(new URL(String(input)).pathname).toBe('/v1/chat/completions');
-        return new Response('data: [DONE]\n\n', {
-          status: 200,
-          headers: { 'content-type': 'text/event-stream' },
-        });
+    const normalized = createProviderAdapter(
+      config({ baseUrl: 'https://provider.example/v1/' }),
+      null,
+      {
+        fetch: async (input) => {
+          expect(new URL(String(input)).pathname).toBe('/v1/chat/completions');
+          return new Response('data: [DONE]\n\n', {
+            status: 200,
+            headers: { 'content-type': 'text/event-stream' },
+          });
+        },
       },
-    });
+    );
     const normalizedIterator = iterator(normalized);
-    await expect(normalizedIterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
-    await expect(normalizedIterator.next()).resolves.toMatchObject({ value: { type: 'completed' } });
+    await expect(normalizedIterator.next()).resolves.toMatchObject({
+      value: { type: 'connected' },
+    });
+    await expect(normalizedIterator.next()).resolves.toMatchObject({
+      value: { type: 'completed' },
+    });
 
     const bodyTimeout = createProviderAdapter(config({ timeoutMs: 10 }), null, {
       fetch: async (_input, init) => {

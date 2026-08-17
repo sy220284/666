@@ -89,6 +89,28 @@ describe('Provider adapter tail coverage', () => {
     });
   });
 
+  it('preserves ProviderRuntimeError values thrown while decoding JSON', async () => {
+    const provider = createProviderAdapter(config(), null, {
+      fetch: async () => {
+        const response = new Response('', { status: 200 });
+        Object.defineProperty(response, 'text', {
+          value: async () => {
+            throw new ProviderRuntimeError(
+              'AI_CONNECTION_FAILED_003',
+              'Synthetic mapped JSON failure.',
+              true,
+            );
+          },
+        });
+        return response;
+      },
+    });
+    await expect(provider.testConnection()).rejects.toMatchObject({
+      code: 'AI_CONNECTION_FAILED_003',
+      retryable: true,
+    });
+  });
+
   it('maps cancellation at the next SSE loop boundary', async () => {
     const controller = new AbortController();
     const encoder = new TextEncoder();
@@ -157,5 +179,18 @@ describe('Provider adapter tail coverage', () => {
       code: 'AI_CONNECTION_FAILED_003',
       retryable: true,
     });
+  });
+
+  it('ignores trailing non-data SSE metadata before reporting an incomplete stream', async () => {
+    const provider = createProviderAdapter(config(), null, {
+      fetch: async () =>
+        new Response('event: ping', {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+    });
+    const stream = iterator(provider);
+    await expect(stream.next()).resolves.toMatchObject({ value: { type: 'connected' } });
+    await expect(stream.next()).rejects.toMatchObject({ code: 'AI_STREAM_INTERRUPTED_009' });
   });
 });

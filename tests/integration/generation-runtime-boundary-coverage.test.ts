@@ -371,34 +371,45 @@ describe('GenerationRuntime boundary coverage', () => {
     }
   });
 
-  it('drains one project without disturbing another, then drains all remaining runs', async () => {
+  it('ignores unrelated project drains, drains the active project, then drains all remaining runs', async () => {
     const harness = await createHarness();
     try {
-      const first = await createProjectDraft(harness, '项目排空一');
-      const second = await createProjectDraft(harness, '项目排空二');
+      const context = await createProjectDraft(harness, '项目排空');
       const firstControl = controlledProvider();
       const secondControl = controlledProvider();
 
       const firstStarted = await harness.runtime.startProse({
         requestId: randomUUID(),
         run: runInput(
-          first.project.projectId,
-          first.chapter.id,
-          first.draft.draftId,
-          first.draft.revision,
+          context.project.projectId,
+          context.chapter.id,
+          context.draft.draftId,
+          context.draft.revision,
         ),
         provider: firstControl.provider,
         requestFor: request,
         candidate: { title: '待取消一', candidateType: 'full' },
         parse: (value) => [{ blockType: 'paragraph', text: value, attributes: {} }],
       });
+
+      await firstControl.entered;
+      await harness.runtime.drainProject(randomUUID());
+      expect(
+        harness.runs.get({ projectId: context.project.projectId, runId: firstStarted.run.runId }),
+      ).toMatchObject({ status: 'running' });
+
+      await harness.runtime.drainProject(context.project.projectId);
+      expect(
+        harness.runs.get({ projectId: context.project.projectId, runId: firstStarted.run.runId }),
+      ).toMatchObject({ status: 'cancelled' });
+
       const secondStarted = await harness.runtime.startProse({
         requestId: randomUUID(),
         run: runInput(
-          second.project.projectId,
-          second.chapter.id,
-          second.draft.draftId,
-          second.draft.revision,
+          context.project.projectId,
+          context.chapter.id,
+          context.draft.draftId,
+          context.draft.revision,
         ),
         provider: secondControl.provider,
         requestFor: request,
@@ -406,18 +417,10 @@ describe('GenerationRuntime boundary coverage', () => {
         parse: (value) => [{ blockType: 'paragraph', text: value, attributes: {} }],
       });
 
-      await Promise.all([firstControl.entered, secondControl.entered]);
-      await harness.runtime.drainProject(first.project.projectId);
-      expect(
-        harness.runs.get({ projectId: first.project.projectId, runId: firstStarted.run.runId }),
-      ).toMatchObject({ status: 'cancelled' });
-      expect(
-        harness.runs.get({ projectId: second.project.projectId, runId: secondStarted.run.runId }),
-      ).toMatchObject({ status: 'running' });
-
+      await secondControl.entered;
       await harness.runtime.drainAll();
       expect(
-        harness.runs.get({ projectId: second.project.projectId, runId: secondStarted.run.runId }),
+        harness.runs.get({ projectId: context.project.projectId, runId: secondStarted.run.runId }),
       ).toMatchObject({ status: 'cancelled' });
     } finally {
       await closeHarness(harness);

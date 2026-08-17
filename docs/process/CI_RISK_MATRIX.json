@@ -3,11 +3,7 @@
   "description": "Single machine-readable routing authority for WorldForge PR risk and validation scope.",
   "routes": {
     "dependencyAudit": {
-      "any": [
-        "^package\\.json$",
-        "^pnpm-lock\\.yaml$",
-        "^pnpm-workspace\\.yaml$"
-      ]
+      "any": ["^package\\.json$", "^pnpm-lock\\.yaml$", "^pnpm-workspace\\.yaml$"]
     },
     "supplyChainInventory": {
       "any": [
@@ -84,7 +80,10 @@
         "^\\.github/workflows/quality\\.yml$",
         "^\\.github/workflows/toolchain-export\\.yml$",
         "^\\.github/workflows/workspace-bootstrap-export\\.yml$",
-        "^\\.github/workflows/toolchain-maintenance\\.yml$"
+        "^\\.github/workflows/toolchain-maintenance\\.yml$",
+        "^docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS\\.md$",
+        "^scripts/toolchain-completeness-policy\\.mjs$",
+        "^\\.github/workflows/toolchain-host-probe\\.yml$"
       ]
     },
     "uiAcceptance": {

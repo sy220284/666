@@ -29,7 +29,10 @@
     ".github/workflows/quality.yml",
     ".github/workflows/toolchain-export.yml",
     ".github/workflows/workspace-bootstrap-export.yml",
-    ".github/workflows/toolchain-maintenance.yml"
+    ".github/workflows/toolchain-maintenance.yml",
+    "docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md",
+    "scripts/toolchain-completeness-policy.mjs",
+    ".github/workflows/toolchain-host-probe.yml"
   ],
   "completenessInputs": [
     "docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md",
@@ -42,22 +45,10 @@
   "bundledPnpmVersion": "11.21.0",
   "profiles": {
     "formatter": {
-      "packages": [
-        "prettier"
-      ],
+      "packages": ["prettier"],
       "commands": [
-        [
-          "pnpm",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "prettier",
-          [
-            "--version"
-          ]
-        ]
+        ["pnpm", ["--version"]],
+        ["prettier", ["--version"]]
       ]
     },
     "quality": {
@@ -75,48 +66,13 @@
         "yaml"
       ],
       "commands": [
-        [
-          "pnpm",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "prettier",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "eslint",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "tsc",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "vitest",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "esbuild",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "playwright",
-          [
-            "--version"
-          ]
-        ]
+        ["pnpm", ["--version"]],
+        ["prettier", ["--version"]],
+        ["eslint", ["--version"]],
+        ["tsc", ["--version"]],
+        ["vitest", ["--version"]],
+        ["esbuild", ["--version"]],
+        ["playwright", ["--version"]]
       ]
     }
   },
@@ -139,37 +95,17 @@
         "pkg-config",
         "fc-match"
       ],
-      "workflowPackages": [
-        "fonts-noto-cjk",
-        "xvfb"
-      ]
+      "workflowPackages": ["fonts-noto-cjk", "xvfb"]
     },
     "windows": {
       "runner": "windows-latest",
-      "commands": [
-        "git.exe",
-        "pwsh.exe",
-        "powershell.exe"
-      ],
-      "capabilities": [
-        "Windows SDK signtool",
-        "Developer Mode"
-      ]
+      "commands": ["git.exe", "pwsh.exe", "powershell.exe"],
+      "capabilities": ["Windows SDK signtool", "Developer Mode"]
     },
     "macos": {
       "runner": "macos-latest",
-      "commands": [
-        "git",
-        "bash",
-        "xcrun",
-        "codesign",
-        "security",
-        "xcode-select"
-      ],
-      "capabilities": [
-        "Xcode command line tools",
-        "notarytool"
-      ]
+      "commands": ["git", "bash", "xcrun", "codesign", "security", "xcode-select"],
+      "capabilities": ["Xcode command line tools", "notarytool"]
     }
   },
   "requiredBundleEntries": [

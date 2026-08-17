@@ -77,12 +77,7 @@ for (const platform of ['linux', 'windows', 'macos']) {
   }
 }
 
-const [
-  workspaceBootstrap,
-  hostProbe,
-  maintenance,
-  completenessDocument,
-] = await Promise.all([
+const [workspaceBootstrap, hostProbe, maintenance, completenessDocument] = await Promise.all([
   readText(authority.workspaceBootstrapWorkflow),
   readText(authority.hostProbeWorkflow),
   readText(authority.maintenanceWorkflow),

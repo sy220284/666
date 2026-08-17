@@ -16,6 +16,14 @@ on:
   push:
     branches: [governance]
     paths:
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json
+      - docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md
+      - scripts/toolchain-policy.mjs
+      - scripts/toolchain-completeness-policy.mjs
+      - .github/workflows/toolchain-host-probe.yml
       - .github/workflows/workspace-bootstrap-export.yml
 
 permissions:

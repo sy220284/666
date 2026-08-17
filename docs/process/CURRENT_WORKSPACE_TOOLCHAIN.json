@@ -1,11 +1,16 @@
 {
   "schemaVersion": 1,
   "authorityDocument": "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md",
+  "completenessDocument": "docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md",
   "callerWorkflow": ".github/workflows/quality.yml",
   "exportWorkflow": ".github/workflows/toolchain-export.yml",
   "workspaceBootstrapWorkflow": ".github/workflows/workspace-bootstrap-export.yml",
   "workspaceBootstrapRunner": "ubuntu-24.04",
   "workspaceBootstrapArtifactName": "worldforge-workspace-bootstrap-Linux-X64-{sourceSha}",
+  "workspaceBootstrapBrowserDirectory": "worldforge-playwright-browsers",
+  "workspaceBootstrapAuditToolsDirectory": "worldforge-audit-tools",
+  "workspaceBootstrapIncludesPnpmRuntime": true,
+  "hostProbeWorkflow": ".github/workflows/toolchain-host-probe.yml",
   "maintenanceWorkflow": ".github/workflows/toolchain-maintenance.yml",
   "maintenanceDocument": "docs/process/TOOLCHAIN_SNAPSHOT_MAINTENANCE.md",
   "maintenanceScheduleUtc": "17 3 * * 1,4",
@@ -25,6 +30,11 @@
     ".github/workflows/toolchain-export.yml",
     ".github/workflows/workspace-bootstrap-export.yml",
     ".github/workflows/toolchain-maintenance.yml"
+  ],
+  "completenessInputs": [
+    "docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md",
+    "scripts/toolchain-completeness-policy.mjs",
+    ".github/workflows/toolchain-host-probe.yml"
   ],
   "generator": ".github/governance/toolchain-bundle.mjs",
   "defaultProfile": "quality",
@@ -53,11 +63,16 @@
     "quality": {
       "packages": [
         "@eslint/js",
+        "@playwright/test",
+        "@vitest/coverage-v8",
         "eslint",
         "eslint-plugin-react-hooks",
+        "esbuild",
         "prettier",
         "typescript",
-        "typescript-eslint"
+        "typescript-eslint",
+        "vitest",
+        "yaml"
       ],
       "commands": [
         [
@@ -83,7 +98,77 @@
           [
             "--version"
           ]
+        ],
+        [
+          "vitest",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "esbuild",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "playwright",
+          [
+            "--version"
+          ]
         ]
+      ]
+    }
+  },
+  "standaloneAuditTools": {
+    "knip": "6.32.2",
+    "jscpd": "5.0.12"
+  },
+  "hostRequirements": {
+    "linux": {
+      "runner": "ubuntu-24.04",
+      "commands": [
+        "git",
+        "bash",
+        "tar",
+        "zstd",
+        "python3",
+        "gcc",
+        "g++",
+        "make",
+        "pkg-config",
+        "fc-match"
+      ],
+      "workflowPackages": [
+        "fonts-noto-cjk",
+        "xvfb"
+      ]
+    },
+    "windows": {
+      "runner": "windows-latest",
+      "commands": [
+        "git.exe",
+        "pwsh.exe",
+        "powershell.exe"
+      ],
+      "capabilities": [
+        "Windows SDK signtool",
+        "Developer Mode"
+      ]
+    },
+    "macos": {
+      "runner": "macos-latest",
+      "commands": [
+        "git",
+        "bash",
+        "xcrun",
+        "codesign",
+        "security",
+        "xcode-select"
+      ],
+      "capabilities": [
+        "Xcode command line tools",
+        "notarytool"
       ]
     }
   },

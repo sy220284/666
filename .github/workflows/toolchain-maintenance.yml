@@ -10,12 +10,15 @@ on:
       - docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json
       - docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md
       - docs/process/TOOLCHAIN_SNAPSHOT_MAINTENANCE.md
+      - docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md
       - docs/process/CI_RISK_MATRIX.json
       - scripts/toolchain-policy.mjs
+      - scripts/toolchain-completeness-policy.mjs
       - .github/governance/toolchain-bundle.mjs
       - .github/workflows/quality.yml
       - .github/workflows/toolchain-export.yml
       - .github/workflows/workspace-bootstrap-export.yml
+      - .github/workflows/toolchain-host-probe.yml
       - .github/workflows/toolchain-maintenance.yml
   schedule:
     - cron: '17 3 * * 1,4'
@@ -41,6 +44,8 @@ jobs:
           persist-credentials: false
       - name: Validate snapshot maintenance authority
         run: node scripts/toolchain-policy.mjs
+      - name: Validate complete development toolchain contract
+        run: node scripts/toolchain-completeness-policy.mjs
 
   refresh-toolchain:
     name: refresh-quality-toolchain
@@ -57,3 +62,8 @@ jobs:
     uses: ./.github/workflows/workspace-bootstrap-export.yml
     with:
       source_sha: ${{ github.sha }}
+
+  refresh-host-capabilities:
+    name: refresh-host-capabilities
+    needs: policy
+    uses: ./.github/workflows/toolchain-host-probe.yml

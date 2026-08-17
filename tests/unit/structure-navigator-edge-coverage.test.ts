@@ -113,7 +113,9 @@ const structure = contractInput<ProjectStructure>({
   volumes: [{ ...volume, chapters: [chapter, secondChapter] }],
 });
 const planningListStructure = vi.fn(async () => ({ state: 'success', data: structure }));
-const bridge = contractInput<RendererBridgeAdapter>({ planning: { listStructure: planningListStructure } });
+const bridge = contractInput<RendererBridgeAdapter>({
+  planning: { listStructure: planningListStructure },
+});
 const active: TestRenderer[] = [];
 const onSelectChapter = vi.fn();
 const onOpenChapter = vi.fn();
@@ -323,7 +325,9 @@ describe('StructureNavigator edge coverage', () => {
     await callback(trash, 'onClose');
 
     const compactRenderer = await render({ compact: true });
-    expect(compactRenderer.root.findAll((node) => 'data-create-volume' in node.props)).toHaveLength(0);
+    expect(compactRenderer.root.findAll((node) => 'data-create-volume' in node.props)).toHaveLength(
+      0,
+    );
     expect(compactRenderer.root.findAll((node) => 'data-open-trash' in node.props)).toHaveLength(0);
     tree = last(controls.tree);
     expect(tree.compact).toBe(true);

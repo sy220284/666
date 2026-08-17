@@ -24,7 +24,9 @@ async function launch(userDataPath: string, createParent: string): Promise<Elect
 
 async function closeGracefully(application: ElectronApplication): Promise<void> {
   const closed = application.waitForEvent('close');
-  await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
+  await application.evaluate(({ BrowserWindow }) => {
+    setImmediate(() => BrowserWindow.getAllWindows()[0]?.close());
+  });
   await closed;
 }
 

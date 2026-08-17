@@ -8,7 +8,9 @@ const fail = (message) => {
   throw new Error(`TOOLCHAIN_COMPLETENESS: ${message}`);
 };
 
-const authority = await readJson('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json');
+const authority = await readJson(
+  'docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json',
+);
 const rootPackage = await readJson('package.json');
 
 for (const field of [
@@ -24,7 +26,10 @@ for (const field of [
 if (authority.workspaceBootstrapIncludesPnpmRuntime !== true) {
   fail('workspace bootstrap must include a restorable pnpm runtime');
 }
-if (!Array.isArray(authority.completenessInputs) || authority.completenessInputs.length === 0) {
+if (
+  !Array.isArray(authority.completenessInputs) ||
+  authority.completenessInputs.length === 0
+) {
   fail('completenessInputs must be a non-empty array');
 }
 
@@ -42,7 +47,8 @@ for (const packageName of [
   'vitest',
   'yaml',
 ]) {
-  if (!qualityPackages.has(packageName)) fail(`quality profile is missing ${packageName}`);
+  if (!qualityPackages.has(packageName))
+    fail(`quality profile is missing ${packageName}`);
   if (!rootPackage.devDependencies?.[packageName]) {
     fail(`quality profile package is not repository-pinned: ${packageName}`);
   }
@@ -51,15 +57,28 @@ for (const packageName of [
 const qualityCommands = new Set(
   (authority.profiles?.quality?.commands ?? []).map(([binary]) => binary),
 );
-for (const binary of ['pnpm', 'prettier', 'eslint', 'tsc', 'vitest', 'esbuild', 'playwright']) {
-  if (!qualityCommands.has(binary)) fail(`quality profile does not verify ${binary}`);
+for (const binary of [
+  'pnpm',
+  'prettier',
+  'eslint',
+  'tsc',
+  'vitest',
+  'esbuild',
+  'playwright',
+]) {
+  if (!qualityCommands.has(binary))
+    fail(`quality profile does not verify ${binary}`);
 }
 
 const auditTools = authority.standaloneAuditTools;
-if (!auditTools || typeof auditTools !== 'object' || Array.isArray(auditTools)) {
+if (
+  !auditTools ||
+  typeof auditTools !== 'object' ||
+  Array.isArray(auditTools)
+) {
   fail('standaloneAuditTools must be declared');
 }
-for (const name of ['knip', 'jscpd']) {
+for (const name of ['knip', 'jscpd', 'eslint-plugin-sonarjs']) {
   const version = auditTools[name];
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/u.test(version)) {
     fail(`${name} must use an exact stable version`);
@@ -72,17 +91,21 @@ for (const platform of ['linux', 'windows', 'macos']) {
   if (!requirement || typeof requirement.runner !== 'string') {
     fail(`missing host requirement for ${platform}`);
   }
-  if (!Array.isArray(requirement.commands) || requirement.commands.length === 0) {
+  if (
+    !Array.isArray(requirement.commands) ||
+    requirement.commands.length === 0
+  ) {
     fail(`${platform} host commands must be declared`);
   }
 }
 
-const [workspaceBootstrap, hostProbe, maintenance, completenessDocument] = await Promise.all([
-  readText(authority.workspaceBootstrapWorkflow),
-  readText(authority.hostProbeWorkflow),
-  readText(authority.maintenanceWorkflow),
-  readText(authority.completenessDocument),
-]);
+const [workspaceBootstrap, hostProbe, maintenance, completenessDocument] =
+  await Promise.all([
+    readText(authority.workspaceBootstrapWorkflow),
+    readText(authority.hostProbeWorkflow),
+    readText(authority.maintenanceWorkflow),
+    readText(authority.completenessDocument),
+  ]);
 
 for (const expected of [
   'PLAYWRIGHT_BROWSERS_PATH',
@@ -91,9 +114,13 @@ for (const expected of [
   authority.workspaceBootstrapAuditToolsDirectory,
   'standaloneAuditTools',
   'pnpm: authority.bundledPnpmVersion',
+  'eslint: rootPackage.devDependencies.eslint',
   'pnpm --version',
   'node_modules/.bin/knip',
   'node_modules/.bin/jscpd',
+  'eslint-plugin-sonarjs',
+  'sonarjs.config.mjs',
+  'sonarjs/cognitive-complexity',
 ]) {
   if (!workspaceBootstrap.includes(expected)) {
     fail(`workspace bootstrap is missing completeness contract: ${expected}`);
@@ -118,7 +145,8 @@ for (const expected of [
   'node scripts/toolchain-completeness-policy.mjs',
   ...authority.completenessInputs,
 ]) {
-  if (!maintenance.includes(expected)) fail(`maintenance workflow is missing: ${expected}`);
+  if (!maintenance.includes(expected))
+    fail(`maintenance workflow is missing: ${expected}`);
 }
 
 for (const expected of [
@@ -126,6 +154,8 @@ for (const expected of [
   auditTools.knip,
   'jscpd',
   auditTools.jscpd,
+  'SonarJS',
+  auditTools['eslint-plugin-sonarjs'],
   authority.workspaceBootstrapBrowserDirectory,
   authority.workspaceBootstrapAuditToolsDirectory,
   authority.hostProbeWorkflow,
@@ -136,5 +166,5 @@ for (const expected of [
 }
 
 console.log(
-  `Toolchain completeness OK: quality=${qualityPackages.size}; audit=Knip ${auditTools.knip}/jscpd ${auditTools.jscpd}; browser=Chromium; pnpm-runtime=bundled; host=linux/windows/macos.`,
+  `Toolchain completeness OK: quality=${qualityPackages.size}; audit=Knip ${auditTools.knip}/jscpd ${auditTools.jscpd}/SonarJS ${auditTools['eslint-plugin-sonarjs']}; browser=Chromium; pnpm-runtime=bundled; host=linux/windows/macos.`,
 );

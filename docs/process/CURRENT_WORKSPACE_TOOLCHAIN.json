@@ -78,7 +78,8 @@
   },
   "standaloneAuditTools": {
     "knip": "6.32.2",
-    "jscpd": "5.0.12"
+    "jscpd": "5.0.12",
+    "eslint-plugin-sonarjs": "4.2.0"
   },
   "hostRequirements": {
     "linux": {

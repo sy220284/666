@@ -157,6 +157,35 @@ function provider(events: readonly ProviderEvent[]): GenerationRuntimeProvider {
   };
 }
 
+interface ControlledProvider {
+  readonly provider: GenerationRuntimeProvider;
+  readonly entered: Promise<void>;
+}
+
+function controlledProvider(): ControlledProvider {
+  let markEntered!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    markEntered = resolve;
+  });
+  return {
+    entered,
+    provider: {
+      async *generate(_request, signal) {
+        yield { type: 'connected' };
+        yield { type: 'delta', text: '生成中' };
+        markEntered();
+        await new Promise<void>((resolve) => {
+          if (signal.aborted) {
+            resolve();
+            return;
+          }
+          signal.addEventListener('abort', () => resolve(), { once: true });
+        });
+      },
+    },
+  };
+}
+
 async function startProse(
   harness: Harness,
   context: Awaited<ReturnType<typeof createProjectDraft>>,
@@ -337,6 +366,104 @@ describe('GenerationRuntime boundary coverage', () => {
         outputTokens: 4,
         resultRefs: [{ resultType: 'candidate', candidateKind: 'prose' }],
       });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('drains one project without disturbing another, then drains all remaining runs', async () => {
+    const harness = await createHarness();
+    try {
+      const first = await createProjectDraft(harness, '项目排空一');
+      const second = await createProjectDraft(harness, '项目排空二');
+      const firstControl = controlledProvider();
+      const secondControl = controlledProvider();
+
+      const firstStarted = await harness.runtime.startProse({
+        requestId: randomUUID(),
+        run: runInput(
+          first.project.projectId,
+          first.chapter.id,
+          first.draft.draftId,
+          first.draft.revision,
+        ),
+        provider: firstControl.provider,
+        requestFor: request,
+        candidate: { title: '待取消一', candidateType: 'full' },
+        parse: (value) => [{ blockType: 'paragraph', text: value, attributes: {} }],
+      });
+      const secondStarted = await harness.runtime.startProse({
+        requestId: randomUUID(),
+        run: runInput(
+          second.project.projectId,
+          second.chapter.id,
+          second.draft.draftId,
+          second.draft.revision,
+        ),
+        provider: secondControl.provider,
+        requestFor: request,
+        candidate: { title: '待取消二', candidateType: 'full' },
+        parse: (value) => [{ blockType: 'paragraph', text: value, attributes: {} }],
+      });
+
+      await Promise.all([firstControl.entered, secondControl.entered]);
+      await harness.runtime.drainProject(first.project.projectId);
+      expect(
+        harness.runs.get({ projectId: first.project.projectId, runId: firstStarted.run.runId }),
+      ).toMatchObject({ status: 'cancelled' });
+      expect(
+        harness.runs.get({ projectId: second.project.projectId, runId: secondStarted.run.runId }),
+      ).toMatchObject({ status: 'running' });
+
+      await harness.runtime.drainAll();
+      expect(
+        harness.runs.get({ projectId: second.project.projectId, runId: secondStarted.run.runId }),
+      ).toMatchObject({ status: 'cancelled' });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('cancels queued runs without executions and rejects terminal or atomic-stage cancellation', async () => {
+    const harness = await createHarness();
+    try {
+      const context = await createProjectDraft(harness, '直接取消');
+      const base = runInput(
+        context.project.projectId,
+        context.chapter.id,
+        context.draft.draftId,
+        context.draft.revision,
+      );
+      const queued = await harness.runs.createWithReplay(randomUUID(), base);
+      await expect(
+        harness.runtime.cancel(randomUUID(), {
+          projectId: context.project.projectId,
+          runId: queued.run.runId,
+        }),
+      ).resolves.toMatchObject({ status: 'cancelled' });
+      await expect(
+        harness.runtime.cancel(randomUUID(), {
+          projectId: context.project.projectId,
+          runId: queued.run.runId,
+        }),
+      ).rejects.toMatchObject({ code: 'GENERATION_RUN_TERMINAL' });
+
+      const atomic = await harness.runs.createWithReplay(randomUUID(), base);
+      await harness.runs.markRunning(randomUUID(), {
+        projectId: context.project.projectId,
+        runId: atomic.run.runId,
+      });
+      await harness.runs.markStage(randomUUID(), {
+        projectId: context.project.projectId,
+        runId: atomic.run.runId,
+        stage: 'saving_candidate',
+      });
+      await expect(
+        harness.runtime.cancel(randomUUID(), {
+          projectId: context.project.projectId,
+          runId: atomic.run.runId,
+        }),
+      ).rejects.toMatchObject({ code: 'TASK_NOT_CANCELLABLE_001' });
     } finally {
       await closeHarness(harness);
     }

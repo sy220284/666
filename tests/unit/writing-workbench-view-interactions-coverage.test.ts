@@ -390,6 +390,16 @@ describe('WritingWorkbenchView interaction coverage', () => {
       );
       await Promise.resolve();
     });
+    const ignoredKeydown = keydown;
+    if (!ignoredKeydown) throw new Error('Missing keydown listener after closing find.');
+    ignoredKeydown(
+      contractInput<KeyboardEvent>({
+        ctrlKey: false,
+        metaKey: false,
+        key: 'x',
+        preventDefault: vi.fn(),
+      }),
+    );
 
     const autosave = contractInput<DraftAutosaveCoordinator>({
       pause: vi.fn(),
@@ -456,6 +466,20 @@ describe('WritingWorkbenchView interaction coverage', () => {
     expect(version.navigationVersionId).toBeNull();
     await invokeProp(version, 'onClose');
     expect(actions.onPanelChange).toHaveBeenCalledWith('editor');
+
+    await act(async () => {
+      renderer.update(
+        view({
+          panel: 'editor',
+          progressPercent: null,
+          selectedLocked: true,
+          editorFailure: true,
+        }),
+      );
+      await Promise.resolve();
+    });
+    expect(findData(renderer, 'data-toggle-block-lock').children).toContain('解锁当前段落');
+    expect(findData(renderer, 'data-draft-state').props.className).toBe('draft-state is-error');
 
     await act(async () => {
       renderer.update(view({ panel: 'candidates' }));

@@ -88,7 +88,9 @@ async function expectStreamFailure(status: number, code: string): Promise<void> 
     .generate(generation('writer-model'), new AbortController().signal)
     [Symbol.asyncIterator]();
 
-  await expect(iterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
+  await expect(iterator.next()).resolves.toMatchObject({
+    value: { type: 'connected' },
+  });
   await expect(iterator.next()).rejects.toMatchObject({ code });
 }
 
@@ -125,8 +127,12 @@ describe('Provider adapter defensive coverage', () => {
     const emptyIterator = empty
       .generate(generation('writer-model'), new AbortController().signal)
       [Symbol.asyncIterator]();
-    await expect(emptyIterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
-    await expect(emptyIterator.next()).rejects.toMatchObject({ code: 'AI_STREAM_INTERRUPTED_009' });
+    await expect(emptyIterator.next()).resolves.toMatchObject({
+      value: { type: 'connected' },
+    });
+    await expect(emptyIterator.next()).rejects.toMatchObject({
+      code: 'AI_STREAM_INTERRUPTED_009',
+    });
 
     const broken = createProviderAdapter(config(), null, {
       fetch: async () =>
@@ -142,8 +148,12 @@ describe('Provider adapter defensive coverage', () => {
     const brokenIterator = broken
       .generate(generation('writer-model'), new AbortController().signal)
       [Symbol.asyncIterator]();
-    await expect(brokenIterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
-    await expect(brokenIterator.next()).rejects.toMatchObject({ code: 'AI_STREAM_INTERRUPTED_009' });
+    await expect(brokenIterator.next()).resolves.toMatchObject({
+      value: { type: 'connected' },
+    });
+    await expect(brokenIterator.next()).rejects.toMatchObject({
+      code: 'AI_STREAM_INTERRUPTED_009',
+    });
   });
 
   it('reports OpenAI-compatible unsupported capabilities without leaking transport details', async () => {
@@ -159,7 +169,9 @@ describe('Provider adapter defensive coverage', () => {
         if (url.pathname.endsWith('/models')) return cancellingResponse(404);
         const body = postedBody(init);
         if (body.stream === true) {
-          return sse(`data: ${JSON.stringify({ choices: [{ delta: { content: '好' } }] })}\n\ndata: [DONE]\n\n`);
+          return sse(
+            `data: ${JSON.stringify({ choices: [{ delta: { content: '好' } }] })}\n\ndata: [DONE]\n\n`,
+          );
         }
         if ('response_format' in body) return cancellingResponse(422);
         return json({ choices: [{ message: { content: 'OK' } }] });
@@ -204,10 +216,18 @@ describe('Provider adapter defensive coverage', () => {
         if (url.pathname.endsWith('/models')) return json({ data: [{ id: 'writer-model' }] });
         const body = postedBody(init);
         if (body.stream === true) {
-          return sse(`data: ${JSON.stringify({ choices: [{ delta: { content: '好' } }] })}\n\ndata: [DONE]\n\n`);
+          return sse(
+            `data: ${JSON.stringify({ choices: [{ delta: { content: '好' } }] })}\n\ndata: [DONE]\n\n`,
+          );
         }
         return json({
-          choices: [{ message: { content: 'response_format' in body ? 'not-json' : 'OK' } }],
+          choices: [
+            {
+              message: {
+                content: 'response_format' in body ? 'not-json' : 'OK',
+              },
+            },
+          ],
         });
       },
     });
@@ -299,7 +319,9 @@ describe('Provider adapter defensive coverage', () => {
         return json({ content: [{ type: 'text', text: '' }] });
       },
     });
-    await expect(noText.testConnection()).rejects.toMatchObject({ code: 'AI_OUTPUT_INVALID_008' });
+    await expect(noText.testConnection()).rejects.toMatchObject({
+      code: 'AI_OUTPUT_INVALID_008',
+    });
   });
 
   it('covers Anthropic error events, ignored wire values and incomplete streams', async () => {
@@ -309,7 +331,9 @@ describe('Provider adapter defensive coverage', () => {
     const errorIterator = errorProvider
       .generate(generation('claude-test'), new AbortController().signal)
       [Symbol.asyncIterator]();
-    await expect(errorIterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
+    await expect(errorIterator.next()).resolves.toMatchObject({
+      value: { type: 'connected' },
+    });
     await expect(errorIterator.next()).rejects.toMatchObject({
       code: 'AI_CONNECTION_FAILED_003',
       retryable: true,
@@ -357,6 +381,8 @@ describe('Provider adapter defensive coverage', () => {
     const pending = provider.testConnection(controller.signal);
     await streamingStarted;
     controller.abort();
-    await expect(pending).rejects.toMatchObject({ code: 'COMMON_CANCELLED_004' });
+    await expect(pending).rejects.toMatchObject({
+      code: 'COMMON_CANCELLED_004',
+    });
   });
 });

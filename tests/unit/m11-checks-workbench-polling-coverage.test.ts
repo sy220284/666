@@ -119,7 +119,7 @@ function button(root: ReactNode, label: string): ReactElement<Record<string, unk
 }
 
 async function click(element: ReactElement<Record<string, unknown>>): Promise<void> {
-  await (element.props.onClick as (() => unknown))();
+  await (element.props.onClick as () => unknown)();
   await Promise.resolve();
 }
 
@@ -247,18 +247,18 @@ describe('M11 内容检查轮询边界覆盖', () => {
     ChecksWorkbench({ bridge: rejectedBridge, projectId, readOnly: false, onNavigate: vi.fn() });
     const rejectedCleanup = hooks.effects[2]?.();
     await runQueuedTimers(rejectedTimers, 5);
-    expect(hooks.setters[8]).toHaveBeenCalledWith(
-      '智能语义检查状态暂时无法读取，将自动重试。',
-    );
+    expect(hooks.setters[8]).toHaveBeenCalledWith('智能语义检查状态暂时无法读取，将自动重试。');
     expect(hooks.setters[8]).toHaveBeenCalledWith(
       '智能语义检查状态连续无法读取。自动重试已停止，请重新运行。',
     );
     (rejectedCleanup as (() => void) | undefined)?.();
 
     let resolveStructure!: (value: { state: 'success'; data: ProjectStructure }) => void;
-    const delayedStructure = new Promise<{ state: 'success'; data: ProjectStructure }>((resolve) => {
-      resolveStructure = resolve;
-    });
+    const delayedStructure = new Promise<{ state: 'success'; data: ProjectStructure }>(
+      (resolve) => {
+        resolveStructure = resolve;
+      },
+    );
     const delayedBridge = baseBridge({
       planning: { listStructure: vi.fn(() => delayedStructure) },
     });

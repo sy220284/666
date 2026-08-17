@@ -61,7 +61,9 @@ const project = vi.fn(async () => ({ state: 'success', data: controls.data }));
 const bridge = contractInput<RendererBridgeAdapter>({ storyKnowledge: { project } });
 const active: TestRenderer[] = [];
 
-function panel(options: { entity?: string | null; chapter?: string | null; readOnly?: boolean } = {}) {
+function panel(
+  options: { entity?: string | null; chapter?: string | null; readOnly?: boolean } = {},
+) {
   return createElement(StoryKnowledgePanel, {
     bridge,
     projectId,
@@ -107,7 +109,9 @@ function buttonContaining(root: TestInstance, label: string): TestInstance {
 }
 
 function tab(root: TestInstance, view: string): TestInstance {
-  const node = root.findAll((candidate) => candidate.props['data-story-knowledge-view'] === view)[0];
+  const node = root.findAll(
+    (candidate) => candidate.props['data-story-knowledge-view'] === view,
+  )[0];
   if (!node) throw new Error(`Missing tab ${view}`);
   return node;
 }
@@ -362,7 +366,12 @@ describe('StoryKnowledgePanel interaction edge coverage', () => {
       (node) => node.type === 'button' && node.props.className === 'story-graph-center',
     );
     await click(graphButtons[0]!);
-    expect(onNavigate).toHaveBeenLastCalledWith({ type: 'entity', projectId, entityId, query: null });
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      type: 'entity',
+      projectId,
+      entityId,
+      query: null,
+    });
     await click(buttonByText(renderer.root, '守灯人同伴ally'));
     expect(onNavigate).toHaveBeenLastCalledWith({
       type: 'entity',

@@ -232,7 +232,7 @@ async function* sseData(lease: ProviderResponseLease): AsyncGenerator<string> {
   let buffer = '';
   try {
     while (true) {
-      if (lease.signal.aborted) throw deadlineError(lease) ?? cancelledError();
+      if (lease.signal.aborted) throw deadlineError(lease)!;
       const chunk = await reader.read();
       if (chunk.done) {
         const deadline = deadlineError(lease);
@@ -241,7 +241,7 @@ async function* sseData(lease: ProviderResponseLease): AsyncGenerator<string> {
       }
       buffer += decoder.decode(chunk.value, { stream: true });
       const events = buffer.split(/\r?\n\r?\n/u);
-      buffer = events.pop() ?? '';
+      buffer = events.pop()!;
       for (const event of events) {
         const data = event
           .split(/\r?\n/u)

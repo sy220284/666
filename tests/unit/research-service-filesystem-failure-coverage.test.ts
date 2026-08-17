@@ -2,6 +2,9 @@ import { Readable } from 'node:stream';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
+import { contractInput } from '../testkit/strict-test-doubles.js';
+
 const projectId = '11111111-1111-4111-8111-111111111111';
 const attachmentId = '22222222-2222-4222-8222-222222222222';
 
@@ -116,7 +119,9 @@ describe('ResearchService filesystem failure coverage', () => {
   it('keeps the secondary extension guard fail-closed when extension resolution changes', async () => {
     const extname = vi.fn().mockReturnValueOnce('.txt').mockReturnValueOnce('.exe');
     const { ResearchService } = await loadWithFilesystem({ pathOverrides: { extname } });
-    const service = new ResearchService(workspaceForImport() as never);
+    const service = new ResearchService(
+      contractInput<ProjectWorkspaceService>(workspaceForImport()),
+    );
 
     await expect(
       service.importAttachment(
@@ -143,7 +148,7 @@ describe('ResearchService filesystem failure coverage', () => {
       createReadStream: vi.fn(() => Readable.from(['data'])),
       pathOverrides: { basename: vi.fn(() => '') },
     });
-    const service = new ResearchService(workspace as never);
+    const service = new ResearchService(contractInput<ProjectWorkspaceService>(workspace));
 
     await expect(
       service.importAttachment(
@@ -160,7 +165,9 @@ describe('ResearchService filesystem failure coverage', () => {
       throw codedError('EACCES');
     });
     const { ResearchService } = await loadWithFilesystem({ open });
-    const service = new ResearchService(workspaceForImport() as never);
+    const service = new ResearchService(
+      contractInput<ProjectWorkspaceService>(workspaceForImport()),
+    );
 
     await expect(
       service.importAttachment(
@@ -181,7 +188,9 @@ describe('ResearchService filesystem failure coverage', () => {
       lstat: vi.fn(async () => stats()),
       open: vi.fn(async () => handle),
     });
-    const service = new ResearchService(workspaceForImport() as never);
+    const service = new ResearchService(
+      contractInput<ProjectWorkspaceService>(workspaceForImport()),
+    );
 
     await expect(
       service.importAttachment(
@@ -205,7 +214,7 @@ describe('ResearchService filesystem failure coverage', () => {
       stat: vi.fn(async () => stats({ size: 3 })),
     });
     const workspace = workspaceForImport();
-    const service = new ResearchService(workspace as never);
+    const service = new ResearchService(contractInput<ProjectWorkspaceService>(workspace));
 
     await expect(
       service.importAttachment(
@@ -226,7 +235,9 @@ describe('ResearchService filesystem failure coverage', () => {
       throw codedError('EACCES');
     });
     const { ResearchService } = await loadWithFilesystem({ rename, lstat });
-    const service = new ResearchService(workspaceForDelete(new Error('unused')) as never);
+    const service = new ResearchService(
+      contractInput<ProjectWorkspaceService>(workspaceForDelete(new Error('unused'))),
+    );
 
     await expect(
       service.deleteAttachment('66666666-6666-4666-8666-666666666666', {
@@ -242,7 +253,7 @@ describe('ResearchService filesystem failure coverage', () => {
     });
     const { ResearchService } = await loadWithFilesystem({ rename });
     const workspace = workspaceForDelete(new Error('unused'));
-    const service = new ResearchService(workspace as never);
+    const service = new ResearchService(contractInput<ProjectWorkspaceService>(workspace));
 
     await expect(
       service.deleteAttachment('77777777-7777-4777-8777-777777777777', {
@@ -259,7 +270,9 @@ describe('ResearchService filesystem failure coverage', () => {
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(codedError('EACCES'));
     const { ResearchService } = await loadWithFilesystem({ rename });
-    const service = new ResearchService(workspaceForDelete(new Error('database failed')) as never);
+    const service = new ResearchService(
+      contractInput<ProjectWorkspaceService>(workspaceForDelete(new Error('database failed'))),
+    );
 
     await expect(
       service.deleteAttachment('88888888-8888-4888-8888-888888888888', {

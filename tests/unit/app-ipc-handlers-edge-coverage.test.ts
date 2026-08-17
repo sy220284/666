@@ -1,4 +1,9 @@
-import { APP_COMMANDS, IPC_CHANNELS, PROTOCOL_VERSION } from '@worldforge/contracts';
+import {
+  APP_COMMANDS,
+  IPC_CHANNELS,
+  PROTOCOL_VERSION,
+  type DiagnosticPreview,
+} from '@worldforge/contracts';
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -42,7 +47,7 @@ function envelope(command: string, payload?: unknown): Record<string, unknown> {
 
 function createHarness(
   options: {
-    confirmDiagnosticsExport?: (preview: unknown) => Promise<boolean>;
+    confirmDiagnosticsExport?: (preview: DiagnosticPreview) => Promise<boolean>;
     chooseDiagnosticsDirectory?: () => Promise<string | null>;
   } = {},
 ) {
@@ -100,7 +105,7 @@ function createHarness(
     chooseRecoveryExportDirectory: vi.fn(),
     chooseTextImportFile: vi.fn(),
     chooseTextExportDirectory: vi.fn(),
-    confirmDiagnosticsExport: options.confirmDiagnosticsExport as never,
+    confirmDiagnosticsExport: options.confirmDiagnosticsExport,
     chooseDiagnosticsDirectory: options.chooseDiagnosticsDirectory,
   });
   registerAppIpcHandlers(context);

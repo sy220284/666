@@ -393,14 +393,18 @@ describe('proposal authority insert-shape edge coverage', () => {
         entityDraft,
       ),
     ).toThrowError(expect.objectContaining({ code: 'STATE_PROPOSAL_CONFLICT' }));
-    expect(stateProposalInsertShape(database(), ids.project, ids.chapter, entityDraft)).toMatchObject({
+    expect(
+      stateProposalInsertShape(database(), ids.project, ids.chapter, entityDraft),
+    ).toMatchObject({
       target: { name: '阿灯' },
-      targetKey: 'entity-create:character:蓮恡',
+      targetKey: 'entity-create:character:阿灯',
     });
   });
 
   it('returns null previous values when no current state/knowledge/relationship/fact exists', () => {
-    const db = database({ entities: { [ids.entity]: 'character', [ids.secondEntity]: 'character' } });
+    const db = database({
+      entities: { [ids.entity]: 'character', [ids.secondEntity]: 'character' },
+    });
     const shapes = [
       stateProposalInsertShape(
         db,
@@ -539,11 +543,10 @@ describe('proposal authority apply transaction edge coverage', () => {
             label: '同伴',
           },
         }),
-        { category: 'alliance', label: ' 同伴 ',
-        validUntilChapterId: null },
+        { category: 'alliance', label: ' 同伴 ', validUntilChapterId: null },
         now,
         idFactory,
-     ),
+      ),
     ).toMatchObject({ relationshipId: 'relationship-id' });
 
     expect(

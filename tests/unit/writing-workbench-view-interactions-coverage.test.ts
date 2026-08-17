@@ -95,8 +95,15 @@ const projectId = '11111111-1111-4111-8111-111111111111';
 const chapterId = '22222222-2222-4222-8222-222222222222';
 const draftId = '33333333-3333-4333-8333-333333333333';
 
-const project = contractInput<ProjectWorkspaceSummary>({ projectId, name: '作品' });
-const chapter = contractInput<Chapter>({ id: chapterId, projectId, title: '第一章' });
+const project = contractInput<ProjectWorkspaceSummary>({
+  projectId,
+  name: '作品',
+});
+const chapter = contractInput<Chapter>({
+  id: chapterId,
+  projectId,
+  title: '第一章',
+});
 const draft = contractInput<DraftDocument>({
   draftId,
   projectId,
@@ -106,10 +113,18 @@ const draft = contractInput<DraftDocument>({
 });
 const bridge = contractInput<RendererBridgeAdapter>({});
 
-const editorRef = contractInput<MutableRefObject<Editor | null>>({ current: null });
-const editorHost = contractInput<MutableRefObject<HTMLDivElement | null>>({ current: null });
-const autosaveRef = contractInput<MutableRefObject<DraftAutosaveCoordinator | null>>({ current: null });
-const composingRef = contractInput<MutableRefObject<boolean>>({ current: false });
+const editorRef = contractInput<MutableRefObject<Editor | null>>({
+  current: null,
+});
+const editorHost = contractInput<MutableRefObject<HTMLDivElement | null>>({
+  current: null,
+});
+const autosaveRef = contractInput<MutableRefObject<DraftAutosaveCoordinator | null>>({
+  current: null,
+});
+const composingRef = contractInput<MutableRefObject<boolean>>({
+  current: false,
+});
 
 const actions = {
   rememberCurrentSelection: vi.fn(),
@@ -352,7 +367,12 @@ describe('WritingWorkbenchView interaction coverage', () => {
     if (!currentKeydown) throw new Error('Missing keydown listener.');
     await act(async () => {
       currentKeydown(
-        contractInput<KeyboardEvent>({ ctrlKey: true, metaKey: false, key: 'F', preventDefault }),
+        contractInput<KeyboardEvent>({
+          ctrlKey: true,
+          metaKey: false,
+          key: 'F',
+          preventDefault,
+        }),
       );
       await Promise.resolve();
     });
@@ -446,7 +466,9 @@ describe('WritingWorkbenchView interaction coverage', () => {
     await expect(invokeProp(candidate, 'getRewriteSelectionAnchor')).resolves.toBeNull();
     await invokeProp(candidate, 'onClose');
 
-    const editorInstance = contractInput<Editor>({ getText: vi.fn(() => '正文') });
+    const editorInstance = contractInput<Editor>({
+      getText: vi.fn(() => '正文'),
+    });
     editorRef.current = editorInstance;
     candidate = lastProps(capture.candidate);
     await expect(invokeProp(candidate, 'getRewriteSelectionAnchor')).resolves.toEqual({
@@ -479,7 +501,9 @@ describe('WritingWorkbenchView interaction coverage', () => {
     });
     expect(capture.structure).not.toHaveBeenCalled();
     expect(capture.assistance).not.toHaveBeenCalled();
-    expect(findData(renderer, 'data-writing-workbench').props['data-draft-workspace']).toBeUndefined();
+    expect(
+      findData(renderer, 'data-writing-workbench').props['data-draft-workspace'],
+    ).toBeUndefined();
     expect(findData(renderer, 'data-toggle-block-lock').props.disabled).toBe(true);
 
     await act(async () => {
@@ -492,9 +516,9 @@ describe('WritingWorkbenchView interaction coverage', () => {
       renderer.update(view({ chapter: null, draft: null }));
       await Promise.resolve();
     });
-    expect(renderer.root.findAll((node) => node.children.includes('选择章节开始写作'))).not.toHaveLength(
-      0,
-    );
+    expect(
+      renderer.root.findAll((node) => node.children.includes('选择章节开始写作')),
+    ).not.toHaveLength(0);
 
     await act(async () => renderer.unmount());
   });
@@ -509,7 +533,12 @@ describe('WritingWorkbenchView interaction coverage', () => {
     const versionsKeydown = keydown;
     if (!versionsKeydown) throw new Error('Missing versions keydown listener.');
     versionsKeydown(
-      contractInput<KeyboardEvent>({ ctrlKey: true, metaKey: false, key: 'f', preventDefault }),
+      contractInput<KeyboardEvent>({
+        ctrlKey: true,
+        metaKey: false,
+        key: 'f',
+        preventDefault,
+      }),
     );
     expect(preventDefault).not.toHaveBeenCalled();
 
@@ -521,7 +550,12 @@ describe('WritingWorkbenchView interaction coverage', () => {
     if (!editorKeydown) throw new Error('Missing editor keydown listener.');
     await act(async () => {
       editorKeydown(
-        contractInput<KeyboardEvent>({ ctrlKey: false, metaKey: true, key: 'f', preventDefault }),
+        contractInput<KeyboardEvent>({
+          ctrlKey: false,
+          metaKey: true,
+          key: 'f',
+          preventDefault,
+        }),
       );
       await Promise.resolve();
     });

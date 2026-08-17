@@ -80,6 +80,14 @@ async function collect(
   return events;
 }
 
+function eventIterator(
+  provider: ReturnType<typeof createProviderAdapter>,
+  request: GenerationRequest,
+  signal: AbortSignal = new AbortController().signal,
+) {
+  return provider.generate(request, signal)[Symbol.asyncIterator]();
+}
+
 describe('Provider adapter remaining edge coverage', () => {
   it('maps cancellation and timeout after requests and response headers are already active', async () => {
     const requestController = new AbortController();
@@ -161,9 +169,11 @@ describe('Provider adapter remaining edge coverage', () => {
           { status: 200, headers: { 'content-type': 'text/event-stream' } },
         ),
     });
-    const iterator = cancellable
-      .generate(generation('writer-model'), streamController.signal)
-      [Symbol.asyncIterator]();
+    const iterator = eventIterator(
+      cancellable,
+      generation('writer-model'),
+      streamController.signal,
+    );
     await expect(iterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
     const pendingRead = iterator.next();
     streamController.abort();
@@ -278,9 +288,7 @@ describe('Provider adapter remaining edge coverage', () => {
     const invalidStream = createProviderAdapter(config('anthropic'), null, {
       fetch: async () => sse('data: {not-json}\n\n'),
     });
-    const iterator = invalidStream
-      .generate(generation('claude-test'), new AbortController().signal)
-      [Symbol.asyncIterator]();
+    const iterator = eventIterator(invalidStream, generation('claude-test'));
     await expect(iterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
     await expect(iterator.next()).rejects.toMatchObject({ code: 'AI_OUTPUT_INVALID_008' });
   });

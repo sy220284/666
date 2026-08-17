@@ -32,8 +32,6 @@ jobs:
     timeout-minutes: 60
     env:
       SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/worldforge-playwright-browsers
-      AUDIT_DIR: ${{ runner.temp }}/worldforge-audit-tools
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -45,6 +43,12 @@ jobs:
         with:
           node-version: 24.18.1
           cache: pnpm
+      - name: Configure portable payload directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/worldforge-playwright-browsers" >> "$GITHUB_ENV"
+          echo "AUDIT_DIR=$RUNNER_TEMP/worldforge-audit-tools" >> "$GITHUB_ENV"
       - name: Validate exact source commit
         shell: bash
         run: |
@@ -116,6 +120,7 @@ jobs:
           "$AUDIT_DIR/node_modules/.bin/pnpm" --version
           "$AUDIT_DIR/node_modules/.bin/knip" --version
           "$AUDIT_DIR/node_modules/.bin/jscpd" --version
+          rm -rf "$AUDIT_DIR/store/v11/projects"
       - name: Install Playwright Chromium payload
         shell: bash
         run: |

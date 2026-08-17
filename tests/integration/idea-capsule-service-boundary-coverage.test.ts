@@ -319,7 +319,7 @@ describe('IdeaCapsuleService boundary coverage', () => {
         briefIdea.id,
         projectBriefTarget(),
       );
-      expect(brief.preview.summary).toBe('更新作品核心');
+      expect(brief.preview.summary).toBe('更新作品任务书');
 
       const plotIdea = await createIdea(ideas, project.projectId, '情节灵感');
       const plot = await previewAndApply(ideas, project.projectId, plotIdea.id, plotTarget());

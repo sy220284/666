@@ -43,6 +43,18 @@ async function launch(userDataPath: string, createParent: string): Promise<Elect
   });
 }
 
+async function setViewport(
+  application: ElectronApplication,
+  viewport: { readonly width: number; readonly height: number },
+): Promise<void> {
+  await application.evaluate(({ BrowserWindow }, targetViewport) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    if (!window) throw new Error('CANDIDATE_PROTECTION_WINDOW_MISSING');
+    if (window.isMaximized()) window.unmaximize();
+    window.setContentSize(targetViewport.width, targetViewport.height, false);
+  }, viewport);
+}
+
 async function closeGracefully(application: ElectronApplication): Promise<void> {
   const closed = application.waitForEvent('close');
   await application.evaluate(({ BrowserWindow }) => {
@@ -88,6 +100,15 @@ test('preserves the newer Draft when Candidate base state is stale', async () =>
       if (!draft.ok) throw new Error('E2E_DRAFT_MISSING');
       const source = draft.data.blocks[0];
       if (!source?.contentHash) throw new Error('E2E_DRAFT_BLOCK_MISSING');
+      const version = await bridge.version.create({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        draftId: draft.data.draftId,
+        baseRevision: draft.data.revision,
+        versionType: 'manual',
+        title: '候选三栏基础版本',
+      });
+      if (!version.ok) throw new Error('E2E_VERSION_CREATE_FAILED');
       const candidate = await bridge.candidate.createFixture({
         projectId: active.data.projectId,
         chapterId: chapter.id,
@@ -96,6 +117,7 @@ test('preserves the newer Draft when Candidate base state is stale', async () =>
         candidateType: 'rewrite',
         completeness: 'complete',
         title: 'E2E保护候选',
+        sourceVersionId: version.data.versionId,
         blocks: [
           {
             logicalBlockId: source.logicalBlockId,
@@ -121,6 +143,26 @@ test('preserves the newer Draft when Candidate base state is stale', async () =>
     await page.locator('[data-open-chapter]').click();
     await page.locator('[data-open-candidate-preview]').click();
     await expect(page.locator('[data-candidate-apply-status]')).toContainText('已准备采用');
+
+    const threeWay = page.locator('[data-review-three-way]');
+    await setViewport(application, { width: 1400, height: 900 });
+    await page.waitForFunction(() => window.innerWidth === 1400);
+    await expect(threeWay).toBeVisible();
+    await expect(threeWay.locator('.review-diff__three-pane:visible')).toHaveCount(3);
+
+    await setViewport(application, { width: 1000, height: 900 });
+    await page.waitForFunction(() => window.innerWidth === 1000);
+    await expect(threeWay.locator('.review-diff__three-pane:visible')).toHaveCount(2);
+    await expect(threeWay.locator('[data-side="base"]')).toBeHidden();
+
+    await setViewport(application, { width: 720, height: 900 });
+    await page.waitForFunction(() => window.innerWidth === 720);
+    await expect(threeWay.locator('.review-diff__three-pane:visible')).toHaveCount(1);
+    await expect(threeWay.locator('[data-side="current"]')).toBeHidden();
+    await expect(threeWay.locator('[data-side="comparison"]')).toBeVisible();
+
+    await setViewport(application, { width: 1400, height: 900 });
+    await page.waitForFunction(() => window.innerWidth === 1400);
 
     const changed = await page.evaluate(async (input) => {
       const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })

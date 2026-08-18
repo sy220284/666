@@ -64,7 +64,8 @@ export function updateShortcutOverride(
   commandId: string,
   shortcut: string | null,
 ): readonly ShortcutOverride[] {
-  if (!commandCatalogEntry(commandId)) return overrides;
+  const entry = commandCatalogEntry(commandId);
+  if (!entry?.rebindable) return overrides;
   const next = overrides.filter((item) => item.commandId !== commandId);
   return [...next, { commandId, shortcut }];
 }

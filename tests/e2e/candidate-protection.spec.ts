@@ -100,11 +100,28 @@ test('preserves the newer Draft when Candidate base state is stale', async () =>
       if (!draft.ok) throw new Error('E2E_DRAFT_MISSING');
       const source = draft.data.blocks[0];
       if (!source?.contentHash) throw new Error('E2E_DRAFT_BLOCK_MISSING');
-      const version = await bridge.version.create({
+      const baseline = await bridge.draft.applyPatch({
         projectId: active.data.projectId,
         chapterId: chapter.id,
         draftId: draft.data.draftId,
         baseRevision: draft.data.revision,
+        operations: [
+          {
+            type: 'update',
+            logicalBlockId: source.logicalBlockId,
+            expectedHash: source.contentHash,
+            content: '候选三栏基础正文',
+          },
+        ],
+      });
+      if (!baseline.ok) throw new Error('E2E_BASELINE_DRAFT_FAILED');
+      const baselineSource = baseline.data.blocks[0];
+      if (!baselineSource?.contentHash) throw new Error('E2E_BASELINE_BLOCK_MISSING');
+      const version = await bridge.version.create({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        draftId: baseline.data.draftId,
+        baseRevision: baseline.data.revision,
         versionType: 'manual',
         title: '候选三栏基础版本',
       });
@@ -112,20 +129,20 @@ test('preserves the newer Draft when Candidate base state is stale', async () =>
       const candidate = await bridge.candidate.createFixture({
         projectId: active.data.projectId,
         chapterId: chapter.id,
-        draftId: draft.data.draftId,
-        baseDraftRevision: draft.data.revision,
+        draftId: baseline.data.draftId,
+        baseDraftRevision: baseline.data.revision,
         candidateType: 'rewrite',
         completeness: 'complete',
         title: 'E2E保护候选',
         sourceVersionId: version.data.versionId,
         blocks: [
           {
-            logicalBlockId: source.logicalBlockId,
-            sourceLogicalBlockIds: [source.logicalBlockId],
-            blockType: source.blockType,
-            text: '候选旧基线正文',
-            attributes: source.attributes,
-            sourceBlockHash: source.contentHash,
+            logicalBlockId: baselineSource.logicalBlockId,
+            sourceLogicalBlockIds: [baselineSource.logicalBlockId],
+            blockType: baselineSource.blockType,
+            text: '候选建议正文',
+            attributes: baselineSource.attributes,
+            sourceBlockHash: baselineSource.contentHash,
           },
         ],
       });
@@ -133,10 +150,10 @@ test('preserves the newer Draft when Candidate base state is stale', async () =>
       return {
         projectId: active.data.projectId,
         chapterId: chapter.id,
-        draftId: draft.data.draftId,
-        revision: draft.data.revision,
-        logicalBlockId: source.logicalBlockId,
-        contentHash: source.contentHash,
+        draftId: baseline.data.draftId,
+        revision: baseline.data.revision,
+        logicalBlockId: baselineSource.logicalBlockId,
+        contentHash: baselineSource.contentHash,
       };
     });
 

@@ -49,17 +49,14 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
   const [notice, setNotice] = useState(
     `检查只读取当前${authorTerm('finalVersion')}，不会自动改写正文。`,
   );
-  const [commentStatus = 'all', setCommentStatus] = useState<
-    'all' | 'open' | 'resolved'
-  >('all');
-  const [commentSource = 'all', setCommentSource] = useState<
-    'all' | 'validation' | 'manual'
-  >('all');
-  const [commentTag = '', setCommentTag] = useState('');
-  const [commentIssueType = '', setCommentIssueType] = useState('');
-  const [commentCharacterTag = '', setCommentCharacterTag] = useState('');
-  const [selectedCommentIds = new Set<string>(), setSelectedCommentIds] =
-    useState<Set<string>>(new Set());
+  const [commentStatus = 'all', setCommentStatus] = useState<'all' | 'open' | 'resolved'>('all');
+  const [commentSource = 'all', setCommentSource] = useState<'all' | 'validation' | 'manual'>('all');
+  const [commentTag = '', setCommentTag] = useState<string>('');
+  const [commentIssueType = '', setCommentIssueType] = useState<string>('');
+  const [commentCharacterTag = '', setCommentCharacterTag] = useState<string>('');
+  const [selectedCommentIds = new Set<string>(), setSelectedCommentIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const chapters = useMemo(
     () => structure?.volumes.flatMap((volume) => volume.chapters) ?? [],

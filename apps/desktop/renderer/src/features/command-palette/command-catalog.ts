@@ -229,7 +229,9 @@ export function shortcutForCommand(
   entry: CommandCatalogEntry,
   overrides: readonly ShortcutOverride[] = [],
 ): string | null {
-  const override = overrides.find((item) => item.commandId === entry.id);
+  const override = entry.rebindable
+    ? overrides.find((item) => item.commandId === entry.id)
+    : undefined;
   return override ? override.shortcut : entry.defaultShortcut;
 }
 

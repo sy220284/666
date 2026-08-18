@@ -108,6 +108,6 @@ export class ValidationService {
   }
 
   disableException(requestId: string, raw: unknown): Promise<ValidationCatalog> {
-    return this.#exceptions.disableException(requestId, raw);
+    return this.#exceptions.disable(requestId, raw);
   }
 }

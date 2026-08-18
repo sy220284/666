@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "taskId": "M12-03",
+  "id": "M12-03",
+  "source": "docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md",
+  "priority": "P2",
   "status": "IN_PROGRESS",
-  "startMainSha": "b128dfb853c6c59d2d2f4654cb79f60ad143d239",
-  "implementationCommit": null,
+  "baseline": "b128dfb853c6c59d2d2f4654cb79f60ad143d239",
   "executionBranch": "work",
-  "taskCardPath": "docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md",
   "allowedPaths": [
     "apps/desktop/renderer/src/",
     "apps/desktop/main/src/",
@@ -19,7 +19,7 @@
     "docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md",
     "docs/tasks/runtime/M12-03.json",
     "docs/tasks/TASK_INDEX.md",
-    "docs/evidence/tasks/M12-03/"
+    "docs/test-evidence/M12-03/"
   ],
   "forbiddenPaths": [
     "pnpm-lock.yaml"
@@ -38,7 +38,6 @@
   ],
   "verificationBinding": {
     "sourcePr": null,
-    "sourceHeadSha": null,
     "mainContext": "main-verification",
     "taskContext": "task-verification/M12-03"
   }

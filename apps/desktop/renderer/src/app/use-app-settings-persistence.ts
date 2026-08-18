@@ -91,6 +91,11 @@ export function useAppSettingsPersistence({
             themeId: update.themeId ?? current.themeId,
             themeVariant: update.themeVariant ?? current.themeVariant,
             reduceMotion: update.reduceMotion ?? current.reduceMotion,
+            shortcutOverrides: update.shortcutOverrides ?? current.shortcutOverrides,
+            typewriterMode: update.typewriterMode ?? current.typewriterMode,
+            typewriterAnchorPercent:
+              update.typewriterAnchorPercent ?? current.typewriterAnchorPercent,
+            themeSealText: update.themeSealText ?? current.themeSealText,
           });
           if (outcome.state !== 'success') {
             setFailure(failureFromOutcome('设置保存失败', outcome));

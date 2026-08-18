@@ -9,6 +9,7 @@ import type {
   GenerationRun,
   ProviderSummary,
   SceneBeat,
+  VersionDocument,
 } from '@worldforge/contracts';
 
 import { candidateConflictLabel } from './candidate-conflicts.js';
@@ -26,6 +27,7 @@ import {
 
 interface CandidateReviewDisplayProps {
   readonly apply: () => Promise<void>;
+  readonly baseVersion: VersionDocument | null;
   readonly cancel: () => Promise<void>;
   readonly candidateId: string;
   readonly conflicts: readonly CandidateConflictItem[];
@@ -67,6 +69,7 @@ interface CandidateReviewDisplayProps {
 export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
   const {
     apply,
+    baseVersion,
     cancel,
     candidateId,
     conflicts,
@@ -229,6 +232,8 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
             <span>{preview.execution.chapterCharacters}字符</span>
           </div>
           <ReviewDiffPanel
+            baseText={baseVersion?.blocks.map((block) => block.text).join('\n\n')}
+            baseTitle={baseVersion?.title}
             comparisonText={preview.candidate.blocks.map((block) => block.text).join('\n\n')}
             comparisonTitle={preview.candidate.title}
             currentText={preview.draft.blocks.map((block) => block.text).join('\n\n')}

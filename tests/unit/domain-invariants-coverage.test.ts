@@ -206,23 +206,39 @@ describe('application configuration contracts', () => {
     reduceMotion: false,
   } as const;
 
-  it('enforces the Theme B variant restriction without restricting Theme A', () => {
-    expect(AppSettingsSchema.safeParse(settings).success).toBe(true);
+  it('supports all approved Theme B variants and validates personalization settings', () => {
+    const parsed = AppSettingsSchema.parse(settings);
+    expect(parsed).toMatchObject({
+      shortcutOverrides: [],
+      typewriterMode: false,
+      typewriterAnchorPercent: 45,
+      themeSealText: '',
+    });
+    for (const themeVariant of ['light', 'dark', 'eye-care', 'high-contrast'] as const) {
+      expect(
+        AppSettingsSchema.safeParse({ ...settings, themeId: 'theme-b', themeVariant }).success,
+      ).toBe(true);
+    }
+    expect(AppSettingsSchema.safeParse({ ...settings, themeSealText: '<script>' }).success).toBe(
+      false,
+    );
     expect(
-      AppSettingsSchema.safeParse({ ...settings, themeId: 'theme-a', themeVariant: 'eye-care' })
-        .success,
-    ).toBe(true);
+      AppSettingsSchema.safeParse({
+        ...settings,
+        shortcutOverrides: [
+          { commandId: 'system.commandPalette', shortcut: 'Mod+K' },
+          { commandId: 'system.commandPalette', shortcut: 'Mod+P' },
+        ],
+      }).success,
+    ).toBe(false);
     expect(
-      AppSettingsSchema.safeParse({ ...settings, themeId: 'theme-b', themeVariant: 'light' })
-        .success,
-    ).toBe(true);
-    expect(
-      AppSettingsSchema.safeParse({ ...settings, themeId: 'theme-b', themeVariant: 'dark' })
-        .success,
-    ).toBe(true);
-    expect(
-      AppSettingsSchema.safeParse({ ...settings, themeId: 'theme-b', themeVariant: 'eye-care' })
-        .success,
+      AppSettingsSchema.safeParse({
+        ...settings,
+        shortcutOverrides: [
+          { commandId: 'system.commandPalette', shortcut: 'Mod+P' },
+          { commandId: 'generation.chapter', shortcut: 'Mod+P' },
+        ],
+      }).success,
     ).toBe(false);
   });
 

@@ -46,6 +46,20 @@ export const OnboardingTipSchema = z.enum([
 ]);
 export const ThemeIdSchema = z.enum(['theme-a', 'theme-b']);
 export const ThemeVariantSchema = z.enum(['light', 'dark', 'eye-care', 'high-contrast']);
+export const ShortcutChordSchema = z
+  .string()
+  .min(1)
+  .max(48)
+  .regex(/^[A-Za-z0-9+._-]+$/);
+export const ShortcutOverrideSchema = z.strictObject({
+  commandId: z.string().min(1).max(160),
+  shortcut: ShortcutChordSchema.nullable(),
+});
+export const ThemeSealTextSchema = z
+  .string()
+  .trim()
+  .max(12)
+  .regex(/^[\p{Script=Han}A-Za-z0-9·•._\- ]*$/u);
 
 export const AppSettingsSchema = z
   .strictObject({
@@ -60,18 +74,31 @@ export const AppSettingsSchema = z
     themeId: ThemeIdSchema,
     themeVariant: ThemeVariantSchema,
     reduceMotion: z.boolean(),
+    shortcutOverrides: z.array(ShortcutOverrideSchema).max(64).default([]),
+    typewriterMode: z.boolean().default(false),
+    typewriterAnchorPercent: z.number().int().min(25).max(75).default(45),
+    themeSealText: ThemeSealTextSchema.default(''),
   })
   .superRefine((settings, context) => {
-    if (
-      settings.themeId === 'theme-b' &&
-      settings.themeVariant !== 'light' &&
-      settings.themeVariant !== 'dark'
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['themeVariant'],
-        message: 'Theme B supports only light and dark variants in V1.0 P0.',
-      });
+    const commandIds = new Set<string>();
+    const shortcutValues = new Set<string>();
+    for (const override of settings.shortcutOverrides) {
+      if (commandIds.has(override.commandId)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['shortcutOverrides'],
+          message: 'Shortcut overrides must contain unique command ids.',
+        });
+      }
+      commandIds.add(override.commandId);
+      if (override.shortcut && shortcutValues.has(override.shortcut)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['shortcutOverrides'],
+          message: 'Shortcut overrides must not contain duplicate active shortcuts.',
+        });
+      }
+      if (override.shortcut) shortcutValues.add(override.shortcut);
     }
   });
 
@@ -86,6 +113,10 @@ export const AppSettingsUpdateSchema = z.strictObject({
   themeId: ThemeIdSchema.optional(),
   themeVariant: ThemeVariantSchema.optional(),
   reduceMotion: z.boolean().optional(),
+  shortcutOverrides: z.array(ShortcutOverrideSchema).max(64).optional(),
+  typewriterMode: z.boolean().optional(),
+  typewriterAnchorPercent: z.number().int().min(25).max(75).optional(),
+  themeSealText: ThemeSealTextSchema.optional(),
 });
 
 export const DEFAULT_APP_SETTINGS = {
@@ -100,6 +131,10 @@ export const DEFAULT_APP_SETTINGS = {
   themeId: 'theme-a',
   themeVariant: 'light',
   reduceMotion: false,
+  shortcutOverrides: [],
+  typewriterMode: false,
+  typewriterAnchorPercent: 45,
+  themeSealText: '',
 } as const satisfies z.infer<typeof AppSettingsSchema>;
 
 export const AppSettingsSnapshotSchema = z.discriminatedUnion('source', [
@@ -306,6 +341,7 @@ export const CoreAppDataResultSchema = z.union([
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
 export type AppSettingsUpdate = z.infer<typeof AppSettingsUpdateSchema>;
 export type AppSettingsSnapshot = z.infer<typeof AppSettingsSnapshotSchema>;
+export type ShortcutOverride = z.infer<typeof ShortcutOverrideSchema>;
 export type CreativePath = z.infer<typeof CreativePathSchema>;
 export type OnboardingTip = z.infer<typeof OnboardingTipSchema>;
 export type RecentProject = z.infer<typeof RecentProjectSchema>;

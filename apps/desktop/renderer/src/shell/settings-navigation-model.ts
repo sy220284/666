@@ -5,6 +5,7 @@ export const SETTINGS_BASIC_SECTION_IDS = [
   'general',
   'editor',
   'appearance',
+  'shortcuts',
   'providers',
   'longform',
   'advanced',
@@ -51,6 +52,7 @@ const DEFAULT_SETTINGS_AVAILABILITY: SettingsSectionAvailability = {
   general: true,
   editor: false,
   appearance: true,
+  shortcuts: true,
   providers: false,
   longform: false,
   advanced: false,
@@ -74,6 +76,12 @@ const SETTINGS_SECTION_DEFINITIONS = [
     label: '外观与显示',
     beginnerDescription: '调整主题和界面显示方式',
     professionalDescription: '主题、显示方案、界面缩放、减少动态和高对比',
+  },
+  {
+    id: 'shortcuts',
+    label: '快捷键',
+    beginnerDescription: '查看和调整常用操作快捷键',
+    professionalDescription: '统一命令身份、默认快捷键、自定义绑定与冲突处理',
   },
   {
     id: 'providers',

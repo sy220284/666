@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "id": "M12-03",
+  "source": "docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md",
+  "priority": "P2",
+  "status": "IMPLEMENTED",
+  "implementedAt": "2026-08-18T23:30:02+08:00",
+  "baseline": "b128dfb853c6c59d2d2f4654cb79f60ad143d239",
+  "executionBranch": "work",
+  "allowedPaths": [
+    "apps/desktop/renderer/src/",
+    "apps/desktop/main/src/",
+    "apps/desktop/preload/src/",
+    "packages/contracts/src/",
+    "packages/core-service/src/",
+    "tests/unit/",
+    "tests/integration/",
+    "tests/security/",
+    "tests/e2e/",
+    "docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md",
+    "docs/tasks/runtime/M12-03.json",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/test-evidence/M12-03/"
+  ],
+  "forbiddenPaths": [
+    "pnpm-lock.yaml"
+  ],
+  "verificationCommands": [
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:e2e",
+    "pnpm ci:policy",
+    "pnpm release:check"
+  ],
+  "verificationBinding": {
+    "sourcePr": 409,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M12-03"
+  }
+}

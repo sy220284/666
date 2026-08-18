@@ -1,3 +1,5 @@
+import type { ShortcutOverride } from '@worldforge/contracts';
+
 import type {
   PrimaryNavigationAvailability,
   PrimaryNavigationId,
@@ -5,42 +7,67 @@ import type {
 import type { RendererRouteId } from '../../state/ui-state-boundary.js';
 
 export type GenerationCommandMode = 'skeleton' | 'chapter' | 'rewrite';
+export type CommandScope = 'global' | 'project' | 'writing';
+export type SystemCommandId = 'system.commandPalette' | 'system.typewriterMode';
 
-export type CommandCatalogEntry =
-  | {
-      readonly id: `navigation.${PrimaryNavigationId}`;
-      readonly kind: 'navigation';
-      readonly label: string;
-      readonly description: string;
-      readonly keywords: readonly string[];
-      readonly navigationId: PrimaryNavigationId;
-      readonly requiresProject: boolean;
-    }
-  | {
-      readonly id: `route.${RendererRouteId}`;
-      readonly kind: 'route';
-      readonly label: string;
-      readonly description: string;
-      readonly keywords: readonly string[];
-      readonly route: RendererRouteId;
-      readonly parentNavigationId: PrimaryNavigationId;
-      readonly requiresProject: boolean;
-    }
-  | {
-      readonly id: `generation.${GenerationCommandMode}`;
-      readonly kind: 'generation';
-      readonly label: string;
-      readonly description: string;
-      readonly keywords: readonly string[];
-      readonly generationMode: GenerationCommandMode;
-      readonly requiresProject: true;
-    };
+interface CommandMetadata {
+  readonly label: string;
+  readonly description: string;
+  readonly keywords: readonly string[];
+  readonly scope: CommandScope;
+  readonly allowInEditable: boolean;
+  readonly allowReadOnly: boolean;
+  readonly defaultShortcut: string | null;
+  readonly rebindable: boolean;
+  readonly dangerous: boolean;
+  readonly showInPalette: boolean;
+  readonly handlerIdentity: string;
+}
+
+export type CommandCatalogEntry = CommandMetadata &
+  (
+    | {
+        readonly id: `navigation.${PrimaryNavigationId}`;
+        readonly kind: 'navigation';
+        readonly navigationId: PrimaryNavigationId;
+        readonly requiresProject: boolean;
+      }
+    | {
+        readonly id: `route.${RendererRouteId}`;
+        readonly kind: 'route';
+        readonly route: RendererRouteId;
+        readonly parentNavigationId: PrimaryNavigationId;
+        readonly requiresProject: boolean;
+      }
+    | {
+        readonly id: `generation.${GenerationCommandMode}`;
+        readonly kind: 'generation';
+        readonly generationMode: GenerationCommandMode;
+        readonly requiresProject: true;
+      }
+    | {
+        readonly id: SystemCommandId;
+        readonly kind: 'system';
+        readonly requiresProject: boolean;
+      }
+  );
+
+const DEFAULT_COMMAND_METADATA = {
+  allowInEditable: false,
+  allowReadOnly: true,
+  defaultShortcut: null,
+  rebindable: true,
+  dangerous: false,
+  showInPalette: true,
+} as const;
 
 /**
- * 命令身份的唯一登记点。Ctrl+K 只筛选并执行这里登记的页面与创作动作，
- * 不接受任意 Renderer callback 或字符串拼接出来的隐藏命令。
+ * 命令身份的唯一登记点。按钮、菜单、命令面板、默认快捷键与自定义快捷键
+ * 只能引用这里登记的 command id，不接受任意 Renderer callback 或字符串命令总线。
  */
 export const COMMAND_CATALOG: readonly CommandCatalogEntry[] = [
+  systemCommandPalette(),
+  systemTypewriterMode(),
   navigation('home', '回到首页', '查看最近作品与工作区状态', ['首页', '最近作品'], false),
   route('project', '打开作品概览', '查看当前作品状态', ['项目', '作品'], true),
   navigation('planning', '打开创作规划', '查看项目目标、情节与场景', ['大纲', '场景'], true),
@@ -71,6 +98,56 @@ export const COMMAND_CATALOG: readonly CommandCatalogEntry[] = [
   generation('rewrite', '改写选中内容', '打开智能创作并选择局部改写', ['润色', '重写']),
 ] as const;
 
+function metadata(
+  id: string,
+  scope: CommandScope,
+  overrides: Partial<CommandMetadata> = {},
+): CommandMetadata {
+  return {
+    ...DEFAULT_COMMAND_METADATA,
+    label: '',
+    description: '',
+    keywords: [],
+    scope,
+    handlerIdentity: id,
+    ...overrides,
+  };
+}
+
+function systemCommandPalette(): CommandCatalogEntry {
+  const id = 'system.commandPalette' as const;
+  return {
+    id,
+    kind: 'system',
+    requiresProject: false,
+    ...metadata(id, 'global', {
+      label: '搜索与命令',
+      description: '打开统一搜索与命令面板',
+      keywords: ['命令', '搜索', '快捷键'],
+      allowInEditable: true,
+      defaultShortcut: 'Mod+K',
+      showInPalette: false,
+    }),
+  };
+}
+
+function systemTypewriterMode(): CommandCatalogEntry {
+  const id = 'system.typewriterMode' as const;
+  return {
+    id,
+    kind: 'system',
+    requiresProject: true,
+    ...metadata(id, 'writing', {
+      label: '切换打字机模式',
+      description: '让当前输入位置保持在稳定视觉区域',
+      keywords: ['打字机', '沉浸', '输入位置'],
+      allowInEditable: true,
+      defaultShortcut: null,
+      showInPalette: true,
+    }),
+  };
+}
+
 function navigation(
   navigationId: PrimaryNavigationId,
   label: string,
@@ -78,14 +155,17 @@ function navigation(
   keywords: readonly string[],
   requiresProject: boolean,
 ): CommandCatalogEntry {
+  const id = `navigation.${navigationId}` as const;
   return {
-    id: `navigation.${navigationId}`,
+    id,
     kind: 'navigation',
-    label,
-    description,
-    keywords,
     navigationId,
     requiresProject,
+    ...metadata(id, requiresProject ? 'project' : 'global', {
+      label,
+      description,
+      keywords,
+    }),
   };
 }
 
@@ -95,14 +175,18 @@ function generation(
   description: string,
   keywords: readonly string[],
 ): CommandCatalogEntry {
+  const id = `generation.${generationMode}` as const;
   return {
-    id: `generation.${generationMode}`,
+    id,
     kind: 'generation',
-    label,
-    description,
-    keywords,
     generationMode,
     requiresProject: true,
+    ...metadata(id, 'writing', {
+      label,
+      description,
+      keywords,
+      allowReadOnly: false,
+    }),
   };
 }
 
@@ -113,12 +197,10 @@ function route(
   keywords: readonly string[],
   requiresProject: boolean,
 ): CommandCatalogEntry {
+  const id = `route.${route}` as const;
   return {
-    id: `route.${route}`,
+    id,
     kind: 'route',
-    label,
-    description,
-    keywords,
     route,
     parentNavigationId:
       route === 'project'
@@ -131,7 +213,26 @@ function route(
               ? 'checks'
               : 'writing',
     requiresProject,
+    ...metadata(id, requiresProject ? 'project' : 'global', {
+      label,
+      description,
+      keywords,
+    }),
   };
+}
+
+export function commandCatalogEntry(commandId: string): CommandCatalogEntry | null {
+  return COMMAND_CATALOG.find((entry) => entry.id === commandId) ?? null;
+}
+
+export function shortcutForCommand(
+  entry: CommandCatalogEntry,
+  overrides: readonly ShortcutOverride[] = [],
+): string | null {
+  const override = entry.rebindable
+    ? overrides.find((item) => item.commandId === entry.id)
+    : undefined;
+  return override ? override.shortcut : entry.defaultShortcut;
 }
 
 export function filterCommandCatalog(
@@ -141,13 +242,16 @@ export function filterCommandCatalog(
 ): readonly CommandCatalogEntry[] {
   const normalized = query.trim().toLocaleLowerCase('zh-CN');
   return COMMAND_CATALOG.filter((entry) => {
+    if (!entry.showInPalette) return false;
     if (entry.requiresProject && !projectAvailable) return false;
     const navigationId =
       entry.kind === 'navigation'
         ? entry.navigationId
         : entry.kind === 'route'
           ? entry.parentNavigationId
-          : 'writing';
+          : entry.kind === 'generation'
+            ? 'writing'
+            : 'home';
     if (availability?.[navigationId] === false) return false;
     if (!normalized) return true;
     return [entry.label, entry.description, ...entry.keywords]
@@ -157,6 +261,25 @@ export function filterCommandCatalog(
   });
 }
 
-export function commandPaletteShortcutLabel(platform: string): string {
-  return /mac|darwin|iphone|ipad/iu.test(platform) ? '⌘ K' : 'Ctrl K';
+export function commandPaletteShortcutLabel(
+  platform: string,
+  overrides: readonly ShortcutOverride[] = [],
+): string {
+  const entry = commandCatalogEntry('system.commandPalette');
+  const shortcut = entry ? shortcutForCommand(entry, overrides) : 'Mod+K';
+  if (!shortcut) return '未绑定';
+  if (shortcut === 'Mod+K') {
+    return /mac|darwin|iphone|ipad/iu.test(platform) ? '⌘ K' : 'Ctrl K';
+  }
+  return shortcutDisplayLabel(shortcut, platform);
+}
+
+export function shortcutDisplayLabel(shortcut: string, platform: string): string {
+  const mac = /mac|darwin|iphone|ipad/iu.test(platform);
+  return shortcut
+    .replaceAll('Mod', mac ? '⌘' : 'Ctrl')
+    .replaceAll('Ctrl', mac ? '⌃' : 'Ctrl')
+    .replaceAll('Alt', mac ? '⌥' : 'Alt')
+    .replaceAll('Shift', mac ? '⇧' : 'Shift')
+    .replaceAll('+', mac ? '' : ' + ');
 }

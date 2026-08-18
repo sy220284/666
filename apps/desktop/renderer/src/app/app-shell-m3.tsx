@@ -10,6 +10,8 @@ import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js
 import type { CanonSection } from '../features/canon/canon-workbench.js';
 import type { DataToolsSection } from '../features/data-tools/data-tools-workbench.js';
 import { CommandPalette } from '../features/command-palette/command-palette.js';
+import { executeCatalogCommand } from '../features/command-palette/command-execution.js';
+import { commandForShortcut } from '../features/command-palette/shortcut-registry.js';
 import type { WritingPanel } from '../features/writing/writing-workbench.js';
 import { deriveCapabilityMatrix } from '../runtime/capability-matrix.js';
 import { restoreAppShellRoute, type AppDisclosureMode } from '../shell/app-shell-model.js';
@@ -145,6 +147,10 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
     void window.worldforgeJournal.catchUp({ projectId }).catch(() => undefined);
   }, [activeProject?.databaseMode, activeProject?.projectId]);
 
+  const shortcutOverrides = settingsController.settings.shortcutOverrides;
+  const typewriterMode = settingsController.settings.typewriterMode;
+  const saveSettings = settingsController.saveSettings;
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.isComposing) return;
@@ -154,16 +160,42 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
         window.requestAnimationFrame(() => commandPaletteTrigger.current?.focus());
         return;
       }
-      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+      const command = commandForShortcut(
+        event,
+        globalThis.navigator?.platform ?? '',
+        shortcutOverrides,
+        {
+          projectAvailable: activeProject !== null,
+          readOnly: activeProject?.databaseMode === 'read-only',
+        },
+      );
+      if (!command) return;
       event.preventDefault();
-      setCommandPaletteOpen((open) => {
-        if (open) window.requestAnimationFrame(() => commandPaletteTrigger.current?.focus());
-        return !open;
+      executeCatalogCommand(command, {
+        projectId: activeProject?.projectId ?? null,
+        onNavigate: navigation.navigate,
+        onTransitionToRoute: navigation.transitionToRoute,
+        onNavigateTarget: navigation.navigateToAuthorTarget,
+        onCommandPaletteToggle: () =>
+          setCommandPaletteOpen((open) => {
+            if (open) window.requestAnimationFrame(() => commandPaletteTrigger.current?.focus());
+            return !open;
+          }),
+        onTypewriterModeToggle: () => void saveSettings({ typewriterMode: !typewriterMode }),
       });
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [commandPaletteOpen]);
+  }, [
+    activeProject,
+    commandPaletteOpen,
+    navigation.navigate,
+    navigation.navigateToAuthorTarget,
+    navigation.transitionToRoute,
+    saveSettings,
+    shortcutOverrides,
+    typewriterMode,
+  ]);
 
   const writingPanel: WritingPanel =
     route === 'versions' ? 'versions' : route === 'candidates' ? 'candidates' : 'editor';

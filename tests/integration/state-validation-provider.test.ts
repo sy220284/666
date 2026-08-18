@@ -243,6 +243,43 @@ describe('M4-04 Provider state extraction and validation', () => {
         validationIssueId: issue.issueId,
         status: 'open',
       });
+      const commentId = catalog.comments[0]!.commentId;
+      catalog = await harness.validation.batchComments(randomUUID(), {
+        projectId: seeded.project.projectId,
+        commentIds: [commentId],
+        action: 'tag',
+        tags: ['伏笔', '作者复核'],
+      });
+      expect(catalog.comments[0]?.tags).toEqual(['伏笔', '作者复核']);
+      catalog = await harness.validation.batchComments(randomUUID(), {
+        projectId: seeded.project.projectId,
+        commentIds: [commentId],
+        action: 'resolve',
+        tags: [],
+      });
+      expect(catalog.comments[0]?.status).toBe('resolved');
+      catalog = await harness.validation.reopenComment(randomUUID(), {
+        projectId: seeded.project.projectId,
+        commentId,
+      });
+      expect(catalog.comments[0]?.status).toBe('open');
+      await expect(
+        harness.validation.batchComments(randomUUID(), {
+          projectId: seeded.project.projectId,
+          commentIds: [commentId, randomUUID()],
+          action: 'resolve',
+          tags: [],
+        }),
+      ).rejects.toThrow();
+      expect(
+        harness.validation
+          .list({
+            projectId: seeded.project.projectId,
+            chapterId: seeded.chapter1.id,
+            includeClosed: true,
+          })
+          .comments.find((comment) => comment.commentId === commentId)?.status,
+      ).toBe('open');
       catalog = await harness.validation.updateIssue(randomUUID(), {
         projectId: seeded.project.projectId,
         issueId: issue.issueId,

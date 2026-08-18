@@ -13,6 +13,7 @@ import {
   type AuthorNavigationTarget,
 } from '../../shell/navigation-target.js';
 import { filterCommandCatalog, type CommandCatalogEntry } from './command-catalog.js';
+import { executeCatalogCommand } from './command-execution.js';
 import type { RendererRouteId } from '../../state/ui-state-boundary.js';
 
 type PaletteItem =
@@ -223,14 +224,12 @@ export function CommandPalette({
   const execute = (item: PaletteItem): void => {
     close();
     if (item.kind === 'command') {
-      if (item.command.kind === 'navigation') onNavigate(item.command.navigationId);
-      else if (item.command.kind === 'route') void onTransitionToRoute(item.command.route);
-      else if (projectId)
-        onNavigateTarget({
-          type: 'writing-action',
-          projectId,
-          generationMode: item.command.generationMode,
-        });
+      executeCatalogCommand(item.command, {
+        projectId,
+        onNavigate,
+        onTransitionToRoute,
+        onNavigateTarget,
+      });
       return;
     }
     onNavigateTarget(item.target);

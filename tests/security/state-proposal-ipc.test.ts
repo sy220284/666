@@ -186,6 +186,6 @@ describe('M3-06 state proposal IPC boundary', () => {
     }
 
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(32);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(handlers.size);
   });
 });

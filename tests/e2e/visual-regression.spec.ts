@@ -24,7 +24,7 @@ const visualWorkspaceRoot = path.join(root, 'test-results', 'visual-regression-f
 const temporaryDirectories: string[] = [];
 
 type ThemeId = 'theme-a' | 'theme-b';
-type ThemeVariant = 'light' | 'dark';
+type ThemeVariant = 'light' | 'dark' | 'eye-care' | 'high-contrast';
 
 interface VisualMismatch {
   readonly snapshotName: string;
@@ -115,12 +115,20 @@ async function captureStableScreenshot(page: Page): Promise<Buffer> {
   throw new Error('VISUAL_SNAPSHOT_DID_NOT_STABILIZE');
 }
 
-async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): Promise<void> {
+async function applyTheme(
+  page: Page,
+  themeId: ThemeId,
+  variant: ThemeVariant,
+  sealText: string | null = null,
+): Promise<void> {
   await page.locator('[data-open-settings]').click();
   await expect(page.locator('[data-settings-dialog]')).toBeVisible();
   await page.locator('[data-settings-navigation="appearance"]').click();
   await page.locator('[data-theme-id]').selectOption(themeId);
   await page.locator('[data-theme-variant]').selectOption(variant);
+  if (sealText !== null) {
+    await page.locator('input[data-theme-seal-text="true"]').fill(sealText);
+  }
   await page.locator('[data-save-settings]').click();
   await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
   await expect(page.locator('body')).toHaveAttribute('data-theme', themeId);
@@ -182,10 +190,10 @@ test.afterEach(async () => {
 });
 
 if (process.platform === 'linux') {
-  test('Phase 3 Linux 2560×1440四主题视觉基线', async () => {
+  test('Phase 3 Linux 2560×1440主题视觉基线', async () => {
     test.setTimeout(180_000);
     const manifest = await loadVisualBaselineManifest(root);
-    expect(manifest.baselines).toHaveLength(4);
+    expect(manifest.baselines).toHaveLength(6);
 
     const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-visual-regression-'));
     temporaryDirectories.push(userDataPath);
@@ -230,6 +238,10 @@ if (process.platform === 'linux') {
       await collect('theme-b-light-2560x1440.png');
       await applyTheme(page, 'theme-b', 'dark');
       await collect('theme-b-dark-2560x1440.png');
+      await applyTheme(page, 'theme-b', 'eye-care', '落笔生花');
+      await collect('theme-b-eye-care-2560x1440.png');
+      await applyTheme(page, 'theme-b', 'high-contrast', '落笔生花');
+      await collect('theme-b-high-contrast-2560x1440.png');
       await assertNoVisualMismatches(mismatches);
     } finally {
       await closeGracefully(application);

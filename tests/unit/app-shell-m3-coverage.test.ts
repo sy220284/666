@@ -199,6 +199,7 @@ let keydown: ((event: Record<string, unknown>) => void) | null = null;
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  vi.stubGlobal('navigator', { platform: 'Win32' });
   keydown = null;
   shell.route = 'home';
   shell.globalStatus = null;
@@ -357,6 +358,7 @@ describe('AppShell M3 orchestration coverage', () => {
     expect(prevent).toHaveBeenCalledTimes(2);
     expect(lastProps(shell.palette).open).toBe(false);
 
+    vi.stubGlobal('navigator', { platform: 'MacIntel' });
     keydown?.({
       isComposing: false,
       key: 'K',
@@ -366,6 +368,7 @@ describe('AppShell M3 orchestration coverage', () => {
     });
     await act(flush);
     expect(lastProps(shell.palette).open).toBe(true);
+    vi.stubGlobal('navigator', { platform: 'Win32' });
     keydown?.({
       isComposing: false,
       key: 'k',

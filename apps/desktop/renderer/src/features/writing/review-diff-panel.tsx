@@ -8,6 +8,8 @@ import {
 } from './review-diff.js';
 
 interface ReviewDiffPanelProps {
+  readonly baseTitle?: string | undefined;
+  readonly baseText?: string | undefined;
   readonly currentTitle: string;
   readonly comparisonTitle: string;
   readonly currentText: string;
@@ -27,6 +29,8 @@ const CHANGE_CONTEXT_LINES = 3;
 const EDGE_CONTEXT_LINES = 20;
 
 export function ReviewDiffPanel({
+  baseTitle,
+  baseText,
   currentTitle,
   comparisonTitle,
   currentText,
@@ -98,10 +102,21 @@ export function ReviewDiffPanel({
           </button>
         </div>
       </header>
-      <div className="review-diff__headings">
-        <strong>{currentTitle}</strong>
-        <strong>{comparisonTitle}</strong>
-      </div>
+      {baseText ? (
+        <ThreeWayReview
+          baseText={baseText}
+          baseTitle={baseTitle ?? '基础版本'}
+          comparisonText={comparisonText}
+          comparisonTitle={comparisonTitle}
+          currentText={currentText}
+          currentTitle={currentTitle}
+        />
+      ) : (
+        <div className="review-diff__headings">
+          <strong>{currentTitle}</strong>
+          <strong>{comparisonTitle}</strong>
+        </div>
+      )}
       <div className="review-diff__body">
         {visible.map(({ line, index, omittedBefore }) => (
           <div key={line.id}>
@@ -137,6 +152,73 @@ export function ReviewDiffPanel({
         ))}
       </div>
     </section>
+  );
+}
+
+function ThreeWayReview({
+  baseTitle,
+  baseText,
+  currentTitle,
+  currentText,
+  comparisonTitle,
+  comparisonText,
+}: {
+  readonly baseTitle: string;
+  readonly baseText: string;
+  readonly currentTitle: string;
+  readonly currentText: string;
+  readonly comparisonTitle: string;
+  readonly comparisonText: string;
+}) {
+  const baseRef = useRef<HTMLDivElement>(null);
+  const currentRef = useRef<HTMLDivElement>(null);
+  const comparisonRef = useRef<HTMLDivElement>(null);
+  const syncing = useRef(false);
+
+  const synchronize = (source: HTMLDivElement): void => {
+    if (syncing.current) return;
+    syncing.current = true;
+    const scrollRatio =
+      source.scrollHeight > source.clientHeight
+        ? source.scrollTop / (source.scrollHeight - source.clientHeight)
+        : 0;
+    for (const target of [baseRef.current, currentRef.current, comparisonRef.current]) {
+      if (!target || target === source) continue;
+      target.scrollTop = scrollRatio * Math.max(0, target.scrollHeight - target.clientHeight);
+    }
+    requestAnimationFrame(() => {
+      syncing.current = false;
+    });
+  };
+
+  return (
+    <div className="review-diff__three-way" data-review-three-way>
+      {[
+        [baseTitle, baseText, baseRef, 'base'],
+        [currentTitle, currentText, currentRef, 'current'],
+        [comparisonTitle, comparisonText, comparisonRef, 'comparison'],
+      ].map(([title, text, ref, side]) => (
+        <section
+          className="review-diff__three-pane"
+          data-side={side as string}
+          key={side as string}
+        >
+          <strong>{title as string}</strong>
+          <div
+            className="review-diff__three-content"
+            ref={ref as typeof baseRef}
+            onScroll={(event) => synchronize(event.currentTarget)}
+          >
+            {(text as string).split('\n').map((line, index) => (
+              <div className="review-diff__three-line" key={`${side as string}:${index}`}>
+                <span>{index + 1}</span>
+                <span>{line || '\u00a0'}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }
 

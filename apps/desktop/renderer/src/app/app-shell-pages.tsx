@@ -232,6 +232,9 @@ export function AppShellPages(props: AppShellPagesProps) {
           initialContinuation={props.continuation}
           panel={props.writingPanel}
           project={props.activeProject}
+          typewriterMode={props.settings.typewriterMode}
+          typewriterAnchorPercent={props.settings.typewriterAnchorPercent}
+          onTypewriterModeChange={(enabled) => props.onSaveSettings({ typewriterMode: enabled })}
           navigationChapterId={props.selection.chapterId}
           navigationLogicalBlockId={props.selection.logicalBlockId}
           navigationVersionId={props.selection.versionId}

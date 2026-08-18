@@ -20,7 +20,7 @@ const untrustedEvent = {
 } as unknown as IpcMainInvokeEvent;
 
 describe('M4-04 validation IPC boundary', () => {
-  it('strictly validates nine operations and rejects untrusted or expanded payloads', async () => {
+  it('strictly validates eleven operations and rejects untrusted or expanded payloads', async () => {
     const handlers = new Map<
       string,
       (event: IpcMainInvokeEvent, raw: unknown) => Promise<unknown> | unknown
@@ -106,6 +106,16 @@ describe('M4-04 validation IPC boundary', () => {
         payload: { projectId, commentId },
       },
       {
+        channel: VALIDATION_IPC_CHANNELS.reopenComment,
+        operation: VALIDATION_COMMANDS.reopenComment,
+        payload: { projectId, commentId },
+      },
+      {
+        channel: VALIDATION_IPC_CHANNELS.batchComments,
+        operation: VALIDATION_COMMANDS.batchComments,
+        payload: { projectId, commentIds: [commentId], action: 'tag', tags: ['人物-主角'] },
+      },
+      {
         channel: VALIDATION_IPC_CHANNELS.rememberException,
         operation: VALIDATION_COMMANDS.rememberException,
         payload: {
@@ -163,6 +173,6 @@ describe('M4-04 validation IPC boundary', () => {
     }
 
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(32);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(handlers.size);
   });
 });

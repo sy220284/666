@@ -42,6 +42,16 @@ export async function routeValidationOperation(
         operation.operation,
         await validation.resolveComment(requestId, operation.input),
       );
+    case VALIDATION_COMMANDS.reopenComment:
+      return success(
+        operation.operation,
+        await validation.reopenComment(requestId, operation.input),
+      );
+    case VALIDATION_COMMANDS.batchComments:
+      return success(
+        operation.operation,
+        await validation.batchComments(requestId, operation.input),
+      );
     case VALIDATION_COMMANDS.rememberException:
       return success(
         operation.operation,

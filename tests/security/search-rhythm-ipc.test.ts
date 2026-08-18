@@ -287,6 +287,6 @@ describe('M4-04 search, replacement and rhythm IPC boundary', () => {
       }).success,
     ).toBe(false);
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(32);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(handlers.size);
   });
 });

@@ -95,6 +95,14 @@ export class ValidationService {
     return this.#comments.resolveComment(requestId, raw);
   }
 
+  reopenComment(requestId: string, raw: unknown): Promise<ValidationCatalog> {
+    return this.#comments.reopenComment(requestId, raw);
+  }
+
+  batchComments(requestId: string, raw: unknown): Promise<ValidationCatalog> {
+    return this.#comments.batchComments(requestId, raw);
+  }
+
   rememberException(requestId: string, raw: unknown): Promise<ValidationCatalog> {
     return this.#exceptions.remember(requestId, raw);
   }

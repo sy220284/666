@@ -3,6 +3,8 @@ import {
   VALIDATION_IPC_CHANNELS,
   StoryCommentAddCommandSchema,
   StoryCommentResolveCommandSchema,
+  StoryCommentReopenCommandSchema,
+  StoryCommentBatchCommandSchema,
   StoryTodoSaveCommandSchema,
   ValidationCatalogResultSchema,
   ValidationCreateTodoCommandSchema,
@@ -14,6 +16,8 @@ import {
   type CommandResult,
   type StoryCommentAddInput,
   type StoryCommentResolveInput,
+  type StoryCommentReopenInput,
+  type StoryCommentBatchInput,
   type StoryTodoSaveInput,
   type ValidationCatalog,
   type ValidationCreateTodoInput,
@@ -84,6 +88,20 @@ const validationBridge = {
       VALIDATION_IPC_CHANNELS.resolveComment,
       StoryCommentResolveCommandSchema,
       VALIDATION_COMMANDS.resolveComment,
+      input,
+    ),
+  reopenComment: (input: StoryCommentReopenInput) =>
+    invoke(
+      VALIDATION_IPC_CHANNELS.reopenComment,
+      StoryCommentReopenCommandSchema,
+      VALIDATION_COMMANDS.reopenComment,
+      input,
+    ),
+  batchComments: (input: StoryCommentBatchInput) =>
+    invoke(
+      VALIDATION_IPC_CHANNELS.batchComments,
+      StoryCommentBatchCommandSchema,
+      VALIDATION_COMMANDS.batchComments,
       input,
     ),
   rememberException: (input: ValidationExceptionRememberInput) =>

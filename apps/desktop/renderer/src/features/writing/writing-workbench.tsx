@@ -24,6 +24,9 @@ interface WritingWorkbenchProps {
   readonly project: ProjectWorkspaceSummary;
   readonly initialContinuation: ProjectContinuationSnapshot | null;
   readonly panel: WritingPanel;
+  readonly typewriterMode: boolean;
+  readonly typewriterAnchorPercent: number;
+  readonly onTypewriterModeChange: (enabled: boolean) => Promise<boolean>;
   readonly navigationChapterId?: string | null;
   readonly navigationLogicalBlockId?: string | null;
   readonly navigationVersionId?: string | null;

@@ -39,8 +39,8 @@ test.afterEach(async () => {
   );
 });
 
-test('Phase 3 accessibility scan covers home, modal focus and writing workspace', async () => {
-  test.setTimeout(180_000);
+test('Phase 3 accessibility scan covers home, modal focus, writing and Theme B variants', async () => {
+  test.setTimeout(240_000);
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-accessibility-'));
   temporaryDirectories.push(userDataPath);
   const createParent = path.join(userDataPath, 'works');
@@ -77,8 +77,26 @@ test('Phase 3 accessibility scan covers home, modal focus and writing workspace'
     await createTrigger.click();
     await page.locator('[data-project-name]').fill('Phase 3无障碍验收');
     await page.locator('[data-confirm-create-project]').click();
-    await expect(page.locator('[data-writing-workbench]')).toBeVisible();
+    const writingWorkbench = page.locator('[data-writing-workbench]');
+    await expect(writingWorkbench).toBeVisible();
     await assertAccessibleSurface(page, 'writing-workspace');
+
+    for (const variant of ['eye-care', 'high-contrast'] as const) {
+      await page.locator('[data-open-settings]').click();
+      await expect(page.locator('[data-settings-dialog]')).toBeVisible();
+      await page.locator('[data-settings-navigation="appearance"]').click();
+      await page.locator('[data-theme-id]').selectOption('theme-b');
+      await page.locator('[data-theme-variant]').selectOption(variant);
+      await page.locator('input[data-theme-seal-text="true"]').fill('落笔生花');
+      await page.locator('[data-save-appearance]').click();
+      await expect(page.locator('body')).toHaveAttribute('data-theme', 'theme-b');
+      await expect(page.locator('body')).toHaveAttribute('data-visual-theme-variant', variant);
+      await assertAccessibleSurface(page, `theme-b-${variant}-settings`);
+
+      await page.locator('[data-close-settings]').click();
+      await expect(writingWorkbench).toBeVisible();
+      await assertAccessibleSurface(page, `theme-b-${variant}-writing`);
+    }
   } finally {
     await closeGracefully(application);
   }

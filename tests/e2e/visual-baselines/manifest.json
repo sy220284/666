@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "platform": "linux",
   "source": {
-    "verifiedHead": "60748382fc50dd0d78c4b3103dee3e30771cf4eb",
-    "qualityRunId": 31884427843,
-    "artifactId": 9247141115,
-    "artifactDigest": "sha256:0f9020f2765db3a29723ac92a4cf48f9e51a211375e05ebb0aa73a10b46aeb52"
+    "verifiedHead": "3d9ab7bf43ae2335cf91e10f25d75c2d23b40d71",
+    "qualityRunId": 32151140271,
+    "artifactId": 9330078620,
+    "artifactDigest": "sha256:625179f4d50e0d7e2f72448f066d51d95e2ce0d1ba496a56e56557e243dc7875"
   },
   "stabilityWitness": {
-    "verifiedHead": "b0d24b0a58a74aa6e209b83ce40fe965287b469e",
-    "qualityRunId": 31887999518,
-    "artifactId": 9248002461,
-    "artifactDigest": "sha256:d9c0295c485871c4d89c7bd22b5d1529451e911de44d58e5e3632088e63c43eb"
+    "verifiedHead": "fb6008179cc38d3065719eca408e0c5fb0e8c278",
+    "qualityRunId": 32151880183,
+    "artifactId": 9330365265,
+    "artifactDigest": "sha256:55265f6a1bc0b9e7fbace07ee808c4482c2ca6c2168201a29a163dfdfdf2ef0c"
   },
   "baselines": [
     {
@@ -35,6 +35,18 @@
     {
       "snapshotName": "theme-b-dark-2560x1440.png",
       "sha256": "82376598c5258bca976a6e25ed092d5d0e02f07ef5f3e5d6faa98043fa985d10",
+      "width": 2560,
+      "height": 1440
+    },
+    {
+      "snapshotName": "theme-b-eye-care-2560x1440.png",
+      "sha256": "111e8bdb083d6c032d15ed5214a09007b1139d171e80aaf46743d6ba0bf504ca",
+      "width": 2560,
+      "height": 1440
+    },
+    {
+      "snapshotName": "theme-b-high-contrast-2560x1440.png",
+      "sha256": "5ff2d14633dac2dffea6d01a146d67ffcf44d0f3d67f67ab27b1f533748d1e2b",
       "width": 2560,
       "height": 1440
     }

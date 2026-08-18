@@ -3,7 +3,8 @@
   "id": "M12-03",
   "source": "docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md",
   "priority": "P2",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
+  "implementedAt": "2026-08-18T23:30:02+08:00",
   "baseline": "b128dfb853c6c59d2d2f4654cb79f60ad143d239",
   "executionBranch": "work",
   "allowedPaths": [
@@ -37,7 +38,7 @@
     "pnpm release:check"
   ],
   "verificationBinding": {
-    "sourcePr": null,
+    "sourcePr": 409,
     "mainContext": "main-verification",
     "taskContext": "task-verification/M12-03"
   }

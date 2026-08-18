@@ -61,10 +61,6 @@ function inlineSegments(
   readonly currentSegments: readonly ReviewInlineSegment[];
   readonly comparisonSegments: readonly ReviewInlineSegment[];
 } {
-  if (currentText === comparisonText) {
-    const segment = currentText ? [{ kind: 'unchanged' as const, text: currentText }] : [];
-    return { currentSegments: segment, comparisonSegments: segment };
-  }
   const prefixLength = commonPrefixLength(currentText, comparisonText);
   const suffixLength = commonSuffixLength(currentText, comparisonText, prefixLength);
   const currentMiddleEnd = currentText.length - suffixLength;
@@ -355,10 +351,10 @@ function lcsOperationsWithinLimit(
         comparisonLineNumber: null,
       });
       currentIndex += 1;
-    } else if (comparisonText !== undefined) {
+    } else {
       operations.push({
         kind: 'added',
-        text: comparisonText,
+        text: comparisonText!,
         currentLineNumber: null,
         comparisonLineNumber: comparisonIndex + 1,
       });

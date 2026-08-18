@@ -1,8 +1,44 @@
 {
   "schemaVersion": 1,
   "authorityDocument": "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md",
+  "completenessDocument": "docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md",
   "callerWorkflow": ".github/workflows/quality.yml",
   "exportWorkflow": ".github/workflows/toolchain-export.yml",
+  "workspaceBootstrapWorkflow": ".github/workflows/workspace-bootstrap-export.yml",
+  "workspaceBootstrapRunner": "ubuntu-24.04",
+  "workspaceBootstrapArtifactName": "worldforge-workspace-bootstrap-Linux-X64-{sourceSha}",
+  "workspaceBootstrapBrowserDirectory": "worldforge-playwright-browsers",
+  "workspaceBootstrapAuditToolsDirectory": "worldforge-audit-tools",
+  "workspaceBootstrapIncludesPnpmRuntime": true,
+  "hostProbeWorkflow": ".github/workflows/toolchain-host-probe.yml",
+  "maintenanceWorkflow": ".github/workflows/toolchain-maintenance.yml",
+  "maintenanceDocument": "docs/process/TOOLCHAIN_SNAPSHOT_MAINTENANCE.md",
+  "maintenanceScheduleUtc": "17 3 * * 1,4",
+  "maintenanceProfile": "quality",
+  "maintenanceRunner": "ubuntu-24.04",
+  "maintenancePushPaths": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json",
+    "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md",
+    "docs/process/TOOLCHAIN_SNAPSHOT_MAINTENANCE.md",
+    "docs/process/CI_RISK_MATRIX.json",
+    "scripts/toolchain-policy.mjs",
+    ".github/governance/toolchain-bundle.mjs",
+    ".github/workflows/quality.yml",
+    ".github/workflows/toolchain-export.yml",
+    ".github/workflows/workspace-bootstrap-export.yml",
+    ".github/workflows/toolchain-maintenance.yml",
+    "docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md",
+    "scripts/toolchain-completeness-policy.mjs",
+    ".github/workflows/toolchain-host-probe.yml"
+  ],
+  "completenessInputs": [
+    "docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md",
+    "scripts/toolchain-completeness-policy.mjs",
+    ".github/workflows/toolchain-host-probe.yml"
+  ],
   "generator": ".github/governance/toolchain-bundle.mjs",
   "defaultProfile": "quality",
   "trustedPullRequestBranch": "work",
@@ -18,18 +54,59 @@
     "quality": {
       "packages": [
         "@eslint/js",
+        "@playwright/test",
+        "@vitest/coverage-v8",
         "eslint",
         "eslint-plugin-react-hooks",
+        "esbuild",
         "prettier",
         "typescript",
-        "typescript-eslint"
+        "typescript-eslint",
+        "vitest",
+        "yaml"
       ],
       "commands": [
         ["pnpm", ["--version"]],
         ["prettier", ["--version"]],
         ["eslint", ["--version"]],
-        ["tsc", ["--version"]]
+        ["tsc", ["--version"]],
+        ["vitest", ["--version"]],
+        ["esbuild", ["--version"]],
+        ["playwright", ["--version"]]
       ]
+    }
+  },
+  "standaloneAuditTools": {
+    "knip": "6.32.2",
+    "jscpd": "5.0.12",
+    "eslint-plugin-sonarjs": "4.2.0"
+  },
+  "hostRequirements": {
+    "linux": {
+      "runner": "ubuntu-24.04",
+      "commands": [
+        "git",
+        "bash",
+        "tar",
+        "zstd",
+        "python3",
+        "gcc",
+        "g++",
+        "make",
+        "pkg-config",
+        "fc-match"
+      ],
+      "workflowPackages": ["fonts-noto-cjk", "xvfb"]
+    },
+    "windows": {
+      "runner": "windows-latest",
+      "commands": ["git.exe", "pwsh.exe", "powershell.exe"],
+      "capabilities": ["Windows SDK signtool", "Developer Mode"]
+    },
+    "macos": {
+      "runner": "macos-latest",
+      "commands": ["git", "bash", "xcrun", "codesign", "security", "xcode-select"],
+      "capabilities": ["Xcode command line tools", "notarytool"]
     }
   },
   "requiredBundleEntries": [
@@ -43,6 +120,6 @@
     "SHA256SUMS.txt"
   ],
   "artifactName": "worldforge-toolchain-{profile}-{os}-{arch}-{sourceSha}",
-  "retentionDays": 7,
+  "retentionDays": 14,
   "nodeRuntimeVersion": "24.18.1"
 }

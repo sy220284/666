@@ -353,11 +353,32 @@ Evidence必须绑定真实受检work Head；失败、跳过和环境限制必须
 
 人工提交标题、PR标题、描述、评论和回滚说明必须使用中文。代码标识符、文件路径、命令、协议名和库名可以保留英文。Controlled Merge使用PR标题生成Squash提交标题，因此PR标题必须准确、完整。
 
-## 15. 网络与工具链回退
+## 15. 工具链与依赖获取强制规则
 
-依赖或工具下载失败时，先检查版本、锁文件、Registry、代理、DNS、TLS、认证和缓存。确认当前环境无法联网后，使用永久`Toolchain Export`或`Engineering Validation`从GitHub Actions获取与锁文件一致的离线工具链和诊断。
+仓库开发、测试、审计、构建、打包、修复和发布所需的**工具、Node运行时、包管理器及项目依赖，必须统一从仓库权威工具链获取**。该要求是默认路径和硬性约束，不是“联网失败后的回退方案”。
 
-不得通过更换主版本、改写锁文件、关闭严格校验、采用未知镜像或把Runner产物提交到普通分支来伪造推进。
+权威来源固定为：
+
+```text
+docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json
+→ .github/workflows/toolchain-maintenance.yml
+→ .github/workflows/toolchain-export.yml
+→ .github/workflows/workspace-bootstrap-export.yml
+→ 对应GitHub Actions Artifact
+```
+
+强制规则：
+
+- Agent、Codex、本地开发环境和普通验证流程需要工具或依赖时，必须先使用与当前源码提交、锁文件Hash和平台匹配的权威工具链快照或完整工作区恢复包。
+- `pnpm`、Node、TypeScript、ESLint、Prettier、Vitest、Playwright、Electron、esbuild及其他仓库依赖，不得绕过工具链另行下载、替换或自行选择版本。
+- 允许从工具链快照自带的`store/`、`cache/`、`node_modules/`和运行时恢复或离线安装；恢复后仍必须遵守`--offline`、`--frozen-lockfile`及仓库既有严格校验。
+- 普通Agent不得直接使用`npm install`、`pnpm add`、`npx`、全局安装、`curl`、`wget`、第三方安装脚本、Release下载页、未知镜像或其他外部来源获取仓库工具和依赖。
+- 新增或升级依赖属于受控依赖变更；其版本、锁文件和工具链权威清单必须在批准范围内同步更新，并通过永久工具链工作流重新生成和验证快照。普通Agent不得为了完成任务临时联网补包。
+- 当前快照缺失、过期、Hash不匹配、平台不匹配或验证失败时，必须先通过`Toolchain Snapshot Maintenance`、`Toolchain Export`或`Workspace Bootstrap Export`刷新/生成正确快照；在新的权威快照通过校验前停止依赖获取，禁止绕过继续推进。
+- 只有永久工具链维护/导出工作流允许为生成新的权威快照访问上游包源；其输出必须经过锁文件、Hash、离线复验和独立恢复检查后才能作为后续任务的依赖来源。
+- 禁止通过更换主版本、改写锁文件、关闭严格校验、采用未知镜像、复用不匹配的旧Artifact或把Runner产物提交到普通分支来伪造工具环境可用。
+
+执行任何任务前若发现工作空间工具来源无法证明来自上述权威链路，视为环境不可信：必须先恢复权威工具链，再运行任务验证；不得在来源不明的环境上生成可合并Evidence或声明完成。
 
 ## 16. 新任务基线复核
 

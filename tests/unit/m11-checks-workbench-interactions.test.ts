@@ -299,4 +299,209 @@ describe('M11 内容检查工作台交互覆盖', () => {
 
     for (const cleanup of cleanups) (cleanup as () => void)();
   });
+
+  it('覆盖加载失败、只读保护与无原文定位分支', async () => {
+    const failure = {
+      state: 'failure' as const,
+      error: { code: 'MODEL_UNAVAILABLE' as const, message: '连接失败', retryable: true },
+    };
+    const runRules = vi.fn(async () => failure);
+    const start = vi.fn(async () => failure);
+    const updateIssue = vi.fn(async () => failure);
+    const createTodoFromIssue = vi.fn(async () => failure);
+    const rememberException = vi.fn(async () => failure);
+    const addComment = vi.fn(async () => failure);
+    const bridge = contractInput<RendererBridgeAdapter>({
+      planning: { listStructure: vi.fn(async () => failure) },
+      providers: { list: vi.fn(async () => failure) },
+      generation: { start, getRun: vi.fn(async () => ({ state: 'cancelled' as const })) },
+      validation: {
+        list: vi.fn(async () => failure),
+        runRules,
+        updateIssue,
+        createTodoFromIssue,
+        rememberException,
+        addComment,
+        saveTodo: vi.fn(async () => failure),
+        resolveComment: vi.fn(async () => failure),
+        disableException: vi.fn(async () => failure),
+      },
+    });
+    const navigate = vi.fn<(target: AuthorNavigationTarget) => void>();
+    const prompt = vi.fn();
+    const scheduled: Array<() => void> = [];
+    vi.stubGlobal('window', {
+      prompt,
+      setTimeout: vi.fn((handler: () => void) => {
+        scheduled.push(handler);
+        return scheduled.length;
+      }),
+      clearTimeout: vi.fn(),
+    });
+
+    resetHooks([
+      structure,
+      catalog,
+      [provider],
+      provider.id,
+      chapterId,
+      false,
+      false,
+      runningRun,
+      '检查已就绪。',
+    ]);
+    const readOnlyTree = ChecksWorkbench({
+      bridge,
+      projectId,
+      readOnly: true,
+      onNavigate: navigate,
+    });
+    const cleanups = hookHarness.effects.map((effect) => effect()).filter(Boolean);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await invoke(buttons(readOnlyTree, '运行规则检查')[0]!);
+    await invoke(buttons(readOnlyTree, '运行智能语义检查')[0]!);
+    await invoke(buttons(readOnlyTree, '标记已处理')[0]!);
+    await invoke(buttons(readOnlyTree, '转为修改任务')[0]!);
+    await invoke(buttons(readOnlyTree, '记住这个例外')[0]!);
+    await invoke(buttons(readOnlyTree, '添加批注')[0]!);
+    expect(runRules).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+    expect(updateIssue).not.toHaveBeenCalled();
+    expect(createTodoFromIssue).not.toHaveBeenCalled();
+    expect(rememberException).not.toHaveBeenCalled();
+    expect(addComment).not.toHaveBeenCalled();
+    expect(prompt).not.toHaveBeenCalled();
+
+    expect(hookHarness.setters[8]).toHaveBeenCalledWith(expect.stringContaining('章节读取失败'));
+    expect(scheduled).not.toHaveLength(0);
+    scheduled[0]?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(hookHarness.setters[6]).toHaveBeenCalledWith(false);
+    expect(hookHarness.setters[8]).toHaveBeenCalledWith('智能语义检查状态读取已取消。');
+
+    for (const cleanup of cleanups) (cleanup as () => void)();
+
+    const missingAnchorCatalog = contractInput<ValidationCatalog>({
+      ...catalog,
+      issues: [
+        {
+          ...catalog.issues[0]!,
+          issueType: 'future_rule',
+          source: 'ai',
+          currentEvidenceIds: [],
+          conflictEvidenceIds: [],
+          suggestion: null,
+          anchor: {
+            ...catalog.issues[0]!.anchor,
+            chapterId: null,
+            versionId: null,
+            logicalBlockId: null,
+            textQuote: null,
+            state: 'stale',
+          },
+        },
+      ],
+      todos: [{ ...catalog.todos[0]!, chapterId: null, logicalBlockId: null, status: 'done' }],
+      comments: [
+        { ...catalog.comments[0]!, chapterId: null, logicalBlockId: null, status: 'done' },
+      ],
+      exceptions: [
+        { ...catalog.exceptions[0]!, exceptionType: 'future_exception', active: false, notes: '' },
+      ],
+    });
+    resetHooks([structure, missingAnchorCatalog, [], '', '', false, false, null, '检查已就绪。']);
+    const edgeTree = ChecksWorkbench({ bridge, projectId, readOnly: false, onNavigate: navigate });
+    for (const jump of buttons(edgeTree, '前往原文')) await invoke(jump);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(hookHarness.setters[8]).toHaveBeenCalledWith(
+      expect.stringContaining('无法进行精准跳转'),
+    );
+    expect(textContent(edgeTree)).toContain('future rule');
+    expect(textContent(edgeTree)).toContain('future_exception');
+    expect(textContent(edgeTree)).toContain('已完成');
+    expect(textContent(edgeTree)).toContain('已处理');
+    expect(textContent(edgeTree)).toContain('已停用');
+  });
+
+  it('覆盖规则/智能检查和作者处置的失败、取消与输入边界', async () => {
+    const failure = {
+      state: 'failure' as const,
+      error: { code: 'MODEL_UNAVAILABLE' as const, message: '连接失败', retryable: true },
+    };
+    const start = vi
+      .fn()
+      .mockResolvedValueOnce(failure)
+      .mockResolvedValueOnce({ state: 'cancelled' as const });
+    const bridge = contractInput<RendererBridgeAdapter>({
+      planning: {
+        listStructure: vi.fn(async () => ({ state: 'success' as const, data: structure })),
+      },
+      providers: {
+        list: vi.fn(async () => ({ state: 'success' as const, data: { providers: [provider] } })),
+      },
+      generation: { start, getRun: vi.fn() },
+      validation: {
+        list: vi.fn(async () => failure),
+        runRules: vi.fn(async () => failure),
+        updateIssue: vi.fn(async () => failure),
+        createTodoFromIssue: vi.fn(async () => failure),
+        rememberException: vi.fn(async () => failure),
+        addComment: vi.fn(async () => failure),
+        saveTodo: vi.fn(async () => failure),
+        resolveComment: vi.fn(async () => failure),
+        disableException: vi.fn(async () => failure),
+      },
+    });
+    const prompt = vi.fn();
+    vi.stubGlobal('window', { prompt, setTimeout: vi.fn(), clearTimeout: vi.fn() });
+    resetHooks([
+      structure,
+      catalog,
+      [provider],
+      provider.id,
+      chapterId,
+      true,
+      false,
+      null,
+      '检查已就绪。',
+    ]);
+    const tree = ChecksWorkbench({ bridge, projectId, readOnly: false, onNavigate: vi.fn() });
+
+    await invoke(buttons(tree, '运行规则检查')[0]!);
+    await invoke(buttons(tree, '运行智能语义检查')[0]!);
+    await invoke(buttons(tree, '运行智能语义检查')[0]!);
+    await invoke(buttons(tree, '标记已处理')[0]!);
+    await invoke(buttons(tree, '转为修改任务')[0]!);
+    expect(hookHarness.setters[8]).toHaveBeenCalled();
+    expect(hookHarness.setters[6]).toHaveBeenCalledWith(false);
+
+    prompt.mockReturnValueOnce(null);
+    await invoke(buttons(tree, '记住这个例外')[0]!);
+    prompt.mockReturnValueOnce('完全无法识别的类型');
+    await invoke(buttons(tree, '记住这个例外')[0]!);
+    expect(hookHarness.setters[8]).toHaveBeenCalledWith('例外类型无法识别，未保存。');
+    prompt.mockReturnValueOnce('梦境').mockReturnValueOnce(null);
+    await invoke(buttons(tree, '记住这个例外')[0]!);
+    expect(bridge.validation.rememberException).toHaveBeenCalledWith(
+      expect.objectContaining({ exceptionType: 'dream', notes: '' }),
+    );
+
+    prompt.mockReturnValueOnce('   ');
+    await invoke(buttons(tree, '添加批注')[0]!);
+    const addCallsBefore = vi.mocked(bridge.validation.addComment).mock.calls.length;
+    prompt.mockReturnValueOnce('  有效批注  ');
+    await invoke(buttons(tree, '添加批注')[0]!);
+    expect(vi.mocked(bridge.validation.addComment).mock.calls.length).toBe(addCallsBefore + 1);
+    expect(bridge.validation.addComment).toHaveBeenLastCalledWith(
+      expect.objectContaining({ body: '有效批注' }),
+    );
+
+    await invoke(buttons(tree, '标记完成')[0]!);
+    await invoke(buttons(tree, '标记批注已处理')[0]!);
+    await invoke(buttons(tree, '停用此例外')[0]!);
+    expect(hookHarness.setters[8]).toHaveBeenCalledWith(expect.stringContaining('操作未完成'));
+  });
 });

@@ -10,6 +10,7 @@ import { ProjectWorkspaceService } from '../../packages/core-service/src/project
 import { RecoveryService } from '../../packages/core-service/src/recovery.js';
 
 const temporaryDirectories: string[] = [];
+const collisionId = '11111111-1111-4111-8111-111111111111';
 
 afterEach(async () => {
   await Promise.all(
@@ -26,6 +27,7 @@ async function createHarness() {
   const backupRoot = path.join(root, 'backups');
   await mkdir(parent, { recursive: true });
   let current = new Date('2026-08-01T08:00:00.000Z');
+  let forcedId: string | null = null;
   const clock = { now: () => current };
   const appRuntime = await openAppRuntime({
     databasePath: path.join(root, 'app.sqlite'),
@@ -41,7 +43,11 @@ async function createHarness() {
     recentProjects: appRuntime.recentProjects,
     clock,
   });
-  const recovery = new RecoveryService(workspace, { backupRootDirectory: backupRoot, clock });
+  const recovery = new RecoveryService(workspace, {
+    backupRootDirectory: backupRoot,
+    clock,
+    idFactory: () => forcedId ?? randomUUID(),
+  });
   const project = await workspace.create(
     randomUUID(),
     { name: '备份清理覆盖', channel: '长篇' },
@@ -55,6 +61,9 @@ async function createHarness() {
     project,
     advance(days: number) {
       current = new Date(current.getTime() + days * 24 * 60 * 60 * 1000);
+    },
+    forceId(value: string | null) {
+      forcedId = value;
     },
   };
 }
@@ -113,8 +122,14 @@ describe('backup cleanup high-risk coverage', () => {
       });
       expect(preview.items.filter((item) => item.reason === 'quota-pressure')).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ backupId: first.backupId, action: 'delete' }),
-          expect.objectContaining({ backupId: second.backupId, action: 'delete' }),
+          expect.objectContaining({
+            backupId: first.backupId,
+            action: 'delete',
+          }),
+          expect.objectContaining({
+            backupId: second.backupId,
+            action: 'delete',
+          }),
         ]),
       );
       expect(preview.remainingBytes).toBe(70 * 1024 * 1024);
@@ -181,6 +196,133 @@ describe('backup cleanup high-risk coverage', () => {
           planHash: preview.planHash,
         }),
       ).rejects.toMatchObject({ code: 'BACKUP_CLEANUP_STALE' });
+    } finally {
+      await harness.workspace.shutdown();
+      await harness.appRuntime.close();
+    }
+  });
+
+  it('distinguishes major over-count retention from named backups that remain within quota', async () => {
+    const harness = await createHarness();
+    try {
+      const named = await harness.recovery.createNamedSnapshot(randomUUID(), {
+        projectId: harness.project.projectId,
+        authority: 'author',
+        name: '阶段存档',
+        note: '后续取消保护以验证命名轨保留规则',
+      });
+      harness.advance(1);
+      const oldestMajor = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: harness.project.projectId,
+        operation: 'replace',
+      });
+      harness.advance(1);
+      const retainedMajor = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: harness.project.projectId,
+        operation: 'split-chapter',
+      });
+      harness.advance(1);
+      const newestMajor = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: harness.project.projectId,
+        operation: 'merge-chapter',
+      });
+
+      await harness.recovery.setProtection(randomUUID(), {
+        projectId: harness.project.projectId,
+        backupId: named.backupId,
+        authority: 'author',
+        protected: false,
+        confirmationBackupId: named.backupId,
+      });
+
+      const firstPolicy = await harness.recovery.updatePolicy(randomUUID(), {
+        projectId: harness.project.projectId,
+        authority: 'author',
+        dailyRetentionCount: 14,
+        majorRetentionCount: 2,
+        majorRetentionDays: 3650,
+        quotaBytes: 1024 * 1024 * 1024,
+      });
+      const secondPolicy = await harness.recovery.updatePolicy(randomUUID(), {
+        projectId: harness.project.projectId,
+        authority: 'author',
+        dailyRetentionCount: 14,
+        majorRetentionCount: 1,
+        majorRetentionDays: 3650,
+        quotaBytes: 1024 * 1024 * 1024,
+      });
+      expect([firstPolicy.policyVersion, secondPolicy.policyVersion]).toEqual([1, 2]);
+
+      const preview = await harness.recovery.previewCleanup(harness.project.projectId);
+      expect(preview.items.find((item) => item.backupId === newestMajor.backupId)).toMatchObject({
+        action: 'protect',
+        reason: 'last-verified',
+      });
+      expect(preview.items.find((item) => item.backupId === retainedMajor.backupId)).toMatchObject({
+        action: 'retain',
+        reason: 'major-retention',
+      });
+      expect(preview.items.find((item) => item.backupId === oldestMajor.backupId)).toMatchObject({
+        action: 'delete',
+        reason: 'major-over-limit',
+      });
+      expect(preview.items.find((item) => item.backupId === named.backupId)).toMatchObject({
+        action: 'retain',
+        reason: 'within-quota',
+      });
+    } finally {
+      await harness.workspace.shutdown();
+      await harness.appRuntime.close();
+    }
+  });
+
+  it('rolls back the database when protection metadata cannot be rewritten atomically', async () => {
+    const harness = await createHarness();
+    try {
+      const backup = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: harness.project.projectId,
+        operation: 'replace',
+      });
+      const metadataPath = path.join(
+        harness.backupRoot,
+        harness.project.projectId,
+        `${backup.backupId}.json`,
+      );
+      const collisionPath = `${metadataPath}.partial-${collisionId}`;
+      await writeFile(collisionPath, 'occupied', 'utf8');
+      harness.forceId(collisionId);
+
+      try {
+        await expect(
+          harness.recovery.setProtection(randomUUID(), {
+            projectId: harness.project.projectId,
+            backupId: backup.backupId,
+            authority: 'author',
+            protected: true,
+            confirmationBackupId: null,
+          }),
+        ).rejects.toMatchObject({ code: 'BACKUP_CREATE_FAILED' });
+      } finally {
+        harness.forceId(null);
+      }
+
+      const authorProtected = harness.workspace.readProject(
+        harness.project.projectId,
+        (database) => {
+          const row = database
+            .prepare(
+              'SELECT author_protected AS authorProtected FROM backup_records WHERE id = ? AND project_id = ?',
+            )
+            .get(backup.backupId, harness.project.projectId) as
+            { authorProtected: number | bigint } | undefined;
+          return Number(row?.authorProtected ?? -1);
+        },
+      );
+      expect(authorProtected).toBe(0);
+      const metadata = JSON.parse(await readFile(metadataPath, 'utf8')) as {
+        authorProtected?: boolean;
+      };
+      expect(metadata.authorProtected).toBe(false);
     } finally {
       await harness.workspace.shutdown();
       await harness.appRuntime.close();

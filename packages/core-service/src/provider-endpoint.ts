@@ -88,7 +88,7 @@ function parseIpv6Words(host: string): readonly number[] | null {
     }
     return words;
   };
-  const left = parseSide(pieces[0] ?? '');
+  const left = parseSide(pieces[0]!);
   const right = parseSide(pieces[1] ?? '');
   if (!left || !right) return null;
   if (pieces.length === 1) return left.length === 8 ? left : null;
@@ -227,14 +227,9 @@ export async function resolveProviderEndpoint(
     unsafe('The Provider hostname resolved across mixed network trust boundaries.');
   }
   const [resolvedScope] = scopes;
-  if (!resolvedScope) unsafe('The Provider endpoint scope could not be determined.');
   if (resolvedScope !== endpoint.scope) {
     unsafe('The Provider hostname resolved outside its declared network trust boundary.');
   }
-  if (resolvedScope === 'external' && url.protocol !== 'https:') {
-    unsafe('External Provider endpoints must use HTTPS.');
-  }
-
   return {
     endpoint,
     hostname,

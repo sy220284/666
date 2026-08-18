@@ -1,0 +1,69 @@
+name: Toolchain Host Capability Probe
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json
+      - docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md
+      - scripts/toolchain-completeness-policy.mjs
+      - .github/workflows/toolchain-host-probe.yml
+      - .github/workflows/toolchain-maintenance.yml
+      - .github/workflows/workspace-bootstrap-export.yml
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: host-linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Probe Linux development commands
+        shell: bash
+        run: |
+          set -euo pipefail
+          for command in git bash tar zstd python3 gcc g++ make pkg-config fc-match; do
+            command -v "$command"
+          done
+          apt-cache show xvfb >/dev/null
+          apt-cache show fonts-noto-cjk >/dev/null
+
+  windows:
+    name: host-windows
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe Windows development commands and signing SDK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-Command git.exe
+          Get-Command pwsh.exe
+          Get-Command powershell.exe
+          $windowsKits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $signTool = Get-ChildItem $windowsKits -Recurse -Filter signtool.exe -ErrorAction Stop |
+            Select-Object -First 1
+          if (-not $signTool) {
+            throw "Windows SDK signtool.exe was not found under $windowsKits"
+          }
+          $signTool.FullName
+
+  macos:
+    name: host-macos
+    runs-on: macos-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe macOS development and distribution commands
+        shell: bash
+        run: |
+          set -euo pipefail
+          for command in git bash xcrun codesign security xcode-select; do
+            command -v "$command"
+          done
+          xcode-select -p
+          xcrun --find codesign
+          xcrun notarytool --version

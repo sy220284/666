@@ -28,7 +28,6 @@ function snapshotMatchesPersisted(
   block: PersistedEditorBlock,
 ): boolean {
   if (snapshot.blockType !== block.blockType || snapshot.text !== block.text) return false;
-  if (snapshot.logicalBlockId && snapshot.logicalBlockId !== block.logicalBlockId) return false;
   return (
     snapshot.blockType !== 'heading' ||
     snapshotHeadingLevel(snapshot) === persistedHeadingLevel(block)

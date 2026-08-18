@@ -43,7 +43,7 @@
     "check:license": "node scripts/license-policy.mjs",
     "check:docs": "node scripts/documentation-consistency.mjs",
     "check:governance": "node scripts/governance-self-check.mjs",
-    "ci:policy": "node scripts/toolchain-policy.mjs && node scripts/workflow-structure-policy.mjs && node scripts/ci-policy.mjs && node scripts/check-coverage-policy.mjs && node scripts/code-quality-policy.mjs && node scripts/type-assertion-policy.mjs && pnpm check:license && pnpm check:docs && pnpm check:governance",
+    "ci:policy": "node scripts/toolchain-policy.mjs && node scripts/toolchain-completeness-policy.mjs && node scripts/workflow-structure-policy.mjs && node scripts/ci-policy.mjs && node scripts/check-coverage-policy.mjs && node scripts/code-quality-policy.mjs && node scripts/type-assertion-policy.mjs && pnpm check:license && pnpm check:docs && pnpm check:governance",
     "ci:evidence": "node scripts/evidence-policy.mjs",
     "ci:ruleset": "node scripts/ruleset-policy.mjs check",
     "task:status": "node .github/governance/single-work-taskctl.mjs status",
@@ -54,7 +54,8 @@
     "task:verify-final": "node -e \"console.log('Task verification is advisory; Main Verification closes successful merges automatically.')\"",
     "test:coverage": "pnpm test:prepare && vitest run --config vitest.coverage.config.ts",
     "test:quality": "node scripts/test-quality-audit.mjs",
-    "toolchain:check": "node scripts/toolchain-policy.mjs",
+    "toolchain:check": "node scripts/toolchain-policy.mjs && node scripts/toolchain-completeness-policy.mjs",
+    "toolchain:completeness": "node scripts/toolchain-completeness-policy.mjs",
     "coverage:baseline:update": "node scripts/update-coverage-baseline.mjs --summary coverage/coverage-summary.json --source-head"
   },
   "devDependencies": {

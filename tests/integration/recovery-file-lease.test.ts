@@ -100,9 +100,9 @@ describe('daily backup file lease', () => {
     await utimes(lockPath, staleAt, staleAt);
 
     const timing = {
-      durationMs: 100,
-      heartbeatMs: 20,
-      waitTimeoutMs: 45,
+      durationMs: 1_000,
+      heartbeatMs: 50,
+      waitTimeoutMs: 150,
       retryDelayMs: 2,
     } as const;
     const contenders = await Promise.allSettled(

@@ -62,7 +62,6 @@ function groupAtomicEdits(edits: readonly AtomicEdit[]): CharacterDiffSegment[] 
 }
 
 function sharedCharacterRatio(left: readonly string[], right: readonly string[]): number {
-  if (left.length === 0 || right.length === 0) return 0;
   const counts = new Map<string, number>();
   for (const character of left) counts.set(character, (counts.get(character) ?? 0) + 1);
   let shared = 0;
@@ -85,8 +84,7 @@ function backtrack(
   const edits: AtomicEdit[] = [];
 
   for (let distance = trace.length - 1; distance > 0; distance -= 1) {
-    const previous = trace[distance - 1];
-    if (!previous) throw new Error('Character diff trace is incomplete.');
+    const previous = trace[distance - 1]!;
     const diagonal = x - y;
     const previousDelete = previous.get(diagonal - 1) ?? Number.NEGATIVE_INFINITY;
     const previousInsert = previous.get(diagonal + 1) ?? Number.NEGATIVE_INFINITY;
@@ -94,47 +92,24 @@ function backtrack(
       diagonal === -distance || (diagonal !== distance && previousDelete < previousInsert)
         ? diagonal + 1
         : diagonal - 1;
-    const previousX = previous.get(previousDiagonal) ?? 0;
+    const previousX = previous.get(previousDiagonal)!;
     const previousY = previousX - previousDiagonal;
 
     while (x > previousX && y > previousY) {
-      const character = left[x - 1];
-      if (character === undefined) throw new Error('Character diff backtrack exceeded input.');
+      const character = left[x - 1]!;
       edits.push({ type: 'equal', character });
       x -= 1;
       y -= 1;
     }
     if (x === previousX) {
-      const character = right[y - 1];
-      if (character === undefined) throw new Error('Character diff insert exceeded input.');
+      const character = right[y - 1]!;
       edits.push({ type: 'insert', character });
       y -= 1;
     } else {
-      const character = left[x - 1];
-      if (character === undefined) throw new Error('Character diff delete exceeded input.');
+      const character = left[x - 1]!;
       edits.push({ type: 'delete', character });
       x -= 1;
     }
-  }
-
-  while (x > 0 && y > 0) {
-    const character = left[x - 1];
-    if (character === undefined) throw new Error('Character diff prefix exceeded input.');
-    edits.push({ type: 'equal', character });
-    x -= 1;
-    y -= 1;
-  }
-  while (x > 0) {
-    const character = left[x - 1];
-    if (character === undefined) throw new Error('Character diff delete prefix exceeded input.');
-    edits.push({ type: 'delete', character });
-    x -= 1;
-  }
-  while (y > 0) {
-    const character = right[y - 1];
-    if (character === undefined) throw new Error('Character diff insert prefix exceeded input.');
-    edits.push({ type: 'insert', character });
-    y -= 1;
   }
 
   edits.reverse();
@@ -146,29 +121,33 @@ function exactMiddleDiff(
   right: readonly string[],
   options: CharacterDiffOptions,
 ): CharacterDiffSegment[] | null {
-  const maximumDistance = options.maximumEditDistance ?? DEFAULT_MAXIMUM_EDIT_DISTANCE;
-  const maximumWork = options.maximumWorkUnits ?? DEFAULT_MAXIMUM_WORK_UNITS;
   const maximum = left.length + right.length;
+  const maximumDistance = Math.min(
+    options.maximumEditDistance ?? DEFAULT_MAXIMUM_EDIT_DISTANCE,
+    maximum,
+  );
+  const maximumWork = options.maximumWorkUnits ?? DEFAULT_MAXIMUM_WORK_UNITS;
   let previous = new Map<number, number>([[1, 0]]);
   const trace: Map<number, number>[] = [];
   let work = 0;
 
-  for (let distance = 0; distance <= maximum; distance += 1) {
+  for (let distance = 0; distance <= maximumDistance; distance += 1) {
     assertNotCancelled(options.signal);
-    if (distance > maximumDistance) return null;
     const current = new Map<number, number>();
     for (let diagonal = -distance; diagonal <= distance; diagonal += 2) {
       work += 1;
       if (work > maximumWork) return null;
       if ((work & 1_023) === 0) assertNotCancelled(options.signal);
 
-      const deleteX = previous.get(diagonal - 1) ?? Number.NEGATIVE_INFINITY;
-      const insertX = previous.get(diagonal + 1) ?? Number.NEGATIVE_INFINITY;
       let x: number;
-      if (diagonal === -distance || (diagonal !== distance && deleteX < insertX)) {
-        x = insertX === Number.NEGATIVE_INFINITY ? 0 : insertX;
+      if (diagonal === -distance) {
+        x = previous.get(diagonal + 1)!;
+      } else if (diagonal === distance) {
+        x = previous.get(diagonal - 1)! + 1;
       } else {
-        x = (deleteX === Number.NEGATIVE_INFINITY ? 0 : deleteX) + 1;
+        const deleteX = previous.get(diagonal - 1)!;
+        const insertX = previous.get(diagonal + 1)!;
+        x = deleteX < insertX ? insertX : deleteX + 1;
       }
       let y = x - diagonal;
       while (x < left.length && y < right.length && left[x] === right[y]) {

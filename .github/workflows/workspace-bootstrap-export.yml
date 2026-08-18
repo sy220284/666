@@ -1,0 +1,299 @@
+name: Workspace Bootstrap Export
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Full 40-character commit SHA to export from
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full 40-character commit SHA to export from
+        required: true
+        type: string
+  push:
+    branches: [governance]
+    paths:
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json
+      - docs/process/DEVELOPMENT_TOOLCHAIN_COMPLETENESS.md
+      - scripts/toolchain-policy.mjs
+      - scripts/toolchain-completeness-policy.mjs
+      - .github/workflows/toolchain-host-probe.yml
+      - .github/workflows/workspace-bootstrap-export.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workspace-bootstrap-export-${{ inputs.source_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  export:
+    name: export-linux-x64-workspace-bootstrap
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - name: Configure portable payload directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/worldforge-playwright-browsers" >> "$GITHUB_ENV"
+          echo "AUDIT_DIR=$RUNNER_TEMP/worldforge-audit-tools" >> "$GITHUB_ENV"
+      - name: Validate exact source commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          node .github/governance/assert-clean-tree.mjs
+      - name: Probe Linux development capabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          for command in git bash tar zstd python3 gcc g++ make pkg-config fc-match; do
+            command -v "$command"
+          done
+          apt-cache show xvfb >/dev/null
+          apt-cache show fonts-noto-cjk >/dev/null
+      - name: Install complete workspace dependencies
+        shell: bash
+        env:
+          STORE_DIR: ${{ runner.temp }}/worldforge-pnpm-store
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --prefer-offline --store-dir "$STORE_DIR"
+          node .github/governance/assert-clean-tree.mjs
+          test "$(node --version)" = "v24.18.1"
+          test "$(pnpm --version)" = "11.21.0"
+          node -p "require('./node_modules/electron/package.json').version"
+          pnpm exec esbuild --version
+          pnpm exec vitest --version
+          pnpm exec playwright --version
+      - name: Install and verify standalone audit tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$AUDIT_DIR"
+          AUDIT_DIR="$AUDIT_DIR" node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import path from 'node:path';
+
+          const authority = JSON.parse(
+            readFileSync('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json', 'utf8'),
+          );
+          const rootPackage = JSON.parse(readFileSync('package.json', 'utf8'));
+          const packageJson = {
+            name: 'worldforge-standalone-audit-tools',
+            private: true,
+            type: 'module',
+            engines: { node: '>=24.0.0 <25.0.0' },
+            devDependencies: {
+              pnpm: authority.bundledPnpmVersion,
+              eslint: rootPackage.devDependencies.eslint,
+              'typescript-eslint': rootPackage.devDependencies['typescript-eslint'],
+              ...authority.standaloneAuditTools,
+            },
+          };
+          const sonarConfig = `import sonarjs from 'eslint-plugin-sonarjs';
+          import tseslint from 'typescript-eslint';
+
+          export default tseslint.config(
+            { ignores: ['**/dist/**', '**/node_modules/**', 'docs/**'] },
+            ...tseslint.configs.recommended,
+            sonarjs.configs.recommended,
+            {
+              files: ['**/*.{ts,tsx,mts,cts}'],
+              languageOptions: {
+                parserOptions: {
+                  projectService: true,
+                  tsconfigRootDir: process.cwd(),
+                },
+              },
+              rules: {
+                'sonarjs/cognitive-complexity': ['error', 25],
+              },
+            },
+          );
+          `;
+          writeFileSync(
+            path.join(process.env.AUDIT_DIR, 'package.json'),
+            `${JSON.stringify(packageJson, null, 2)}\n`,
+          );
+          writeFileSync(path.join(process.env.AUDIT_DIR, 'sonarjs.config.mjs'), sonarConfig);
+          writeFileSync(
+            path.join(process.env.AUDIT_DIR, 'sonarjs-smoke.js'),
+            'export const toolchainSonarSmoke = true;\n',
+          );
+          NODE
+          pnpm --dir "$AUDIT_DIR" install \
+            --ignore-scripts \
+            --store-dir "$AUDIT_DIR/store" \
+            --cache-dir "$AUDIT_DIR/cache"
+          rm -rf "$AUDIT_DIR/node_modules"
+          pnpm --dir "$AUDIT_DIR" install \
+            --offline \
+            --frozen-lockfile \
+            --ignore-scripts \
+            --store-dir "$AUDIT_DIR/store" \
+            --cache-dir "$AUDIT_DIR/cache"
+          "$AUDIT_DIR/node_modules/.bin/pnpm" --version
+          "$AUDIT_DIR/node_modules/.bin/knip" --version
+          "$AUDIT_DIR/node_modules/.bin/jscpd" --version
+          (
+            cd "$AUDIT_DIR"
+            node --input-type=module -e "import sonarjs from 'eslint-plugin-sonarjs'; if (!sonarjs.configs?.recommended?.rules?.['sonarjs/cognitive-complexity']) process.exit(1); console.log('SonarJS cognitive complexity rule available');"
+            ./node_modules/.bin/eslint --config ./sonarjs.config.mjs ./sonarjs-smoke.js
+          )
+          rm -rf "$AUDIT_DIR/store/v11/projects"
+      - name: Install Playwright Chromium payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec playwright install chromium
+          test -d "$PLAYWRIGHT_BROWSERS_PATH"
+          find "$PLAYWRIGHT_BROWSERS_PATH" -type f -print -quit | grep -q .
+      - name: Build source, dependency and runtime archives
+        shell: bash
+        env:
+          STORE_DIR: ${{ runner.temp }}/worldforge-pnpm-store
+          OUTPUT_DIR: ${{ runner.temp }}/worldforge-workspace-bootstrap
+          METADATA_DIR: ${{ runner.temp }}/worldforge-bootstrap-metadata
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUTPUT_DIR" "$METADATA_DIR"
+          pnpm list -r --depth -1 --json > "$METADATA_DIR/workspace-packages.json"
+          find . -type d -name node_modules -prune -print | sort > "$METADATA_DIR/node-modules-paths.txt"
+          git ls-files 'apps/**/package.json' 'packages/**/package.json' | sort > "$METADATA_DIR/workspace-manifests.txt"
+
+          cat > "$METADATA_DIR/MANIFEST.json" <<EOF
+          {
+            "schemaVersion": 2,
+            "repository": "sy220284/666",
+            "sourceCommit": "$SOURCE_SHA",
+            "platform": "linux",
+            "architecture": "x64",
+            "nodeVersion": "$(node --version)",
+            "npmVersion": "$(npm --version)",
+            "pnpmVersion": "$(pnpm --version)",
+            "lockfileSha256": "$(sha256sum pnpm-lock.yaml | awk '{print $1}')",
+            "browserPayload": "worldforge-playwright-browsers",
+            "auditToolsPayload": "worldforge-audit-tools",
+            "pnpmRuntimeBundled": true,
+            "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+          source_archive="worldforge-source-linux-x64-${SOURCE_SHA}.tar.zst"
+          git archive --format=tar HEAD | zstd -T0 -3 -o "$OUTPUT_DIR/$source_archive"
+
+          # pnpm keeps host-local project registration symlinks here. They are not package data
+          # and would become broken links after a portable restore, so never archive them.
+          rm -rf "$STORE_DIR/v11/projects"
+          {
+            printf '%s\n' package.json pnpm-lock.yaml pnpm-workspace.yaml
+            cat "$METADATA_DIR/workspace-manifests.txt"
+            cat "$METADATA_DIR/node-modules-paths.txt"
+          } | awk 'NF && !seen[$0]++' > "$METADATA_DIR/archive-paths.txt"
+          dependency_archive="worldforge-workspace-dependencies-linux-x64-${SOURCE_SHA}.tar.zst"
+          dependency_tar="$OUTPUT_DIR/worldforge-workspace-dependencies-linux-x64-${SOURCE_SHA}.tar"
+          tar -cf "$dependency_tar" -C "$GITHUB_WORKSPACE" -T "$METADATA_DIR/archive-paths.txt"
+          tar -rf "$dependency_tar" -C "${RUNNER_TEMP}" \
+            worldforge-pnpm-store \
+            worldforge-playwright-browsers \
+            worldforge-audit-tools
+          zstd -T0 -3 --rm "$dependency_tar" -o "$OUTPUT_DIR/$dependency_archive"
+
+          node_bin="$(readlink -f "$(command -v node)")"
+          node_root="$(dirname "$(dirname "$node_bin")")"
+          runtime_root="${RUNNER_TEMP}/worldforge-runtime"
+          mkdir -p "$runtime_root/runtime"
+          cp -a "$node_root" "$runtime_root/runtime/node"
+          runtime_archive="worldforge-node-v24.18.1-linux-x64-${SOURCE_SHA}.tar.zst"
+          tar -C "$runtime_root" -cf - runtime | zstd -T0 -3 -o "$OUTPUT_DIR/$runtime_archive"
+
+          cp "$METADATA_DIR/MANIFEST.json" "$OUTPUT_DIR/BOOTSTRAP_MANIFEST.json"
+          cp "$METADATA_DIR/workspace-packages.json" "$OUTPUT_DIR/workspace-packages.json"
+          (
+            cd "$OUTPUT_DIR"
+            sha256sum "$source_archive" "$dependency_archive" "$runtime_archive" > SHA256SUMS.txt
+            sha256sum -c SHA256SUMS.txt
+          )
+          node .github/governance/assert-clean-tree.mjs
+      - name: Verify clean-room restore
+        shell: bash
+        env:
+          OUTPUT_DIR: ${{ runner.temp }}/worldforge-workspace-bootstrap
+          RESTORE_ROOT: ${{ runner.temp }}/worldforge-bootstrap-restore
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESTORE_ROOT/source"
+          source_archive="$OUTPUT_DIR/worldforge-source-linux-x64-${SOURCE_SHA}.tar.zst"
+          dependency_archive="$OUTPUT_DIR/worldforge-workspace-dependencies-linux-x64-${SOURCE_SHA}.tar.zst"
+          runtime_archive="$OUTPUT_DIR/worldforge-node-v24.18.1-linux-x64-${SOURCE_SHA}.tar.zst"
+
+          zstd -dc "$source_archive" | tar -xf - -C "$RESTORE_ROOT/source"
+          zstd -dc "$dependency_archive" | tar -xf - -C "$RESTORE_ROOT/source"
+          zstd -dc "$runtime_archive" | tar -xf - -C "$RESTORE_ROOT"
+
+          test -f "$RESTORE_ROOT/source/package.json"
+          test -f "$RESTORE_ROOT/source/pnpm-lock.yaml"
+          test -f "$RESTORE_ROOT/source/pnpm-workspace.yaml"
+          test -d "$RESTORE_ROOT/source/node_modules/.pnpm"
+          test -d "$RESTORE_ROOT/source/worldforge-pnpm-store"
+          test -d "$RESTORE_ROOT/source/worldforge-playwright-browsers"
+          test -d "$RESTORE_ROOT/source/worldforge-audit-tools/node_modules/.pnpm"
+          test -f "$RESTORE_ROOT/source/worldforge-audit-tools/sonarjs.config.mjs"
+          test -f "$RESTORE_ROOT/source/node_modules/electron/package.json"
+          test -x "$RESTORE_ROOT/runtime/node/bin/node"
+          test "$("$RESTORE_ROOT/runtime/node/bin/node" --version)" = "v24.18.1"
+
+          broken_link="$(find "$RESTORE_ROOT/source" -xtype l -print -quit)"
+          test -z "$broken_link"
+          runtime_broken_link="$(find "$RESTORE_ROOT/runtime" -xtype l -print -quit)"
+          test -z "$runtime_broken_link"
+
+          (
+            cd "$RESTORE_ROOT/source"
+            export PATH="$RESTORE_ROOT/runtime/node/bin:$RESTORE_ROOT/source/worldforge-audit-tools/node_modules/.bin:$RESTORE_ROOT/source/node_modules/.bin:$PATH"
+            export PLAYWRIGHT_BROWSERS_PATH="$RESTORE_ROOT/source/worldforge-playwright-browsers"
+            test "$(node --version)" = "v24.18.1"
+            test "$(pnpm --version)" = "11.21.0"
+            vitest --version
+            esbuild --version
+            playwright --version
+            "$RESTORE_ROOT/source/worldforge-audit-tools/node_modules/.bin/knip" --version
+            "$RESTORE_ROOT/source/worldforge-audit-tools/node_modules/.bin/jscpd" --version
+            (
+              cd "$RESTORE_ROOT/source/worldforge-audit-tools"
+              node --input-type=module -e "import sonarjs from 'eslint-plugin-sonarjs'; if (!sonarjs.configs?.recommended?.rules?.['sonarjs/cognitive-complexity']) process.exit(1); console.log('SonarJS cognitive complexity rule restored');"
+              ./node_modules/.bin/eslint --config ./sonarjs.config.mjs ./sonarjs-smoke.js
+            )
+            node --input-type=module -e "import { chromium } from '@playwright/test'; const browser = await chromium.launch({ headless: true }); console.log(await browser.version()); await browser.close();"
+          )
+          node .github/governance/assert-clean-tree.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: worldforge-workspace-bootstrap-Linux-X64-${{ env.SOURCE_SHA }}
+          path: ${{ runner.temp }}/worldforge-workspace-bootstrap/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+          compression-level: 0

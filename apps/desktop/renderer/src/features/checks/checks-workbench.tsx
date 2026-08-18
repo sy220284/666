@@ -50,7 +50,9 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     `检查只读取当前${authorTerm('finalVersion')}，不会自动改写正文。`,
   );
   const [commentStatus = 'all', setCommentStatus] = useState<'all' | 'open' | 'resolved'>('all');
-  const [commentSource = 'all', setCommentSource] = useState<'all' | 'validation' | 'manual'>('all');
+  const [commentSource = 'all', setCommentSource] = useState<
+    'all' | 'validation' | 'manual'
+  >('all');
   const [commentTag = '', setCommentTag] = useState<string>('');
   const [commentIssueType = '', setCommentIssueType] = useState<string>('');
   const [commentCharacterTag = '', setCommentCharacterTag] = useState<string>('');

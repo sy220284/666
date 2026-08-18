@@ -26,6 +26,9 @@ interface WritingWorkbenchProps {
   readonly project: ProjectWorkspaceSummary;
   readonly initialContinuation: ProjectContinuationSnapshot | null;
   readonly panel: WritingPanel;
+  readonly typewriterMode: boolean;
+  readonly typewriterAnchorPercent: number;
+  readonly onTypewriterModeChange: (enabled: boolean) => Promise<boolean>;
   readonly navigationChapterId?: string | null;
   readonly navigationLogicalBlockId?: string | null;
   readonly navigationVersionId?: string | null;
@@ -44,6 +47,9 @@ export function WritingWorkbench({
   project,
   initialContinuation,
   panel,
+  typewriterMode,
+  typewriterAnchorPercent,
+  onTypewriterModeChange,
   navigationChapterId,
   navigationLogicalBlockId,
   navigationVersionId,
@@ -226,6 +232,9 @@ export function WritingWorkbench({
       panel={panel}
       project={project}
       readOnly={readOnly}
+      typewriterMode={typewriterMode}
+      typewriterAnchorPercent={typewriterAnchorPercent}
+      onTypewriterModeChange={onTypewriterModeChange}
       replaceDraft={replaceDraft}
       replaceText={replaceText}
       setContextVisible={setContextVisible}

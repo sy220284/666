@@ -12,6 +12,8 @@ export const VALIDATION_IPC_CHANNELS = {
   saveTodo: 'worldforge:validation:save-todo',
   addComment: 'worldforge:validation:add-comment',
   resolveComment: 'worldforge:validation:resolve-comment',
+  reopenComment: 'worldforge:validation:reopen-comment',
+  batchComments: 'worldforge:validation:batch-comments',
   rememberException: 'worldforge:validation:remember-exception',
   disableException: 'worldforge:validation:disable-exception',
 } as const;
@@ -24,6 +26,8 @@ export const VALIDATION_COMMANDS = {
   saveTodo: 'validation.saveTodo',
   addComment: 'validation.addComment',
   resolveComment: 'validation.resolveComment',
+  reopenComment: 'validation.reopenComment',
+  batchComments: 'validation.batchComments',
   rememberException: 'validation.rememberException',
   disableException: 'validation.disableException',
 } as const;
@@ -162,6 +166,7 @@ export const StoryCommentSchema = z.strictObject({
   logicalBlockId: DraftEntityIdSchema.nullable(),
   validationIssueId: DraftEntityIdSchema.nullable(),
   body: z.string().trim().min(1).max(8_000),
+  tags: z.array(z.string().trim().min(1).max(24)).max(12).default([]),
   status: z.enum(['open', 'resolved']),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -213,6 +218,13 @@ export const StoryTodoSaveInputSchema = z.strictObject({
   title: z.string().trim().min(1).max(240),
   status: z.enum(['open', 'done']).default('open'),
 });
+export const StoryCommentTagSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(24)
+  .regex(/^[\p{Script=Han}A-Za-z0-9._-]+$/u);
+
 export const StoryCommentAddInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   issueId: DraftEntityIdSchema.nullable().default(null),
@@ -225,6 +237,29 @@ export const StoryCommentResolveInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   commentId: DraftEntityIdSchema,
 });
+export const StoryCommentReopenInputSchema = z.strictObject({
+  projectId: ProjectIdSchema,
+  commentId: DraftEntityIdSchema,
+});
+export const StoryCommentBatchInputSchema = z
+  .strictObject({
+    projectId: ProjectIdSchema,
+    commentIds: z.array(DraftEntityIdSchema).min(1).max(100),
+    action: z.enum(['resolve', 'reopen', 'tag']),
+    tags: z.array(StoryCommentTagSchema).max(12).default([]),
+  })
+  .superRefine((input, context) => {
+    if (new Set(input.commentIds).size !== input.commentIds.length) {
+      context.addIssue({
+        code: 'custom',
+        path: ['commentIds'],
+        message: 'Comment ids must be unique.',
+      });
+    }
+    if (input.action === 'tag' && input.tags.length === 0) {
+      context.addIssue({ code: 'custom', path: ['tags'], message: 'Tag action requires tags.' });
+    }
+  });
 export const ValidationExceptionRememberInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   issueId: DraftEntityIdSchema,
@@ -279,6 +314,14 @@ export const StoryCommentResolveCommandSchema = command(
   VALIDATION_COMMANDS.resolveComment,
   StoryCommentResolveInputSchema,
 );
+export const StoryCommentReopenCommandSchema = command(
+  VALIDATION_COMMANDS.reopenComment,
+  StoryCommentReopenInputSchema,
+);
+export const StoryCommentBatchCommandSchema = command(
+  VALIDATION_COMMANDS.batchComments,
+  StoryCommentBatchInputSchema,
+);
 export const ValidationExceptionRememberCommandSchema = command(
   VALIDATION_COMMANDS.rememberException,
   ValidationExceptionRememberInputSchema,
@@ -318,6 +361,14 @@ export const CoreValidationOperationSchema = z.discriminatedUnion('operation', [
     input: StoryCommentResolveInputSchema,
   }),
   z.strictObject({
+    operation: z.literal(VALIDATION_COMMANDS.reopenComment),
+    input: StoryCommentReopenInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(VALIDATION_COMMANDS.batchComments),
+    input: StoryCommentBatchInputSchema,
+  }),
+  z.strictObject({
     operation: z.literal(VALIDATION_COMMANDS.rememberException),
     input: ValidationExceptionRememberInputSchema,
   }),
@@ -346,6 +397,8 @@ export const CoreValidationResultSchema = z.union([
   success(VALIDATION_COMMANDS.saveTodo),
   success(VALIDATION_COMMANDS.addComment),
   success(VALIDATION_COMMANDS.resolveComment),
+  success(VALIDATION_COMMANDS.reopenComment),
+  success(VALIDATION_COMMANDS.batchComments),
   success(VALIDATION_COMMANDS.rememberException),
   success(VALIDATION_COMMANDS.disableException),
   failure,
@@ -391,6 +444,12 @@ export interface ValidationBridge {
   readonly resolveComment: (
     input: StoryCommentResolveInput,
   ) => Promise<z.infer<typeof ValidationCatalogResultSchema>>;
+  readonly reopenComment: (
+    input: StoryCommentReopenInput,
+  ) => Promise<z.infer<typeof ValidationCatalogResultSchema>>;
+  readonly batchComments: (
+    input: StoryCommentBatchInput,
+  ) => Promise<z.infer<typeof ValidationCatalogResultSchema>>;
   readonly rememberException: (
     input: ValidationExceptionRememberInput,
   ) => Promise<z.infer<typeof ValidationCatalogResultSchema>>;
@@ -410,6 +469,9 @@ export type ValidationCreateTodoInput = z.infer<typeof ValidationCreateTodoInput
 export type StoryTodoSaveInput = z.input<typeof StoryTodoSaveInputSchema>;
 export type StoryCommentAddInput = z.input<typeof StoryCommentAddInputSchema>;
 export type StoryCommentResolveInput = z.infer<typeof StoryCommentResolveInputSchema>;
+export type StoryCommentReopenInput = z.infer<typeof StoryCommentReopenInputSchema>;
+export type StoryCommentBatchInput = z.input<typeof StoryCommentBatchInputSchema>;
+export type StoryCommentTag = z.infer<typeof StoryCommentTagSchema>;
 export type ValidationExceptionRememberInput = z.input<
   typeof ValidationExceptionRememberInputSchema
 >;

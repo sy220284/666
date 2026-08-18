@@ -87,13 +87,20 @@ export function AppShellLayout(props: AppShellLayoutProps) {
         </div>
         <button
           aria-expanded={props.commandPaletteOpen}
+          data-command-id="system.commandPalette"
           className="quiet-button react-command-palette-trigger"
           data-open-command-palette
           ref={props.commandPaletteTrigger}
           type="button"
           onClick={() => props.onCommandPaletteOpenChange(true)}
         >
-          搜索与命令 <kbd>{commandPaletteShortcutLabel(globalThis.navigator?.platform ?? '')}</kbd>
+          搜索与命令{' '}
+          <kbd>
+            {commandPaletteShortcutLabel(
+              globalThis.navigator?.platform ?? '',
+              props.settings.shortcutOverrides,
+            )}
+          </kbd>
         </button>
         <button
           aria-expanded={props.helpOpen}
@@ -107,6 +114,7 @@ export function AppShellLayout(props: AppShellLayoutProps) {
         </button>
         <button
           className="quiet-button"
+          data-command-id="navigation.settings"
           data-open-settings
           ref={props.settingsTrigger}
           type="button"
@@ -124,6 +132,7 @@ export function AppShellLayout(props: AppShellLayoutProps) {
             <button
               aria-current={item.current ? 'page' : undefined}
               className="react-primary-nav__item"
+              data-command-id={`navigation.${item.id}`}
               data-current={item.current}
               data-open-canon={item.id === 'canon' ? '' : undefined}
               data-open-planning={item.id === 'planning' ? '' : undefined}

@@ -109,6 +109,8 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [VALIDATION_COMMANDS.saveTodo]: 'mutation',
   [VALIDATION_COMMANDS.addComment]: 'mutation',
   [VALIDATION_COMMANDS.resolveComment]: 'mutation',
+  [VALIDATION_COMMANDS.reopenComment]: 'mutation',
+  [VALIDATION_COMMANDS.batchComments]: 'mutation',
   [VALIDATION_COMMANDS.rememberException]: 'mutation',
   [VALIDATION_COMMANDS.disableException]: 'mutation',
   [SEARCH_TOOLS_COMMANDS.search]: 'query',

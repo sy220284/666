@@ -33,6 +33,7 @@ export function createRendererApplicationController(): RendererApplicationContro
       document.body.dataset.motionPreference = settings.reduceMotion ? 'reduced' : 'full';
       document.body.dataset.authorMode = settings.defaultMode;
       document.body.dataset.projectState = projectState;
+      document.body.dataset.themeSealText = settings.themeSealText;
       document.body.dataset.workspaceAlignment = appearance.workspaceAlignment;
       document.documentElement.style.colorScheme =
         settings.themeVariant === 'dark' ? 'dark' : 'light';

@@ -9,12 +9,24 @@ import type {
   ProjectWorkspaceSummary,
   ProviderConnectionTestResult,
   ProviderSummary,
+  ShortcutOverride,
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import { LongformAiSettingsPanel } from './longform-ai-settings.js';
 import { ProviderSettings } from './provider-settings.js';
+import {
+  COMMAND_CATALOG,
+  shortcutDisplayLabel,
+  shortcutForCommand,
+} from '../command-palette/command-catalog.js';
+import {
+  normalizeShortcutEvent,
+  removeShortcutOverride,
+  shortcutConflict,
+  updateShortcutOverride,
+} from '../command-palette/shortcut-registry.js';
 import {
   createSettingsNavigationItems,
   resolveSettingsNavigationIntent,
@@ -52,6 +64,7 @@ export function SettingsPage(props: SettingsPageProps) {
     general: true,
     editor: true,
     appearance: true,
+    shortcuts: true,
     providers: true,
     longform: props.project !== null,
     advanced: true,
@@ -122,6 +135,7 @@ export function SettingsPage(props: SettingsPageProps) {
           {section === 'general' ? <GeneralSettings {...props} /> : null}
           {section === 'editor' ? <EditorSettings {...props} /> : null}
           {section === 'appearance' ? <AppearanceSettings {...props} /> : null}
+          {section === 'shortcuts' ? <ShortcutSettings {...props} /> : null}
           {section === 'providers' ? (
             <ProviderSettings
               bridge={props.bridge}
@@ -250,41 +264,51 @@ function GeneralSettings(props: SettingsPageProps) {
 }
 
 function EditorSettings(props: SettingsPageProps) {
-  const [draft, setDraft] = useState(props.appearance);
-  useEffect(() => setDraft(props.appearance), [props.appearance]);
+  const [appearanceDraft, setAppearanceDraft] = useState(props.appearance);
+  const [settingsDraft, setSettingsDraft] = useState(props.settings);
+  useEffect(() => setAppearanceDraft(props.appearance), [props.appearance]);
+  useEffect(() => setSettingsDraft(props.settings), [props.settings]);
+
+  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const settingsSaved = await props.onSaveSettings({
+      typewriterMode: settingsDraft.typewriterMode,
+      typewriterAnchorPercent: settingsDraft.typewriterAnchorPercent,
+    });
+    if (settingsSaved) await props.onSaveAppearance(appearanceDraft);
+  };
 
   return (
     <form
       className="react-settings-form"
       data-settings-section="editor"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void props.onSaveAppearance(draft);
-      }}
+      onSubmit={(event) => void submit(event)}
     >
       <header>
         <h2>编辑器</h2>
-        <p>正文字号与版心宽度独立于界面缩放。</p>
+        <p>正文字号、版心与打字机模式只影响本地写作体验，不改变正文结构。</p>
       </header>
       <label>
-        <span>正文字号：{draft.bodyFontSize}px</span>
+        <span>正文字号：{appearanceDraft.bodyFontSize}px</span>
         <input
           data-body-font-size
           max={28}
           min={14}
           type="range"
-          value={draft.bodyFontSize}
-          onChange={(event) => setDraft({ ...draft, bodyFontSize: Number(event.target.value) })}
+          value={appearanceDraft.bodyFontSize}
+          onChange={(event) =>
+            setAppearanceDraft({ ...appearanceDraft, bodyFontSize: Number(event.target.value) })
+          }
         />
       </label>
       <label>
         <span>正文宽度</span>
         <select
           data-content-width
-          value={draft.contentWidth}
+          value={appearanceDraft.contentWidth}
           onChange={(event) =>
-            setDraft({
-              ...draft,
+            setAppearanceDraft({
+              ...appearanceDraft,
               contentWidth: event.target.value as AppearancePreferences['contentWidth'],
             })
           }
@@ -294,6 +318,35 @@ function EditorSettings(props: SettingsPageProps) {
           <option value="wide">宽 · 860px</option>
           <option value="adaptive">自适应</option>
         </select>
+      </label>
+      <label className="react-switch-row">
+        <input
+          checked={settingsDraft.typewriterMode}
+          data-typewriter-mode
+          type="checkbox"
+          onChange={(event) =>
+            setSettingsDraft({ ...settingsDraft, typewriterMode: event.target.checked })
+          }
+        />
+        <span>打字机模式：输入位置保持在稳定视觉区域</span>
+      </label>
+      <label>
+        <span>输入位置：视口上方 {settingsDraft.typewriterAnchorPercent}%</span>
+        <input
+          data-typewriter-anchor
+          disabled={!settingsDraft.typewriterMode}
+          max={75}
+          min={25}
+          step={5}
+          type="range"
+          value={settingsDraft.typewriterAnchorPercent}
+          onChange={(event) =>
+            setSettingsDraft({
+              ...settingsDraft,
+              typewriterAnchorPercent: Number(event.target.value),
+            })
+          }
+        />
       </label>
       <footer>
         <button
@@ -321,14 +374,12 @@ function AppearanceSettings(props: SettingsPageProps) {
       themeId: settings.themeId,
       themeVariant: settings.themeVariant,
       reduceMotion: settings.reduceMotion,
+      themeSealText: settings.themeSealText,
     });
     if (savedSettings) await props.onSaveAppearance(appearance);
   };
 
-  const variants =
-    settings.themeId === 'theme-b'
-      ? ['light', 'dark']
-      : ['light', 'dark', 'eye-care', 'high-contrast'];
+  const variants = ['light', 'dark', 'eye-care', 'high-contrast'] as const;
 
   return (
     <form
@@ -347,14 +398,7 @@ function AppearanceSettings(props: SettingsPageProps) {
           value={settings.themeId}
           onChange={(event) => {
             const themeId = event.target.value as AppSettings['themeId'];
-            setSettings({
-              ...settings,
-              themeId,
-              themeVariant:
-                themeId === 'theme-b' && !['light', 'dark'].includes(settings.themeVariant)
-                  ? 'light'
-                  : settings.themeVariant,
-            });
+            setSettings({ ...settings, themeId });
           }}
         >
           <option value="theme-a">安静编辑部</option>
@@ -422,6 +466,17 @@ function AppearanceSettings(props: SettingsPageProps) {
         />
         <span>减少动态效果</span>
       </label>
+      <label>
+        <span>主题短印文</span>
+        <input
+          data-theme-seal-text
+          maxLength={12}
+          placeholder="例如：落笔生花"
+          value={settings.themeSealText}
+          onChange={(event) => setSettings({ ...settings, themeSealText: event.target.value })}
+        />
+        <small>最多 12 个中英文、数字或常用分隔符；仅用于界面装饰，不进入正文或智能提示。</small>
+      </label>
       <footer>
         <button
           className="primary-button"
@@ -431,6 +486,115 @@ function AppearanceSettings(props: SettingsPageProps) {
           type="submit"
         >
           保存外观设置
+        </button>
+      </footer>
+    </form>
+  );
+}
+
+function ShortcutSettings(props: SettingsPageProps) {
+  const [overrides, setOverrides] = useState<readonly ShortcutOverride[]>(
+    props.settings.shortcutOverrides,
+  );
+  const [captureId, setCaptureId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(
+    () => setOverrides(props.settings.shortcutOverrides),
+    [props.settings.shortcutOverrides],
+  );
+  const platform = globalThis.navigator?.platform ?? '';
+  const commands = COMMAND_CATALOG.filter((entry) => entry.rebindable);
+
+  return (
+    <form
+      className="react-settings-form"
+      data-settings-section="shortcuts"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void props.onSaveSettings({ shortcutOverrides: [...overrides] });
+      }}
+    >
+      <header>
+        <h2>快捷键</h2>
+        <p>按钮、命令面板和快捷键共用同一命令身份；发生冲突时必须先明确解除旧绑定。</p>
+      </header>
+      {notice ? (
+        <p className="feature-status" role="status">
+          {notice}
+        </p>
+      ) : null}
+      <div className="shortcut-settings-list">
+        {commands.map((entry) => {
+          const shortcut = shortcutForCommand(entry, overrides);
+          return (
+            <section
+              className="shortcut-settings-row"
+              data-shortcut-command={entry.id}
+              key={entry.id}
+            >
+              <div>
+                <strong>{entry.label}</strong>
+                <small>{entry.description}</small>
+              </div>
+              <kbd>{shortcut ? shortcutDisplayLabel(shortcut, platform) : '未绑定'}</kbd>
+              <button
+                aria-pressed={captureId === entry.id}
+                className="quiet-button"
+                type="button"
+                onClick={(event) => {
+                  setCaptureId(entry.id);
+                  setNotice(`正在记录“${entry.label}”，请按新的快捷键。`);
+                  event.currentTarget.focus();
+                }}
+                onKeyDown={(event) => {
+                  if (captureId !== entry.id) return;
+                  const chord = normalizeShortcutEvent(event.nativeEvent, platform);
+                  if (!chord) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const conflict = shortcutConflict(entry.id, chord, overrides);
+                  if (conflict) {
+                    setNotice(
+                      `“${shortcutDisplayLabel(chord, platform)}”已绑定“${conflict.label}”，请先清除或恢复该命令。`,
+                    );
+                    return;
+                  }
+                  setOverrides(updateShortcutOverride(overrides, entry.id, chord));
+                  setCaptureId(null);
+                  setNotice(`已暂存“${entry.label}”快捷键，保存后生效。`);
+                }}
+              >
+                {captureId === entry.id ? '等待按键…' : '重新绑定'}
+              </button>
+              <button
+                className="quiet-button"
+                type="button"
+                onClick={() => {
+                  setOverrides(updateShortcutOverride(overrides, entry.id, null));
+                  setCaptureId(null);
+                  setNotice(`已暂存禁用“${entry.label}”快捷键。`);
+                }}
+              >
+                清除
+              </button>
+              <button
+                className="quiet-button"
+                type="button"
+                onClick={() => {
+                  setOverrides(removeShortcutOverride(overrides, entry.id));
+                  setCaptureId(null);
+                  setNotice(`已恢复“${entry.label}”默认快捷键。`);
+                }}
+              >
+                恢复默认
+              </button>
+            </section>
+          );
+        })}
+      </div>
+      <footer>
+        <button className="primary-button" disabled={Boolean(props.pendingKey)} type="submit">
+          保存快捷键
         </button>
       </footer>
     </form>

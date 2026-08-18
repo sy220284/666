@@ -12,6 +12,7 @@ import type {
   GenerationRun,
   ProjectWorkspaceSummary,
   RewriteSelectionAnchor,
+  VersionDocument,
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
@@ -86,6 +87,7 @@ export function CandidateReviewPanel({
   const generationEpoch = useRef(0);
   const previewRequest = useRef<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<CandidateDocument | null>(null);
+  const [baseVersion, setBaseVersion] = useState<VersionDocument | null>(null);
   const {
     providers,
     providerId,
@@ -170,11 +172,36 @@ export function CandidateReviewPanel({
 
   useEffect(() => {
     let active = true;
+    const sourceVersionId = selectedDocument?.sourceVersionId ?? null;
+    if (!sourceVersionId || selectedDocument?.candidateType === 'skeleton') {
+      setBaseVersion(null);
+      return () => {
+        active = false;
+      };
+    }
+    setBaseVersion(null);
+    void bridge.version
+      .get(
+        { projectId: project.projectId, chapterId: chapter.id, versionId: sourceVersionId },
+        { mode: 'replace' },
+      )
+      .then((outcome) => {
+        if (!active) return;
+        setBaseVersion(outcome.state === 'success' ? outcome.data : null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [bridge, chapter.id, project.projectId, selectedDocument]);
+
+  useEffect(() => {
+    let active = true;
     setCandidates([]);
     setCandidateId('');
     setPreview(null);
     setUndoPreview(null);
     setSelectedDocument(null);
+    setBaseVersion(null);
     setSelectedRun(null);
     setSelectedBlocks(new Set());
     setSelectedBeats(new Set());
@@ -394,6 +421,7 @@ export function CandidateReviewPanel({
       />
       <CandidateReviewDisplay
         apply={apply}
+        baseVersion={baseVersion}
         cancel={cancel}
         candidateId={candidateId}
         conflicts={conflicts}

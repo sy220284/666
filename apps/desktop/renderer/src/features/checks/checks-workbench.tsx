@@ -44,6 +44,12 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
   const [providerId, setProviderId] = useState('');
   const [chapterId, setChapterId] = useState('');
   const [includeClosed, setIncludeClosed] = useState(true);
+  const [commentStatus, setCommentStatus] = useState<'all' | 'open' | 'resolved'>('all');
+  const [commentSource, setCommentSource] = useState<'all' | 'validation' | 'manual'>('all');
+  const [commentTag, setCommentTag] = useState('');
+  const [commentIssueType, setCommentIssueType] = useState('');
+  const [commentCharacterTag, setCommentCharacterTag] = useState('');
+  const [selectedCommentIds, setSelectedCommentIds] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState(false);
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
   const [notice, setNotice] = useState(
@@ -63,6 +69,49 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
           (includeClosed || issue.status === 'open'),
       ),
     [catalog?.issues, chapterId, includeClosed],
+  );
+  const issueById = useMemo(
+    () => new Map((catalog?.issues ?? []).map((issue) => [issue.issueId, issue] as const)),
+    [catalog?.issues],
+  );
+  const visibleComments = useMemo(
+    () =>
+      (catalog?.comments ?? []).filter((comment) => {
+        if (commentStatus !== 'all' && comment.status !== commentStatus) return false;
+        if (commentSource === 'validation' && !comment.validationIssueId) return false;
+        if (commentSource === 'manual' && comment.validationIssueId) return false;
+        if (chapterId && comment.chapterId !== chapterId) return false;
+        if (commentTag.trim() && !(comment.tags ?? []).includes(commentTag.trim())) return false;
+        if (commentCharacterTag && !(comment.tags ?? []).includes(commentCharacterTag))
+          return false;
+        if (commentIssueType) {
+          const issue = comment.validationIssueId ? issueById.get(comment.validationIssueId) : null;
+          if (issue?.issueType !== commentIssueType) return false;
+        }
+        return true;
+      }),
+    [
+      catalog?.comments,
+      chapterId,
+      commentCharacterTag,
+      commentIssueType,
+      commentSource,
+      commentStatus,
+      commentTag,
+      issueById,
+    ],
+  );
+  const availableCommentTags = useMemo(
+    () => [...new Set((catalog?.comments ?? []).flatMap((comment) => comment.tags ?? []))].sort(),
+    [catalog?.comments],
+  );
+  const availableCommentIssueTypes = useMemo(
+    () => [...new Set((catalog?.issues ?? []).map((issue) => issue.issueType))].sort(),
+    [catalog?.issues],
+  );
+  const availableCommentCharacters = useMemo(
+    () => availableCommentTags.filter((tag) => tag.startsWith('人物-')),
+    [availableCommentTags],
   );
   const batchById = useMemo(
     () => new Map((catalog?.batches ?? []).map((batch) => [batch.batchId, batch] as const)),
@@ -300,6 +349,50 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
   };
 
+  const updateComment = async (commentId: string, action: 'resolve' | 'reopen'): Promise<void> => {
+    if (readOnly) return;
+    const outcome =
+      action === 'resolve'
+        ? await bridge.validation.resolveComment({ projectId, commentId })
+        : await bridge.validation.reopenComment({ projectId, commentId });
+    if (outcome.state === 'success') setCatalog(outcome.data);
+    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+  };
+
+  const runCommentBatch = async (action: 'resolve' | 'reopen' | 'tag'): Promise<void> => {
+    if (readOnly || selectedCommentIds.size === 0) return;
+    const tags =
+      action === 'tag'
+        ? (window.prompt('给所选批注添加标签（多个标签用逗号分隔）：', '') ?? '')
+            .split(/[,，]/u)
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+        : [];
+    if (action === 'tag' && tags.length === 0) return;
+    const outcome = await bridge.validation.batchComments({
+      projectId,
+      commentIds: [...selectedCommentIds],
+      action,
+      tags,
+    });
+    if (outcome.state === 'success') {
+      setCatalog(outcome.data);
+      setSelectedCommentIds(new Set());
+      setNotice(`已批量处理 ${selectedCommentIds.size} 条批注。`);
+    } else if (outcome.state === 'failure') {
+      setNotice(authorErrorSummary(outcome.error));
+    }
+  };
+
+  const toggleCommentSelection = (commentId: string, checked: boolean): void => {
+    setSelectedCommentIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(commentId);
+      else next.delete(commentId);
+      return next;
+    });
+  };
+
   const navigateToIssue = (issue: ValidationIssue): void => {
     if (!issue.anchor.chapterId) {
       setNotice('该问题没有章节原文位置，无法进行精准跳转。');
@@ -520,10 +613,117 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             </div>
           </article>
         ))}
-        {(catalog?.comments ?? []).map((comment) => (
-          <article className="ledger-record" key={comment.commentId}>
+        <div className="filter-bar" data-comment-workflow-filters>
+          <label>
+            批注状态
+            <select
+              value={commentStatus}
+              onChange={(event) => setCommentStatus(event.target.value as typeof commentStatus)}
+            >
+              <option value="all">全部</option>
+              <option value="open">待处理</option>
+              <option value="resolved">已处理</option>
+            </select>
+          </label>
+          <label>
+            来源
+            <select
+              value={commentSource}
+              onChange={(event) => setCommentSource(event.target.value as typeof commentSource)}
+            >
+              <option value="all">全部</option>
+              <option value="validation">检查问题</option>
+              <option value="manual">作者批注</option>
+            </select>
+          </label>
+          <label>
+            标签
+            <select value={commentTag} onChange={(event) => setCommentTag(event.target.value)}>
+              <option value="">全部标签</option>
+              {availableCommentTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            人物
+            <select
+              value={commentCharacterTag}
+              onChange={(event) => setCommentCharacterTag(event.target.value)}
+            >
+              <option value="">全部人物</option>
+              {availableCommentCharacters.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag.slice(3)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            问题类型
+            <select
+              value={commentIssueType}
+              onChange={(event) => setCommentIssueType(event.target.value)}
+            >
+              <option value="">全部类型</option>
+              {availableCommentIssueTypes.map((issueType) => (
+                <option key={issueType} value={issueType}>
+                  {issueType}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="inline-actions">
+            <button
+              disabled={readOnly || selectedCommentIds.size === 0}
+              type="button"
+              onClick={() => void runCommentBatch('resolve')}
+            >
+              批量处理
+            </button>
+            <button
+              disabled={readOnly || selectedCommentIds.size === 0}
+              type="button"
+              onClick={() => void runCommentBatch('reopen')}
+            >
+              批量重开
+            </button>
+            <button
+              disabled={readOnly || selectedCommentIds.size === 0}
+              type="button"
+              onClick={() => void runCommentBatch('tag')}
+            >
+              批量加标签
+            </button>
+          </div>
+        </div>
+        {visibleComments.map((comment) => (
+          <article
+            className="ledger-record"
+            data-story-comment={comment.commentId}
+            key={comment.commentId}
+          >
+            <label className="ledger-record__select">
+              <input
+                aria-label="选择批注"
+                checked={selectedCommentIds.has(comment.commentId)}
+                type="checkbox"
+                onChange={(event) =>
+                  toggleCommentSelection(comment.commentId, event.target.checked)
+                }
+              />
+              选择
+            </label>
             <p>{comment.body}</p>
-            <p>{comment.status === 'open' ? '待处理' : '已处理'}</p>
+            <p>
+              {comment.status === 'open' ? '待处理' : '已处理'} ·{' '}
+              {comment.validationIssueId ? '检查问题' : '作者批注'}
+            </p>
+            {(comment.tags ?? []).length > 0 ? (
+              <p>标签：{(comment.tags ?? []).join(' · ')}</p>
+            ) : null}
             <div className="inline-actions">
               <button
                 data-author-return-key={`comment:${comment.commentId}`}
@@ -535,24 +735,18 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
               >
                 前往原文
               </button>
-              {comment.status === 'open' ? (
-                <button
-                  disabled={readOnly}
-                  type="button"
-                  onClick={() =>
-                    void bridge.validation
-                      .resolveComment({ projectId, commentId: comment.commentId })
-                      .then((outcome) => {
-                        if (outcome.state === 'success') setCatalog(outcome.data);
-                        else if (outcome.state === 'failure') {
-                          setNotice(authorErrorSummary(outcome.error));
-                        }
-                      })
-                  }
-                >
-                  标记批注已处理
-                </button>
-              ) : null}
+              <button
+                disabled={readOnly}
+                type="button"
+                onClick={() =>
+                  void updateComment(
+                    comment.commentId,
+                    comment.status === 'open' ? 'resolve' : 'reopen',
+                  )
+                }
+              >
+                {comment.status === 'open' ? '标记批注已处理' : '重新打开批注'}
+              </button>
             </div>
           </article>
         ))}

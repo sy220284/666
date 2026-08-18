@@ -19,6 +19,7 @@ import {
 } from './validation-model.js';
 import { CONFIG_VERSION, RULE_CONFIG, RULE_VERSION } from './validation-rules.js';
 import { sqliteResult } from '../database/sqlite-result.js';
+import { commentTagsFor } from './validation-comment-workflow.js';
 
 const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
 
@@ -299,6 +300,7 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
       )
       .all(projectId),
   );
+  const tagsByCommentId = commentTagsFor(database);
   return ValidationCatalogSchema.parse({
     projectId,
     batches: batches.map((row) => ({
@@ -358,7 +360,10 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
       updatedAt: row.updatedAt,
     })),
     todos,
-    comments,
+    comments: comments.map((comment) => ({
+      ...comment,
+      tags: tagsByCommentId[comment.commentId] ?? [],
+    })),
     exceptions: exceptions.map((exception) => ({
       ...exception,
       active: Number(exception['active']) === 1,

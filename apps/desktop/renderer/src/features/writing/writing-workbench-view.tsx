@@ -28,6 +28,9 @@ interface WritingWorkbenchViewProps {
   readonly chapter: Chapter | null;
   readonly draft: DraftDocument | null;
   readonly readOnly: boolean;
+  readonly typewriterMode: boolean;
+  readonly typewriterAnchorPercent: number;
+  readonly onTypewriterModeChange: (enabled: boolean) => Promise<boolean>;
   readonly editorReady: boolean;
   readonly editorUnavailable: boolean;
   readonly focusMode: boolean;
@@ -70,6 +73,9 @@ export function WritingWorkbenchView({
   chapter,
   draft,
   readOnly,
+  typewriterMode,
+  typewriterAnchorPercent,
+  onTypewriterModeChange,
   editorReady,
   editorUnavailable,
   focusMode,
@@ -131,11 +137,51 @@ export function WritingWorkbenchView({
     return () => globalThis.removeEventListener('keydown', onKeyDown);
   }, [findOpen, panel]);
 
+  useEffect(() => {
+    if (!typewriterMode || panel !== 'editor' || !editorReady) return;
+    const host = editorHost.current;
+    const scrollContainer = host?.closest<HTMLElement>('.react-main');
+    if (!host || !scrollContainer) return;
+
+    let frame = 0;
+    const alignSelection = (): void => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const selection = document.getSelection();
+        const anchorNode = selection?.anchorNode;
+        if (!anchorNode || !host.contains(anchorNode)) return;
+        const anchorElement = anchorNode instanceof Element ? anchorNode : anchorNode.parentElement;
+        const block = anchorElement?.closest<HTMLElement>(
+          'p, h1, h2, h3, [data-node-view-content]',
+        );
+        if (!block || !host.contains(block)) return;
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const blockRect = block.getBoundingClientRect();
+        const desiredTop =
+          containerRect.top + (containerRect.height * typewriterAnchorPercent) / 100;
+        const delta = blockRect.top - desiredTop;
+        if (Math.abs(delta) > 4) scrollContainer.scrollTop += delta;
+      });
+    };
+
+    document.addEventListener('selectionchange', alignSelection);
+    window.addEventListener('resize', alignSelection);
+    window.addEventListener('worldforge:presentation-changed', alignSelection);
+    alignSelection();
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('selectionchange', alignSelection);
+      window.removeEventListener('resize', alignSelection);
+      window.removeEventListener('worldforge:presentation-changed', alignSelection);
+    };
+  }, [editorHost, editorReady, panel, typewriterAnchorPercent, typewriterMode]);
+
   return (
     <section
       className="writing-workbench"
       data-chapter-session-phase={chapterSessionPhase}
       data-focus-mode={focusMode}
+      data-typewriter-mode={typewriterMode}
       data-writing-workbench
       data-draft-workspace={editorReady ? '' : undefined}
     >
@@ -247,6 +293,15 @@ export function WritingWorkbenchView({
                   onClick={() => setFindOpen((open) => !open)}
                 >
                   {findOpen ? '收起查找' : '查找与替换'}
+                </button>
+                <button
+                  aria-pressed={typewriterMode}
+                  data-command-id="system.typewriterMode"
+                  data-toggle-typewriter-mode
+                  type="button"
+                  onClick={() => void onTypewriterModeChange(!typewriterMode)}
+                >
+                  {typewriterMode ? '关闭打字机模式' : '打字机模式'}
                 </button>
                 <details className="draft-more-actions" data-draft-more-actions>
                   <summary>更多操作</summary>

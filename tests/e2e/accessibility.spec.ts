@@ -87,7 +87,7 @@ test('Phase 3 accessibility scan covers home, modal focus, writing and Theme B v
       await page.locator('[data-settings-navigation="appearance"]').click();
       await page.locator('[data-theme-id]').selectOption('theme-b');
       await page.locator('[data-theme-variant]').selectOption(variant);
-      await page.locator('[data-theme-seal-text]').fill('落笔生花');
+      await page.locator('input[data-theme-seal-text="true"]').fill('落笔生花');
       await page.locator('[data-save-appearance]').click();
       await expect(page.locator('body')).toHaveAttribute('data-theme', 'theme-b');
       await expect(page.locator('body')).toHaveAttribute('data-visual-theme-variant', variant);

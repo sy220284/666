@@ -44,7 +44,11 @@ describe('coverage tail value normalization', () => {
 
   it('sorts plot siblings by order key and then stable id', () => {
     const projectId = '00000000-0000-4000-8000-000000000001';
-    const plotNode = (id: string, parentId: string | null, orderKey: string): PlotNode => ({
+    const plotNode = (
+      id: string,
+      parentId: string | null,
+      orderKey: string,
+    ): PlotNode => ({
       id,
       projectId,
       parentId,

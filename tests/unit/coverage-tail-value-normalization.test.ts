@@ -1,3 +1,4 @@
+import type { PlotNode } from '@worldforge/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { sanitizeLogFields } from '../../apps/desktop/main/src/privacy-logger.js';
@@ -42,13 +43,34 @@ describe('coverage tail value normalization', () => {
   });
 
   it('sorts plot siblings by order key and then stable id', () => {
-    const nodes = [
-      { id: 'b', parentId: null, orderKey: '2' },
-      { id: 'c', parentId: null, orderKey: '1' },
-      { id: 'a', parentId: null, orderKey: '2' },
-      { id: 'child', parentId: 'parent', orderKey: '0' },
+    const projectId = '00000000-0000-4000-8000-000000000001';
+    const plotNode = (id: string, parentId: string | null, orderKey: string): PlotNode => ({
+      id,
+      projectId,
+      parentId,
+      nodeType: 'chapter',
+      title: `节点 ${id}`,
+      goal: '',
+      coreConflict: '',
+      expectedResult: '',
+      orderKey,
+      status: 'pending',
+    });
+    const nodes: PlotNode[] = [
+      plotNode('00000000-0000-4000-8000-00000000000b', null, '2'),
+      plotNode('00000000-0000-4000-8000-00000000000c', null, '1'),
+      plotNode('00000000-0000-4000-8000-00000000000a', null, '2'),
+      plotNode(
+        '00000000-0000-4000-8000-00000000000d',
+        '00000000-0000-4000-8000-00000000000e',
+        '0',
+      ),
     ];
 
-    expect(sortedPlotNodes(nodes as never, null).map((node) => node.id)).toEqual(['c', 'a', 'b']);
+    expect(sortedPlotNodes(nodes, null).map((node) => node.id)).toEqual([
+      '00000000-0000-4000-8000-00000000000c',
+      '00000000-0000-4000-8000-00000000000a',
+      '00000000-0000-4000-8000-00000000000b',
+    ]);
   });
 });

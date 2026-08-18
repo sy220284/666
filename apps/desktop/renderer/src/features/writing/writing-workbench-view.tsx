@@ -294,18 +294,18 @@ export function WritingWorkbenchView({
                 >
                   {findOpen ? '收起查找' : '查找与替换'}
                 </button>
-                <button
-                  aria-pressed={typewriterMode}
-                  data-command-id="system.typewriterMode"
-                  data-toggle-typewriter-mode
-                  type="button"
-                  onClick={() => void onTypewriterModeChange(!typewriterMode)}
-                >
-                  {typewriterMode ? '关闭打字机模式' : '打字机模式'}
-                </button>
                 <details className="draft-more-actions" data-draft-more-actions>
                   <summary>更多操作</summary>
                   <div className="inline-actions">
+                    <button
+                      aria-pressed={typewriterMode}
+                      data-command-id="system.typewriterMode"
+                      data-toggle-typewriter-mode
+                      type="button"
+                      onClick={() => void onTypewriterModeChange(!typewriterMode)}
+                    >
+                      {typewriterMode ? '关闭打字机模式' : '打字机模式'}
+                    </button>
                     <button
                       data-save-draft
                       type="button"

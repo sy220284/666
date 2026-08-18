@@ -88,7 +88,7 @@ test.afterEach(async () => {
   );
 });
 
-test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自动保存、切章、沉浸与恢复', async () => {
+test('Windows真实Microsoft拼音在打字机模式完成候选、确认、切换、撤销、自动保存、切章、沉浸与恢复', async () => {
   expect(process.platform).toBe('win32');
   test.setTimeout(240_000);
 
@@ -111,7 +111,11 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
     await page.locator('[data-onboarding-entry="quick"]').click();
     await page.locator('[data-project-name]').fill('Windows真实拼音验收');
     await page.locator('[data-confirm-create-project]').click();
-    await expect(page.locator('[data-writing-workbench]')).toBeVisible({ timeout: 15_000 });
+    const writingWorkbench = page.locator('[data-writing-workbench]');
+    await expect(writingWorkbench).toBeVisible({ timeout: 15_000 });
+
+    await page.locator('[data-toggle-typewriter-mode]').click();
+    await expect(writingWorkbench).toHaveAttribute('data-typewriter-mode', 'true');
 
     const editor = page.locator('.worldforge-editor');
     await expect(editor).toBeVisible({ timeout: 15_000 });
@@ -164,18 +168,14 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
     await expect(editor).not.toContainText('中文输入法ABC测试');
     await page.locator(`[data-chapter-id="${firstChapterId}"] [data-open-chapter]`).click();
     await expect(editor).toContainText('中文输入法ABC测试');
+    await expect(writingWorkbench).toHaveAttribute('data-typewriter-mode', 'true');
 
     await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute(
-      'data-focus-mode',
-      'true',
-    );
+    await expect(writingWorkbench).toHaveAttribute('data-focus-mode', 'true');
+    await expect(writingWorkbench).toHaveAttribute('data-typewriter-mode', 'true');
     await expect(editor).toContainText('中文输入法ABC测试');
     await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute(
-      'data-focus-mode',
-      'false',
-    );
+    await expect(writingWorkbench).toHaveAttribute('data-focus-mode', 'false');
 
     const screenshotStats = await stat(candidateScreenshot);
     expect(screenshotStats.size).toBeGreaterThan(30_000);
@@ -191,7 +191,9 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
         await restoredPage.locator('[data-open-recent]').first().click();
       }
     }
-    await expect(restoredPage.locator('[data-writing-workbench]')).toBeVisible();
+    const restoredWorkbench = restoredPage.locator('[data-writing-workbench]');
+    await expect(restoredWorkbench).toBeVisible();
+    await expect(restoredWorkbench).toHaveAttribute('data-typewriter-mode', 'true');
     await expect(restoredPage.locator('.worldforge-editor')).toContainText('中文输入法ABC测试');
 
     const profileEvidence = await readFile(

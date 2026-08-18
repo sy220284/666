@@ -44,16 +44,18 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
   const [providerId, setProviderId] = useState('');
   const [chapterId, setChapterId] = useState('');
   const [includeClosed, setIncludeClosed] = useState(true);
-  const [commentStatus, setCommentStatus] = useState<'all' | 'open' | 'resolved'>('all');
-  const [commentSource, setCommentSource] = useState<'all' | 'validation' | 'manual'>('all');
-  const [commentTag, setCommentTag] = useState('');
-  const [commentIssueType, setCommentIssueType] = useState('');
-  const [commentCharacterTag, setCommentCharacterTag] = useState('');
-  const [selectedCommentIds, setSelectedCommentIds] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState(false);
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
   const [notice, setNotice] = useState(
     `检查只读取当前${authorTerm('finalVersion')}，不会自动改写正文。`,
+  );
+  const [commentStatus = 'all', setCommentStatus] = useState<'all' | 'open' | 'resolved'>('all');
+  const [commentSource = 'all', setCommentSource] = useState<'all' | 'validation' | 'manual'>('all');
+  const [commentTag = '', setCommentTag] = useState('');
+  const [commentIssueType = '', setCommentIssueType] = useState('');
+  const [commentCharacterTag = '', setCommentCharacterTag] = useState('');
+  const [selectedCommentIds = new Set<string>(), setSelectedCommentIds] = useState<Set<string>>(
+    new Set(),
   );
 
   const chapters = useMemo(

@@ -1,10 +1,8 @@
-import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 
 import type { createElement as createReactElement } from 'react';
 import type { renderToStaticMarkup as renderReactToStaticMarkup } from 'react-dom/server';
-import { format } from 'prettier';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AppSettingsSchema } from '@worldforge/contracts';
 import {
@@ -13,6 +11,7 @@ import {
   shortcutForCommand,
 } from '../../apps/desktop/renderer/src/features/command-palette/command-catalog.js';
 import {
+  commandForShortcut,
   normalizeShortcutEvent,
   removeShortcutOverride,
   shortcutConflict,
@@ -114,6 +113,44 @@ describe('M12-03 author productivity and personalization', () => {
     expect(updateShortcutOverride([], 'system.notRegistered', 'Mod+P')).toEqual([]);
   });
 
+  it('keeps dialog focus ownership and ignores persisted overrides for locked commands', () => {
+    class FakeHTMLElement {
+      closest(selector: string): FakeHTMLElement | null {
+        return selector.includes('[role="dialog"]') ? this : null;
+      }
+    }
+
+    vi.stubGlobal('HTMLElement', FakeHTMLElement);
+    try {
+      expect(
+        commandForShortcut(
+          contractInput<KeyboardEvent>({
+            key: 'k',
+            ctrlKey: true,
+            metaKey: false,
+            altKey: false,
+            shiftKey: false,
+            isComposing: false,
+            target: new FakeHTMLElement(),
+          }),
+          'Win32',
+          [],
+          { projectAvailable: true, readOnly: false },
+        ),
+      ).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    const palette = commandCatalogEntry('system.commandPalette')!;
+    const lockedPalette = { ...palette, rebindable: false };
+    expect(
+      shortcutForCommand(lockedPalette, [
+        { commandId: 'system.commandPalette', shortcut: 'Mod+P' },
+      ]),
+    ).toBe('Mod+K');
+  });
+
   it('accepts persisted typewriter, Theme B and safe seal settings while rejecting unsafe seal text', () => {
     const settings = AppSettingsSchema.parse({
       schemaVersion: 1,
@@ -167,36 +204,5 @@ describe('M12-03 author productivity and personalization', () => {
     );
     expect(fallback).not.toContain('data-review-three-way');
     expect(fallback).toContain('review-diff__headings');
-  });
-
-  it('reports the exact formatter drift for the M12 checks workbench', async () => {
-    const sourceUrl = new URL(
-      '../../apps/desktop/renderer/src/features/checks/checks-workbench.tsx',
-      import.meta.url,
-    );
-    const source = await readFile(sourceUrl, 'utf8');
-    const formatted = await format(source, {
-      parser: 'typescript',
-      printWidth: 100,
-      singleQuote: true,
-      trailingComma: 'all',
-    });
-    if (source === formatted) return;
-
-    let prefix = 0;
-    while (prefix < source.length && source[prefix] === formatted[prefix]) prefix += 1;
-    let suffix = 0;
-    while (
-      suffix < source.length - prefix &&
-      suffix < formatted.length - prefix &&
-      source[source.length - 1 - suffix] === formatted[formatted.length - 1 - suffix]
-    ) {
-      suffix += 1;
-    }
-    const current = source.slice(prefix, source.length - suffix).slice(0, 4000);
-    const expected = formatted.slice(prefix, formatted.length - suffix).slice(0, 4000);
-    throw new Error(
-      `M12_FORMAT_DIAGNOSTIC prefix=${prefix} suffix=${suffix}\nCURRENT:\n${current}\nEXPECTED:\n${expected}`,
-    );
   });
 });

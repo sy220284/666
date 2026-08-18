@@ -118,7 +118,8 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     [availableCommentTags],
   );
   const batchById = useMemo(
-    () => new Map((catalog?.batches ?? []).map((batch) => [batch.batchId, batch] as const)),
+    () =>
+      new Map((catalog?.batches ?? []).map((batch) => [batch.batchId, batch] as const)),
     [catalog?.batches],
   );
 

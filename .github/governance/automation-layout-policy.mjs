@@ -22,6 +22,7 @@ export const PERMANENT_WORKFLOWS = Object.freeze([
   'security.yml',
   'task-governance.yml',
   'toolchain-export.yml',
+  'toolchain-host-probe.yml',
   'toolchain-maintenance.yml',
   'work-synchronization.yml',
   'workspace-bootstrap-export.yml',

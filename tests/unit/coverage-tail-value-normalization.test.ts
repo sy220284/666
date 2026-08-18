@@ -44,11 +44,7 @@ describe('coverage tail value normalization', () => {
 
   it('sorts plot siblings by order key and then stable id', () => {
     const projectId = '00000000-0000-4000-8000-000000000001';
-    const plotNode = (
-      id: string,
-      parentId: string | null,
-      orderKey: string,
-    ): PlotNode => ({
+    const plotNode = (id: string, parentId: string | null, orderKey: string): PlotNode => ({
       id,
       projectId,
       parentId,
@@ -64,11 +60,7 @@ describe('coverage tail value normalization', () => {
       plotNode('00000000-0000-4000-8000-00000000000b', null, '2'),
       plotNode('00000000-0000-4000-8000-00000000000c', null, '1'),
       plotNode('00000000-0000-4000-8000-00000000000a', null, '2'),
-      plotNode(
-        '00000000-0000-4000-8000-00000000000d',
-        '00000000-0000-4000-8000-00000000000e',
-        '0',
-      ),
+      plotNode('00000000-0000-4000-8000-00000000000d', '00000000-0000-4000-8000-00000000000e', '0'),
     ];
 
     expect(sortedPlotNodes(nodes, null).map((node) => node.id)).toEqual([

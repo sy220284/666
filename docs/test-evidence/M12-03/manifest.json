@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "taskId": "M12-03",
+  "implementationCommit": "eecf8113b5ccf7d604b9a2988b7ddd7236e57c39",
+  "generatedAt": "2026-08-18T15:30:02Z",
+  "files": [
+    {
+      "path": "candidate-three-way.md",
+      "bytes": 1263,
+      "sha256": "435dceb71537dc1bdfdbe231e7874623db9fbb2631867e5d4a711ad409f07596"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 2244,
+      "sha256": "a6b3929c583257c5a07e39fc0a9d4e27fa0b42f2e5dec12c48a890af5b58a0fb"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 1507,
+      "sha256": "b5745146d786e0b07d366bb8bbe91290198705d880979296a144cb1697ec8037"
+    },
+    {
+      "path": "shortcut-command-boundaries.md",
+      "bytes": 1039,
+      "sha256": "a610d381bc737e8ea43e47d2425e274d07f3aa4def668a56233c3be0b56a1121"
+    },
+    {
+      "path": "story-comment-transaction.md",
+      "bytes": 1035,
+      "sha256": "e32510cf4835f9cafff51896efb0c2a021397c26b9aa5472b13880e8c0905de4"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 1764,
+      "sha256": "fe91f392036f3aa60993b32f5b4053ac1ec996bf8fa36bc9af2ba3ec52323565"
+    },
+    {
+      "path": "theme-b-acceptance.md",
+      "bytes": 1756,
+      "sha256": "281cb783f0b6770357a47b9e8f44ebb079f0dfc6e442e7cee47b0f4ce1d0e8be"
+    },
+    {
+      "path": "typewriter-ime.md",
+      "bytes": 1186,
+      "sha256": "23c8b81281d4def4ddc986ab6610e53fdb1fa9aa87fb84802c078be9966bbf38"
+    }
+  ]
+}

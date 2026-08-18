@@ -1,0 +1,49 @@
+# M12-03 权威验证命令
+
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:coverage
+pnpm test:security
+pnpm test:e2e
+pnpm ci:policy
+pnpm release:check
+
+# 实现冻结
+# implementationCommit: eecf8113b5ccf7d604b9a2988b7ddd7236e57c39
+
+# 最终实现门禁
+# Quality: 32152968200 success
+# Security: 32152967728 success
+# Performance: 32152967733 success
+
+# Quality 产物
+# product-tests-and-coverage: 9330669296 (sha256:e17e24cd1bf49ec4bc9dceca1b25670dd6f97557ba4881570de7b2e65c6dfb8b)
+# desktop-e2e-evidence-1-of-3: 9330942687 (sha256:985c1207cfcd720639ef7e6885002d265b4a1607da4ed0d800f71408febebd5b)
+# desktop-e2e-evidence-2-of-3: 9330665350 (sha256:e2ba737f492aa2cc8cb6ac6406757283be9be6d35dec8244bee22570ee4d8a12)
+# desktop-e2e-evidence-3-of-3: 9330779750 (sha256:768b08212563dd94e46b93ff10a9f16610384acc83ea1f2df733d5813253a97f)
+# m8-07-windows-native-ime: 9330674179 (sha256:0a155b593cd87a5ebe8fcc47ca4853cfe3881e95ce06e7f69ec172fa9d9e300a)
+# platform-experience-windows: 9330673149 (sha256:e408173d56b01db8780d712e19ca4f0542618b14fbbaa4bb4a83c3f6450390c6)
+# platform-experience-linux: 9330610753 (sha256:f5544194926e9becef20b7d80629813b8ef937874a2c9bdb6661b612b71ee922)
+# platform-experience-macos: 9330580407 (sha256:e601f827a88fcf01809e185559b74d413c58bca9e245da5afafb2d54bb98d57b)
+# reliability-evidence: 9330566602 (sha256:eb458f7c5bc59e4b796ab11b5bc62c92af364d0f3176762b62debd894d1732e4)
+
+# Security / Performance 产物
+# secret-scan-diagnostics: 9330487017 (sha256:3fdae66ef0a799dfbaf47ac580e0dcbc757cc36771c8766e24072db31ae1588d)
+# performance-and-ai-eval-evidence: 9330650421 (sha256:1c34f29c8f6f472391d48638e00e05ee8db25f0dcf0719b4f4f67c0529b2742d)
+
+# Theme B 视觉校准
+# stable source: 3d9ab7bf43ae2335cf91e10f25d75c2d23b40d71 / Quality 32151140271 / artifact 9330078620 / sha256:625179f4d50e0d7e2f72448f066d51d95e2ce0d1ba496a56e56557e243dc7875
+# stability witness: fb6008179cc38d3065719eca408e0c5fb0e8c278 / Quality 32151880183 / artifact 9330365265 / sha256:55265f6a1bc0b9e7fbace07ee808c4482c2ca6c2168201a29a163dfdfdf2ef0c
+
+# 锁定工具链
+# Node 24.18.1
+# pnpm 11.21.0
+# Prettier 3.9.6
+# ESLint 10.8.0
+# TypeScript 6.0.3
+# Vitest 4.1.10
+# Playwright 1.62.0
+# Electron 43.2.0

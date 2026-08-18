@@ -77,7 +77,7 @@ export function removeShortcutOverride(
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
+  if (typeof HTMLElement === 'undefined' || !(target instanceof HTMLElement)) return false;
   return Boolean(
     target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'),
   );

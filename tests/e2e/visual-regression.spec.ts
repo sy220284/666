@@ -193,7 +193,7 @@ if (process.platform === 'linux') {
   test('Phase 3 Linux 2560×1440主题视觉基线', async () => {
     test.setTimeout(180_000);
     const manifest = await loadVisualBaselineManifest(root);
-    expect(manifest.baselines).toHaveLength(4);
+    expect(manifest.baselines).toHaveLength(6);
 
     const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-visual-regression-'));
     temporaryDirectories.push(userDataPath);

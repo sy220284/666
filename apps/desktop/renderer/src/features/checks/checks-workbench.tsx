@@ -177,6 +177,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
       active = false;
     };
   }, [bridge, projectId]);
+
   useEffect(() => void refreshCatalog(), [refreshCatalog]);
 
   const activeRunId = activeRun?.runId ?? null;

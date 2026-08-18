@@ -114,7 +114,10 @@ test('Windows真实Microsoft拼音在打字机模式完成候选、确认、切�
     const writingWorkbench = page.locator('[data-writing-workbench]');
     await expect(writingWorkbench).toBeVisible({ timeout: 15_000 });
 
-    await page.locator('[data-toggle-typewriter-mode]').click();
+    await page.locator('[data-draft-more-actions] summary').click();
+    const typewriterToggle = page.locator('[data-toggle-typewriter-mode]');
+    await expect(typewriterToggle).toBeVisible();
+    await typewriterToggle.click();
     await expect(writingWorkbench).toHaveAttribute('data-typewriter-mode', 'true');
 
     const editor = page.locator('.worldforge-editor');

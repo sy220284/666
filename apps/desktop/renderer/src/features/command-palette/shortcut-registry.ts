@@ -35,7 +35,7 @@ export function commandForShortcut(
   context: ShortcutContext,
 ): CommandCatalogEntry | null {
   const chord = normalizeShortcutEvent(event, platform);
-  if (!chord) return null;
+  if (!chord || isDialogOwnedTarget(event.target)) return null;
   const editable = isEditableTarget(event.target);
   for (const entry of COMMAND_CATALOG) {
     if (shortcutForCommand(entry, overrides) !== chord) continue;
@@ -81,6 +81,11 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return Boolean(
     target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'),
   );
+}
+
+function isDialogOwnedTarget(target: EventTarget | null): boolean {
+  if (typeof HTMLElement === 'undefined' || !(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest('[role="dialog"], [aria-modal="true"]'));
 }
 
 function isModifierKey(key: string): boolean {

@@ -65,6 +65,53 @@ export async function captureRewriteSelectionAnchor(
   };
 }
 
+/**
+ * The writing workbench is remounted when entering Candidate review. Reconstruct the last editor
+ * selection against the freshly re-opened saved Draft instead of silently widening a lost
+ * selection to every unlocked block.
+ */
+export async function capturePersistedRewriteSelectionAnchor(
+  projectId: string,
+  chapter: Chapter,
+  draft: DraftDocument,
+): Promise<RewriteSelectionAnchor | null> {
+  const remembered = getPersistedEditorSelection(projectId, chapter.id);
+  if (!remembered || remembered.from === remembered.to) return null;
+  const from = Math.min(remembered.from, remembered.to);
+  const to = Math.max(remembered.from, remembered.to);
+  let documentOffset = 0;
+
+  for (const block of draft.blocks) {
+    if (block.blockType === 'separator') {
+      documentOffset += 1;
+      continue;
+    }
+    const contentStart = documentOffset + 1;
+    const contentEnd = contentStart + block.text.length;
+    if (from >= contentStart && to <= contentEnd) {
+      if (block.locked || !block.contentHash) return null;
+      const selectionStart = from - contentStart;
+      const selectionEnd = to - contentStart;
+      const selectedText = block.text.slice(selectionStart, selectionEnd);
+      if (!selectedText) return null;
+      return {
+        projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseRevision: draft.revision,
+        logicalBlockId: block.logicalBlockId,
+        expectedBlockHash: block.contentHash,
+        selectionStart,
+        selectionEnd,
+        selectedTextHash: await sha256Text(selectedText),
+      };
+    }
+    documentOffset += block.text.length + 2;
+  }
+
+  return null;
+}
+
 function selectionKey(projectId: string, chapterId: string): string {
   return `${projectId}:${chapterId}`;
 }

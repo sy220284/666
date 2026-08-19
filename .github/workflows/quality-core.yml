@@ -295,9 +295,36 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Install Electron display dependencies
+        shell: bash
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          set -euo pipefail
+          apt_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if sudo timeout --kill-after=10s 90s apt-get \
+                -o Acquire::Retries=2 \
+                -o Acquire::http::Timeout=20 \
+                -o Acquire::https::Timeout=20 \
+                "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                return 1
+              fi
+              sleep $((attempt * 5))
+            done
+          }
+          packages=()
+          dpkg-query -W -f='${Status}' fonts-noto-cjk 2>/dev/null | grep -q 'ok installed' || packages+=(fonts-noto-cjk)
+          command -v Xvfb >/dev/null 2>&1 || packages+=(xvfb)
+          if [ "${#packages[@]}" -gt 0 ]; then
+            export DEBIAN_FRONTEND=noninteractive
+            if ! apt_retry install -y --no-install-recommends "${packages[@]}"; then
+              apt_retry update -qq
+              apt_retry install -y --no-install-recommends "${packages[@]}"
+            fi
+          fi
+          command -v Xvfb
           fc-match "Noto Serif CJK SC"
       - name: Build desktop
         run: pnpm build
@@ -360,9 +387,36 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Install Electron display dependencies
+        shell: bash
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          set -euo pipefail
+          apt_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if sudo timeout --kill-after=10s 90s apt-get \
+                -o Acquire::Retries=2 \
+                -o Acquire::http::Timeout=20 \
+                -o Acquire::https::Timeout=20 \
+                "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                return 1
+              fi
+              sleep $((attempt * 5))
+            done
+          }
+          packages=()
+          dpkg-query -W -f='${Status}' fonts-noto-cjk 2>/dev/null | grep -q 'ok installed' || packages+=(fonts-noto-cjk)
+          command -v Xvfb >/dev/null 2>&1 || packages+=(xvfb)
+          if [ "${#packages[@]}" -gt 0 ]; then
+            export DEBIAN_FRONTEND=noninteractive
+            if ! apt_retry install -y --no-install-recommends "${packages[@]}"; then
+              apt_retry update -qq
+              apt_retry install -y --no-install-recommends "${packages[@]}"
+            fi
+          fi
+          command -v Xvfb
           fc-match "Noto Serif CJK SC"
       - name: Build desktop
         run: pnpm build
@@ -414,9 +468,37 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Install Linux display dependencies
         if: matrix.platform == 'linux'
+        shell: bash
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          set -euo pipefail
+          apt_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if sudo timeout --kill-after=10s 90s apt-get \
+                -o Acquire::Retries=2 \
+                -o Acquire::http::Timeout=20 \
+                -o Acquire::https::Timeout=20 \
+                "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                return 1
+              fi
+              sleep $((attempt * 5))
+            done
+          }
+          packages=()
+          dpkg-query -W -f='${Status}' fonts-noto-cjk 2>/dev/null | grep -q 'ok installed' || packages+=(fonts-noto-cjk)
+          command -v Xvfb >/dev/null 2>&1 || packages+=(xvfb)
+          if [ "${#packages[@]}" -gt 0 ]; then
+            export DEBIAN_FRONTEND=noninteractive
+            if ! apt_retry install -y --no-install-recommends "${packages[@]}"; then
+              apt_retry update -qq
+              apt_retry install -y --no-install-recommends "${packages[@]}"
+            fi
+          fi
+          command -v Xvfb
+          fc-match "Noto Serif CJK SC"
       - name: Build and package desktop
         shell: bash
         run: |

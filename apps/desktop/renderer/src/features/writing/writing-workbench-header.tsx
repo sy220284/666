@@ -86,6 +86,7 @@ export function WritingWorkbenchHeader({
           type="button"
           className={panel === 'candidates' ? 'is-active' : ''}
           disabled={!chapter}
+          onPointerDownCapture={rememberCurrentSelection}
           onClick={() => onPanelChange('candidates')}
         >
           智能助手
@@ -108,6 +109,7 @@ export function WritingWorkbenchHeader({
               type="button"
               className={panel === 'versions' ? 'is-active' : ''}
               disabled={!chapter}
+              onPointerDownCapture={rememberCurrentSelection}
               onClick={() => onPanelChange('versions')}
             >
               历史版本

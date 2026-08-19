@@ -6,6 +6,7 @@ import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adap
 import { useBridgeCommand } from '../../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../../presentation/author-error-message.js';
 import { authorSceneBeatTypeLabel } from '../../../presentation/author-value-format.js';
+import { useUnsavedChangesGuard } from '../../../runtime/unsaved-changes.js';
 import { nullableString } from '../planning-form-values.js';
 
 export function SceneBeatDialog({
@@ -30,6 +31,7 @@ export function SceneBeatDialog({
   readonly onSaved: () => Promise<void>;
 }) {
   const command = useBridgeCommand();
+  const unsaved = useUnsavedChangesGuard('场景');
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
@@ -61,14 +63,22 @@ export function SceneBeatDialog({
         : await command.run(() =>
             bridge.planning.createSceneBeat({ projectId, chapterId, ...fields }),
           );
-    if (result) await onSaved();
+    if (result) {
+      unsaved.clearDirty();
+      await onSaved();
+    }
   };
   const characters = entities.filter((entity) => entity.entityType === 'character');
   const locations = entities.filter((entity) => entity.entityType === 'location');
 
   return (
     <dialog className="react-dialog" data-scene-beat-dialog open>
-      <form className="stacked-form" onSubmit={(event) => void submit(event)}>
+      <form
+        className="stacked-form"
+        data-unsaved={unsaved.dirty ? 'true' : 'false'}
+        onChange={unsaved.markDirty}
+        onSubmit={(event) => void submit(event)}
+      >
         <header>
           <h2>
             {beat
@@ -77,7 +87,13 @@ export function SceneBeatDialog({
                 ? `从 ${convertingLogicalBlockIds.length} 个正文段落转换`
                 : '新建场景'}
           </h2>
-          <button type="button" disabled={command.pending} onClick={onClose}>
+          <button
+            type="button"
+            disabled={command.pending}
+            onClick={() => {
+              if (unsaved.confirmDiscard('关闭场景编辑')) onClose();
+            }}
+          >
             关闭
           </button>
         </header>

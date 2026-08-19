@@ -19,6 +19,7 @@ const capture = vi.hoisted(() => ({
   undo: vi.fn(),
   redo: vi.fn(),
   rewriteAnchor: vi.fn().mockResolvedValue({ kind: 'selection' }),
+  persistedRewriteAnchor: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@worldforge/editor-core', () => ({
@@ -27,6 +28,7 @@ vi.mock('@worldforge/editor-core', () => ({
 }));
 vi.mock('../../apps/desktop/renderer/src/features/writing/editor-selection.js', () => ({
   captureRewriteSelectionAnchor: capture.rewriteAnchor,
+  capturePersistedRewriteSelectionAnchor: capture.persistedRewriteAnchor,
 }));
 vi.mock('../../apps/desktop/renderer/src/features/writing/writing-workbench-header.js', () => ({
   WritingWorkbenchHeader: (props: Record<string, unknown>) => {
@@ -302,6 +304,7 @@ beforeEach(() => {
   actions.flush.mockResolvedValue(true);
   writeText.mockResolvedValue(undefined);
   capture.rewriteAnchor.mockResolvedValue({ kind: 'selection' });
+  capture.persistedRewriteAnchor.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -488,6 +491,7 @@ describe('WritingWorkbenchView interaction coverage', () => {
     let candidate = lastProps(capture.candidate);
     expect('initialGenerationMode' in candidate).toBe(false);
     await expect(invokeProp(candidate, 'getRewriteSelectionAnchor')).resolves.toBeNull();
+    expect(capture.persistedRewriteAnchor).toHaveBeenCalledWith(projectId, chapter, draft);
     await invokeProp(candidate, 'onClose');
 
     const editorInstance = contractInput<Editor>({

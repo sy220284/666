@@ -10,7 +10,10 @@ import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { StructureNavigator } from '../structure/structure-navigator.js';
 import { CandidateReviewPanel } from './candidate-review-panel.js';
 import type { ChapterSessionPhase } from './chapter-session-state.js';
-import { captureRewriteSelectionAnchor } from './editor-selection.js';
+import {
+  capturePersistedRewriteSelectionAnchor,
+  captureRewriteSelectionAnchor,
+} from './editor-selection.js';
 import { FindReplaceToolbar } from './find-replace-toolbar.js';
 import { VersionPanel } from './version-panel.js';
 import { WritingAssistancePanel } from './writing-assistance-panel.js';
@@ -126,16 +129,60 @@ export function WritingWorkbenchView({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (panel !== 'editor') return;
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+      const mod = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+      if (mod && event.shiftKey && key === 'f') {
+        event.preventDefault();
+        rememberCurrentSelection();
+        toggleFocusMode();
+        return;
+      }
+      if (mod && !event.shiftKey && key === 'f') {
         event.preventDefault();
         setFindOpen(true);
+        return;
+      }
+      if (mod && !event.shiftKey && event.key === 'Enter') {
+        event.preventDefault();
+        const instance = editor.current;
+        if (!instance || !chapter || !draft || readOnly || isComposing || event.isComposing) {
+          setStatus('当前状态不能启动快速改写。');
+          return;
+        }
+        void captureRewriteSelectionAnchor(instance, project.projectId, chapter, draft).then(
+          (anchor) => {
+            if (!anchor) {
+              setStatus('请先选择同一未锁定正文段落内的文字，再使用快速改写。');
+              return;
+            }
+            rememberCurrentSelection();
+            onNavigate({
+              type: 'writing-action',
+              projectId: project.projectId,
+              generationMode: 'rewrite',
+            });
+          },
+        );
         return;
       }
       if (event.key === 'Escape' && findOpen) setFindOpen(false);
     };
     globalThis.addEventListener('keydown', onKeyDown);
     return () => globalThis.removeEventListener('keydown', onKeyDown);
-  }, [findOpen, panel]);
+  }, [
+    chapter,
+    draft,
+    editor,
+    findOpen,
+    isComposing,
+    onNavigate,
+    panel,
+    project.projectId,
+    readOnly,
+    rememberCurrentSelection,
+    setStatus,
+    toggleFocusMode,
+  ]);
 
   useEffect(() => {
     if (!typewriterMode || panel !== 'editor' || !editorReady) return;
@@ -429,7 +476,7 @@ export function WritingWorkbenchView({
                 const instance = editor.current;
                 return instance
                   ? captureRewriteSelectionAnchor(instance, project.projectId, chapter, draft)
-                  : Promise.resolve(null);
+                  : capturePersistedRewriteSelectionAnchor(project.projectId, chapter, draft);
               }}
               {...(navigationGenerationMode !== undefined
                 ? { initialGenerationMode: navigationGenerationMode }

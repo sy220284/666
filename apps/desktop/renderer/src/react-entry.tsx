@@ -10,6 +10,7 @@ import { installGlobalRendererErrorBoundary } from './runtime/global-error-bound
 import { RendererLifecycleRegistry } from './runtime/lifecycle-registry.js';
 import { createRendererFoundationRuntime } from './runtime/renderer-foundation-runtime.js';
 import { RendererStatusArbitrator } from './runtime/status-arbitrator.js';
+import { confirmRegisteredUnsavedChanges } from './runtime/unsaved-changes.js';
 
 const rootElement = document.getElementById('react-root');
 if (!rootElement) throw new Error('RENDERER_REACT_ROOT_MISSING');
@@ -38,6 +39,10 @@ const root = createRoot(rootElement);
 lifecycle.register('react-root', 'core-recovery-supervisor', () => coreRecovery.dispose());
 lifecycle.register('react-root', 'global-error-boundary', stopGlobalErrorBoundary);
 const stopShutdownListener = bridge.lifecycle.onShutdownPrepare((request) => {
+  if (!confirmRegisteredUnsavedChanges('关闭应用')) {
+    void bridge.lifecycle.acknowledgeShutdown({ ...request, saved: false });
+    return;
+  }
   void applicationController
     .flushPendingDraft()
     .then((saved) => bridge.lifecycle.acknowledgeShutdown({ ...request, saved }))

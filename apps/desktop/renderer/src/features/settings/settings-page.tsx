@@ -13,9 +13,18 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { authorStatusLabel } from '../../presentation/author-status-labels.js';
+import {
+  confirmRegisteredUnsavedChanges,
+  useUnsavedChangesGuard,
+} from '../../runtime/unsaved-changes.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
-import { LongformAiSettingsPanel } from './longform-ai-settings.js';
-import { ProviderSettings } from './provider-settings.js';
+import {
+  createSettingsNavigationItems,
+  resolveSettingsNavigationIntent,
+  type SettingsBasicSectionId,
+} from '../../shell/settings-navigation-model.js';
 import {
   COMMAND_CATALOG,
   shortcutDisplayLabel,
@@ -27,15 +36,9 @@ import {
   shortcutConflict,
   updateShortcutOverride,
 } from '../command-palette/shortcut-registry.js';
-import {
-  createSettingsNavigationItems,
-  resolveSettingsNavigationIntent,
-  type SettingsBasicSectionId,
-} from '../../shell/settings-navigation-model.js';
+import { LongformAiSettingsPanel } from './longform-ai-settings.js';
+import { ProviderSettings } from './provider-settings.js';
 
-import { authorErrorSummary } from '../../presentation/author-error-message.js';
-
-import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 export interface SettingsPageProps {
   readonly bridge: RendererBridgeAdapter;
   readonly disclosureMode: AppDisclosureMode;
@@ -81,7 +84,12 @@ export function SettingsPage(props: SettingsPageProps) {
       currentSection: section,
       availability: sectionAvailability,
     });
-    if (resolution.accepted) setSection(resolution.section);
+    if (
+      resolution.accepted &&
+      (resolution.section === section || confirmRegisteredUnsavedChanges('切换设置分区'))
+    ) {
+      setSection(resolution.section);
+    }
   };
 
   return (
@@ -161,20 +169,27 @@ export function SettingsPage(props: SettingsPageProps) {
 
 function GeneralSettings(props: SettingsPageProps) {
   const [draft, setDraft] = useState(props.settings);
+  const { dirty, markDirty, clearDirty } = useUnsavedChangesGuard('通用设置');
   useEffect(() => setDraft(props.settings), [props.settings]);
 
-  const submit = (event: FormEvent<HTMLFormElement>): void => {
+  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    void props.onSaveSettings({
+    const saved = await props.onSaveSettings({
       language: draft.language,
       startupBehavior: draft.startupBehavior,
       defaultMode: draft.defaultMode,
       creativePath: draft.creativePath,
     });
+    if (saved) clearDirty();
   };
 
   return (
-    <form className="react-settings-form" data-settings-section="general" onSubmit={submit}>
+    <form
+      className="react-settings-form"
+      data-settings-section="general"
+      data-unsaved={dirty ? 'true' : 'false'}
+      onSubmit={(event) => void submit(event)}
+    >
       <header>
         <h2>通用</h2>
         <p>选择启动行为和默认信息显示方式。切换显示方式不会改变作品数据与功能。</p>
@@ -189,12 +204,13 @@ function GeneralSettings(props: SettingsPageProps) {
         <span>启动行为</span>
         <select
           value={draft.startupBehavior}
-          onChange={(event) =>
+          onChange={(event) => {
+            markDirty();
             setDraft({
               ...draft,
               startupBehavior: event.target.value as AppSettings['startupBehavior'],
-            })
-          }
+            });
+          }}
         >
           <option value="show-home">显示首页</option>
           <option value="reopen-last">重新打开最近作品</option>
@@ -206,9 +222,10 @@ function GeneralSettings(props: SettingsPageProps) {
           data-default-mode
           data-react-default-mode
           value={draft.defaultMode}
-          onChange={(event) =>
-            setDraft({ ...draft, defaultMode: event.target.value as AppSettings['defaultMode'] })
-          }
+          onChange={(event) => {
+            markDirty();
+            setDraft({ ...draft, defaultMode: event.target.value as AppSettings['defaultMode'] });
+          }}
         >
           <option value="beginner">简明模式</option>
           <option value="professional">完整模式</option>
@@ -219,12 +236,13 @@ function GeneralSettings(props: SettingsPageProps) {
         <select
           data-creative-path
           value={draft.creativePath}
-          onChange={(event) =>
+          onChange={(event) => {
+            markDirty();
             setDraft({
               ...draft,
               creativePath: event.target.value as AppSettings['creativePath'],
-            })
-          }
+            });
+          }}
         >
           <option value="autonomous">自主创作</option>
           <option value="hybrid">人机协作</option>
@@ -246,7 +264,9 @@ function GeneralSettings(props: SettingsPageProps) {
           className="quiet-button"
           disabled={Boolean(props.pendingKey)}
           type="button"
-          onClick={props.onResetSettings}
+          onClick={() => {
+            if (!dirty || confirmRegisteredUnsavedChanges('恢复默认设置')) props.onResetSettings();
+          }}
         >
           恢复默认
         </button>
@@ -266,6 +286,7 @@ function GeneralSettings(props: SettingsPageProps) {
 function EditorSettings(props: SettingsPageProps) {
   const [appearanceDraft, setAppearanceDraft] = useState(props.appearance);
   const [settingsDraft, setSettingsDraft] = useState(props.settings);
+  const { dirty, markDirty, clearDirty } = useUnsavedChangesGuard('编辑器设置');
   useEffect(() => setAppearanceDraft(props.appearance), [props.appearance]);
   useEffect(() => setSettingsDraft(props.settings), [props.settings]);
 
@@ -275,13 +296,16 @@ function EditorSettings(props: SettingsPageProps) {
       typewriterMode: settingsDraft.typewriterMode,
       typewriterAnchorPercent: settingsDraft.typewriterAnchorPercent,
     });
-    if (settingsSaved) await props.onSaveAppearance(appearanceDraft);
+    if (!settingsSaved) return;
+    const appearanceSaved = await props.onSaveAppearance(appearanceDraft);
+    if (appearanceSaved) clearDirty();
   };
 
   return (
     <form
       className="react-settings-form"
       data-settings-section="editor"
+      data-unsaved={dirty ? 'true' : 'false'}
       onSubmit={(event) => void submit(event)}
     >
       <header>
@@ -296,9 +320,10 @@ function EditorSettings(props: SettingsPageProps) {
           min={14}
           type="range"
           value={appearanceDraft.bodyFontSize}
-          onChange={(event) =>
-            setAppearanceDraft({ ...appearanceDraft, bodyFontSize: Number(event.target.value) })
-          }
+          onChange={(event) => {
+            markDirty();
+            setAppearanceDraft({ ...appearanceDraft, bodyFontSize: Number(event.target.value) });
+          }}
         />
       </label>
       <label>
@@ -306,12 +331,13 @@ function EditorSettings(props: SettingsPageProps) {
         <select
           data-content-width
           value={appearanceDraft.contentWidth}
-          onChange={(event) =>
+          onChange={(event) => {
+            markDirty();
             setAppearanceDraft({
               ...appearanceDraft,
               contentWidth: event.target.value as AppearancePreferences['contentWidth'],
-            })
-          }
+            });
+          }}
         >
           <option value="narrow">窄 · 680px</option>
           <option value="normal">标准 · 760px</option>
@@ -324,9 +350,10 @@ function EditorSettings(props: SettingsPageProps) {
           checked={settingsDraft.typewriterMode}
           data-typewriter-mode
           type="checkbox"
-          onChange={(event) =>
-            setSettingsDraft({ ...settingsDraft, typewriterMode: event.target.checked })
-          }
+          onChange={(event) => {
+            markDirty();
+            setSettingsDraft({ ...settingsDraft, typewriterMode: event.target.checked });
+          }}
         />
         <span>打字机模式：输入位置保持在稳定视觉区域</span>
       </label>
@@ -340,12 +367,13 @@ function EditorSettings(props: SettingsPageProps) {
           step={5}
           type="range"
           value={settingsDraft.typewriterAnchorPercent}
-          onChange={(event) =>
+          onChange={(event) => {
+            markDirty();
             setSettingsDraft({
               ...settingsDraft,
               typewriterAnchorPercent: Number(event.target.value),
-            })
-          }
+            });
+          }}
         />
       </label>
       <footer>
@@ -365,6 +393,7 @@ function EditorSettings(props: SettingsPageProps) {
 function AppearanceSettings(props: SettingsPageProps) {
   const [settings, setSettings] = useState(props.settings);
   const [appearance, setAppearance] = useState(props.appearance);
+  const { dirty, markDirty, clearDirty } = useUnsavedChangesGuard('外观设置');
   useEffect(() => setSettings(props.settings), [props.settings]);
   useEffect(() => setAppearance(props.appearance), [props.appearance]);
 
@@ -376,7 +405,9 @@ function AppearanceSettings(props: SettingsPageProps) {
       reduceMotion: settings.reduceMotion,
       themeSealText: settings.themeSealText,
     });
-    if (savedSettings) await props.onSaveAppearance(appearance);
+    if (!savedSettings) return;
+    const savedAppearance = await props.onSaveAppearance(appearance);
+    if (savedAppearance) clearDirty();
   };
 
   const variants = ['light', 'dark', 'eye-care', 'high-contrast'] as const;
@@ -385,6 +416,7 @@ function AppearanceSettings(props: SettingsPageProps) {
     <form
       className="react-settings-form"
       data-settings-section="appearance"
+      data-unsaved={dirty ? 'true' : 'false'}
       onSubmit={(event) => void submit(event)}
     >
       <header>
@@ -397,6 +429,7 @@ function AppearanceSettings(props: SettingsPageProps) {
           data-theme-id
           value={settings.themeId}
           onChange={(event) => {
+            markDirty();
             const themeId = event.target.value as AppSettings['themeId'];
             setSettings({ ...settings, themeId });
           }}
@@ -410,12 +443,13 @@ function AppearanceSettings(props: SettingsPageProps) {
         <select
           data-theme-variant
           value={settings.themeVariant}
-          onChange={(event) =>
+          onChange={(event) => {
+            markDirty();
             setSettings({
               ...settings,
               themeVariant: event.target.value as AppSettings['themeVariant'],
-            })
-          }
+            });
+          }}
         >
           {variants.map((variant) => (
             <option key={variant} value={variant}>
@@ -429,9 +463,10 @@ function AppearanceSettings(props: SettingsPageProps) {
         <select
           data-ui-scale
           value={appearance.uiScalePercent}
-          onChange={(event) =>
-            setAppearance({ ...appearance, uiScalePercent: Number(event.target.value) })
-          }
+          onChange={(event) => {
+            markDirty();
+            setAppearance({ ...appearance, uiScalePercent: Number(event.target.value) });
+          }}
         >
           {[90, 100, 110, 120, 130, 140, 150].map((value) => (
             <option key={value} value={value}>
@@ -445,12 +480,13 @@ function AppearanceSettings(props: SettingsPageProps) {
         <select
           data-workspace-alignment
           value={appearance.workspaceAlignment}
-          onChange={(event) =>
+          onChange={(event) => {
+            markDirty();
             setAppearance({
               ...appearance,
               workspaceAlignment: event.target.value as AppearancePreferences['workspaceAlignment'],
-            })
-          }
+            });
+          }}
         >
           <option value="left">偏左</option>
           <option value="center">居中</option>
@@ -462,7 +498,10 @@ function AppearanceSettings(props: SettingsPageProps) {
           checked={settings.reduceMotion}
           data-reduce-motion
           type="checkbox"
-          onChange={(event) => setSettings({ ...settings, reduceMotion: event.target.checked })}
+          onChange={(event) => {
+            markDirty();
+            setSettings({ ...settings, reduceMotion: event.target.checked });
+          }}
         />
         <span>减少动态效果</span>
       </label>
@@ -473,7 +512,10 @@ function AppearanceSettings(props: SettingsPageProps) {
           maxLength={12}
           placeholder="例如：落笔生花"
           value={settings.themeSealText}
-          onChange={(event) => setSettings({ ...settings, themeSealText: event.target.value })}
+          onChange={(event) => {
+            markDirty();
+            setSettings({ ...settings, themeSealText: event.target.value });
+          }}
         />
         <small>最多 12 个中英文、数字或常用分隔符；仅用于界面装饰，不进入正文或智能提示。</small>
       </label>
@@ -498,6 +540,7 @@ function ShortcutSettings(props: SettingsPageProps) {
   );
   const [captureId, setCaptureId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const { dirty, markDirty, clearDirty } = useUnsavedChangesGuard('快捷键设置');
   useEffect(
     () => setOverrides(props.settings.shortcutOverrides),
     [props.settings.shortcutOverrides],
@@ -505,14 +548,18 @@ function ShortcutSettings(props: SettingsPageProps) {
   const platform = globalThis.navigator?.platform ?? '';
   const commands = COMMAND_CATALOG.filter((entry) => entry.rebindable);
 
+  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const saved = await props.onSaveSettings({ shortcutOverrides: [...overrides] });
+    if (saved) clearDirty();
+  };
+
   return (
     <form
       className="react-settings-form"
       data-settings-section="shortcuts"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void props.onSaveSettings({ shortcutOverrides: [...overrides] });
-      }}
+      data-unsaved={dirty ? 'true' : 'false'}
+      onSubmit={(event) => void submit(event)}
     >
       <header>
         <h2>快捷键</h2>
@@ -559,6 +606,7 @@ function ShortcutSettings(props: SettingsPageProps) {
                     );
                     return;
                   }
+                  markDirty();
                   setOverrides(updateShortcutOverride(overrides, entry.id, chord));
                   setCaptureId(null);
                   setNotice(`已暂存“${entry.label}”快捷键，保存后生效。`);
@@ -570,6 +618,7 @@ function ShortcutSettings(props: SettingsPageProps) {
                 className="quiet-button"
                 type="button"
                 onClick={() => {
+                  markDirty();
                   setOverrides(updateShortcutOverride(overrides, entry.id, null));
                   setCaptureId(null);
                   setNotice(`已暂存禁用“${entry.label}”快捷键。`);
@@ -581,6 +630,7 @@ function ShortcutSettings(props: SettingsPageProps) {
                 className="quiet-button"
                 type="button"
                 onClick={() => {
+                  markDirty();
                   setOverrides(removeShortcutOverride(overrides, entry.id));
                   setCaptureId(null);
                   setNotice(`已恢复“${entry.label}”默认快捷键。`);

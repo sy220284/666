@@ -17,6 +17,7 @@ import {
   setResearchReferenceSelected,
 } from '../../bridge/research-reference-selection.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { useUnsavedChangesGuard } from '../../runtime/unsaved-changes.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
 import { useResearchTargetOptions } from './research-target-options.js';
@@ -107,7 +108,7 @@ export function ResearchWorkbench({
   const [targetId, setTargetId] = useState('');
   const [preview, setPreview] = useState<ResearchAttachmentPreview | null>(null);
   const [pending, setPending] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const { dirty, markDirty, clearDirty, confirmDiscard } = useUnsavedChangesGuard('研究笔记');
   const loadedNoteIdentity = useRef<string | null>(null);
   const [notice, setNotice] = useState(
     '研究资料不会自动写入人物与世界，也不会自动进入智能上下文。',
@@ -214,10 +215,7 @@ export function ResearchWorkbench({
     setSelectedReferenceIds(selectedReferenceKeys(projectId));
   }, [projectId]);
 
-  useEffect(() => {
-    const identity = selected ? `${selected.id}:${selected.updatedAt}` : null;
-    if (loadedNoteIdentity.current === identity) return;
-    loadedNoteIdentity.current = identity;
+  const restoreSelectedDraft = useCallback((): void => {
     setPreview(null);
     if (!selected) {
       setTitle('');
@@ -226,7 +224,7 @@ export function ResearchWorkbench({
       setSourceLabel('');
       setSourceUri('');
       setTagsText('');
-      setDirty(false);
+      clearDirty();
       return;
     }
     setTitle(selected.title);
@@ -235,20 +233,23 @@ export function ResearchWorkbench({
     setSourceLabel(selected.sourceLabel ?? '');
     setSourceUri(selected.sourceUri ?? '');
     setTagsText(selected.tags.join('，'));
-    setDirty(false);
-  }, [selected]);
+    clearDirty();
+  }, [clearDirty, selected]);
+
+  useEffect(() => {
+    const identity = selected ? `${selected.id}:${selected.updatedAt}` : null;
+    if (loadedNoteIdentity.current === identity) return;
+    loadedNoteIdentity.current = identity;
+    restoreSelectedDraft();
+  }, [restoreSelectedDraft, selected]);
 
   const confirmDiscardUnsaved = (action: string): boolean => {
     if (!dirty) return true;
-    const confirmed =
-      typeof window === 'undefined' || typeof window.confirm !== 'function'
-        ? true
-        : window.confirm(`当前研究笔记有未保存修改。${action}会放弃这些修改，是否继续？`);
-    if (!confirmed) {
+    if (!confirmDiscard(action)) {
       setNotice('已保留当前研究笔记的未保存修改。');
       return false;
     }
-    setDirty(false);
+    restoreSelectedDraft();
     return true;
   };
 
@@ -307,6 +308,7 @@ export function ResearchWorkbench({
     );
     setPending(null);
     if (outcome.state === 'success') {
+      clearDirty();
       applyCatalog(outcome.data, selected.id);
       setNotice('研究笔记已保存。');
     } else if (outcome.state === 'failure') {
@@ -680,7 +682,7 @@ export function ResearchWorkbench({
                   disabled={readOnly}
                   onChange={(event) => {
                     setTitle(event.target.value);
-                    setDirty(true);
+                    markDirty();
                   }}
                 />
               </label>
@@ -691,7 +693,7 @@ export function ResearchWorkbench({
                   disabled={readOnly}
                   onChange={(event) => {
                     setTagsText(event.target.value);
-                    setDirty(true);
+                    markDirty();
                   }}
                   placeholder="历史，地理，服饰"
                 />
@@ -703,7 +705,7 @@ export function ResearchWorkbench({
                   disabled={readOnly}
                   onChange={(event) => {
                     setSourceType(event.target.value);
-                    setDirty(true);
+                    markDirty();
                   }}
                   placeholder="档案、网页、书籍、访谈……"
                 />
@@ -715,7 +717,7 @@ export function ResearchWorkbench({
                   disabled={readOnly}
                   onChange={(event) => {
                     setSourceLabel(event.target.value);
-                    setDirty(true);
+                    markDirty();
                   }}
                   placeholder="书名、档案名称或资料来源"
                 />
@@ -727,7 +729,7 @@ export function ResearchWorkbench({
                   disabled={readOnly}
                   onChange={(event) => {
                     setSourceUri(event.target.value);
-                    setDirty(true);
+                    markDirty();
                   }}
                   placeholder="网址、档案号或其他定位符"
                 />
@@ -739,7 +741,7 @@ export function ResearchWorkbench({
                   disabled={readOnly}
                   onChange={(event) => {
                     setBody(event.target.value);
-                    setDirty(true);
+                    markDirty();
                   }}
                   rows={16}
                 />

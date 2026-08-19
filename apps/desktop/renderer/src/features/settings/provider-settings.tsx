@@ -10,6 +10,10 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { RendererCommandCoordinator } from '../../runtime/command-coordinator.js';
 import {
+  confirmRegisteredUnsavedChanges,
+  useUnsavedChangesGuard,
+} from '../../runtime/unsaved-changes.js';
+import {
   providerScopeLabel,
   refreshProviderSettings,
   runProviderSettingsCommand,
@@ -47,6 +51,7 @@ export function ProviderSettings({
   const [message, setMessage] = useState('正在读取本机智能连接…');
   const [deleteArmed, setDeleteArmed] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderConnectionTestResult | null>(null);
+  const { dirty, markDirty, clearDirty, confirmDiscard } = useUnsavedChangesGuard('智能连接设置');
   const commandCoordinator = useRef(new RendererCommandCoordinator()).current;
   const refreshInput = useMemo(
     () => ({ bridge, setProviders, onProvidersChanged, setMessage }),
@@ -66,7 +71,7 @@ export function ProviderSettings({
     };
   }, [commandCoordinator, refreshInput]);
 
-  const choosePreset = (presetId: ProviderPresetId): void => {
+  const applyPreset = (presetId: ProviderPresetId): void => {
     setDraft(applyProviderPreset(presetId));
     setActivePreset(presetId);
     setCredential('');
@@ -76,7 +81,13 @@ export function ProviderSettings({
     setMessage(`${providerPreset(presetId).label}预设已填入，请确认模型名称后保存。`);
   };
 
+  const choosePreset = (presetId: ProviderPresetId): void => {
+    if (dirty && !confirmDiscard('切换智能连接预设')) return;
+    applyPreset(presetId);
+  };
+
   const edit = (provider: ProviderSummary): void => {
+    if (dirty && !confirmDiscard('编辑其他智能连接')) return;
     setDraft(editableProviderConfig(provider));
     setActivePreset(null);
     setCredential('');
@@ -85,7 +96,10 @@ export function ProviderSettings({
     setMessage(`正在编辑“${provider.name}”；密钥不会回显。`);
   };
 
-  const reset = (): void => choosePreset('ollama');
+  const reset = (): void => {
+    if (dirty && !confirmDiscard('新建本机连接')) return;
+    applyPreset('ollama');
+  };
 
   const save = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -108,6 +122,7 @@ export function ProviderSettings({
         setCredential('');
         setRemoveCredential(false);
         if (outcome.state === 'success') {
+          clearDirty();
           onProviderInvalidated(outcome.data.id);
           setDraft(editableProviderConfig(outcome.data));
           await refreshProviderSettings(refreshInput, scope);
@@ -126,6 +141,14 @@ export function ProviderSettings({
       setMessage(`再次点击删除“${provider.name}”以确认。`);
       return;
     }
+    if (
+      draft.id === provider.id &&
+      dirty &&
+      !confirmRegisteredUnsavedChanges('删除正在编辑的智能连接')
+    ) {
+      setMessage('已保留当前智能连接的未保存修改。');
+      return;
+    }
     await runProviderSettingsCommand({
       coordinator: commandCoordinator,
       pendingKey: `remove:${provider.id}`,
@@ -137,7 +160,10 @@ export function ProviderSettings({
         setDeleteArmed(null);
         if (outcome.state === 'success') {
           onProviderInvalidated(provider.id);
-          if (draft.id === provider.id) reset();
+          if (draft.id === provider.id) {
+            clearDirty();
+            applyPreset('ollama');
+          }
           await refreshProviderSettings(refreshInput, scope);
           if (scope.isCurrent())
             setMessage(
@@ -183,6 +209,7 @@ export function ProviderSettings({
       className="react-settings-form"
       data-provider-settings
       data-settings-section="providers"
+      data-unsaved={dirty ? 'true' : 'false'}
     >
       <header>
         <h2>智能服务与连接</h2>
@@ -215,7 +242,10 @@ export function ProviderSettings({
               required
               data-provider-name
               value={draft.name}
-              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              onChange={(event) => {
+                markDirty();
+                setDraft({ ...draft, name: event.target.value });
+              }}
             />
           </label>
           <label>
@@ -225,7 +255,10 @@ export function ProviderSettings({
               data-provider-model
               placeholder="填写服务中实际可用的模型名称"
               value={draft.model}
-              onChange={(event) => setDraft({ ...draft, model: event.target.value })}
+              onChange={(event) => {
+                markDirty();
+                setDraft({ ...draft, model: event.target.value });
+              }}
             />
           </label>
           <label>
@@ -236,7 +269,10 @@ export function ProviderSettings({
               placeholder="本机无密钥服务可留空"
               type="password"
               value={credential}
-              onChange={(event) => setCredential(event.target.value)}
+              onChange={(event) => {
+                markDirty();
+                setCredential(event.target.value);
+              }}
             />
             <small>{presetHint}</small>
           </label>
@@ -250,7 +286,10 @@ export function ProviderSettings({
                 disabled={providers.some((provider) => provider.id === draft.id)}
                 pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
                 value={draft.id}
-                onChange={(event) => setDraft({ ...draft, id: event.target.value })}
+                onChange={(event) => {
+                  markDirty();
+                  setDraft({ ...draft, id: event.target.value });
+                }}
               />
             </label>
             <label>
@@ -259,6 +298,7 @@ export function ProviderSettings({
                 data-provider-protocol
                 value={draft.protocol}
                 onChange={(event) => {
+                  markDirty();
                   const protocol = event.target.value as 'openai_compatible' | 'anthropic';
                   setDraft(
                     protocol === 'anthropic'
@@ -282,7 +322,10 @@ export function ProviderSettings({
                 data-provider-base-url
                 type="url"
                 value={draft.baseUrl}
-                onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
+                onChange={(event) => {
+                  markDirty();
+                  setDraft({ ...draft, baseUrl: event.target.value });
+                }}
               />
             </label>
             <label>
@@ -294,7 +337,10 @@ export function ProviderSettings({
                 step={1_000}
                 type="number"
                 value={draft.timeoutMs}
-                onChange={(event) => setDraft({ ...draft, timeoutMs: Number(event.target.value) })}
+                onChange={(event) => {
+                  markDirty();
+                  setDraft({ ...draft, timeoutMs: Number(event.target.value) });
+                }}
               />
             </label>
             <label className="react-switch-row">
@@ -302,7 +348,10 @@ export function ProviderSettings({
                 checked={removeCredential}
                 data-provider-remove-credential
                 type="checkbox"
-                onChange={(event) => setRemoveCredential(event.target.checked)}
+                onChange={(event) => {
+                  markDirty();
+                  setRemoveCredential(event.target.checked);
+                }}
               />
               <span>保存时清除已有密钥</span>
             </label>

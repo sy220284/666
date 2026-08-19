@@ -5,6 +5,7 @@ import type { Chapter, LifecycleStatus, ProjectStructure, Volume } from '@worldf
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { useUnsavedChangesGuard } from '../../runtime/unsaved-changes.js';
 import { nullableNumber, statusLabel } from './structure-formatters.js';
 
 interface ChapterEditorDialogProps {
@@ -27,6 +28,7 @@ export function ChapterEditorDialog({
   onSaved,
 }: ChapterEditorDialogProps) {
   const command = useBridgeCommand();
+  const unsaved = useUnsavedChangesGuard('章节信息');
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -38,7 +40,10 @@ export function ChapterEditorDialog({
       const result = await command.run(() =>
         bridge.planning.createChapter({ projectId, volumeId: volume.id, title }),
       );
-      if (result) await onSaved();
+      if (result) {
+        unsaved.clearDirty();
+        await onSaved();
+      }
       return;
     }
     const minimum = nullableNumber(values.get('targetWordMin'));
@@ -57,15 +62,29 @@ export function ChapterEditorDialog({
         placement: { kind: 'end' },
       });
     });
-    if (result) await onSaved();
+    if (result) {
+      unsaved.clearDirty();
+      await onSaved();
+    }
   };
 
   return (
     <dialog className="react-dialog" data-structure-dialog open>
-      <form data-structure-form onSubmit={(event) => void submit(event)}>
+      <form
+        data-structure-form
+        data-unsaved={unsaved.dirty ? 'true' : 'false'}
+        onChange={unsaved.markDirty}
+        onSubmit={(event) => void submit(event)}
+      >
         <header>
           <h2 data-structure-dialog-title>{chapter ? '编辑章节' : '新建章节'}</h2>
-          <button type="button" disabled={command.pending} onClick={onClose}>
+          <button
+            type="button"
+            disabled={command.pending}
+            onClick={() => {
+              if (unsaved.confirmDiscard('关闭章节编辑')) onClose();
+            }}
+          >
             关闭
           </button>
         </header>

@@ -10,6 +10,7 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { useUnsavedChangesGuard } from '../../runtime/unsaved-changes.js';
 
 const TASK_TYPES = [
   'skeleton',
@@ -44,9 +45,11 @@ export function LongformAiSettingsPanel({
   const [message, setMessage] = useState('正在读取这部作品的长篇创作设置…');
   const [profileName, setProfileName] = useState('');
   const [profileInstructions, setProfileInstructions] = useState('');
+  const { dirty, markDirty, clearDirty } = useUnsavedChangesGuard('长篇创作设置');
 
   useEffect(() => {
     const controller = new AbortController();
+    clearDirty();
     setSettings(null);
     setDigests([]);
     setStructure(null);
@@ -87,7 +90,7 @@ export function LongformAiSettingsPanel({
       );
     });
     return () => controller.abort();
-  }, [bridge, project.projectId]);
+  }, [bridge, clearDirty, project.projectId]);
 
   const finalVersionIds = useMemo(
     () =>
@@ -121,6 +124,7 @@ export function LongformAiSettingsPanel({
     setPending(null);
     if (outcome.state === 'success') {
       setSettings(outcome.data);
+      if (!profileName.trim() && !profileInstructions.trim()) clearDirty();
       setMessage('长篇记忆、文风和智能任务分配已保存。');
     } else if (outcome.state === 'failure') {
       setMessage(`保存失败 · ${authorErrorSummary(outcome.error)}`);
@@ -172,6 +176,7 @@ export function LongformAiSettingsPanel({
       instructions,
       sampleVersionIds: [],
     });
+    markDirty();
     setSettings({
       ...settings,
       activeStyleProfileId: settings.activeStyleProfileId ?? profile.id,
@@ -193,6 +198,7 @@ export function LongformAiSettingsPanel({
       ],
       sampleVersionIds: [],
     });
+    markDirty();
     setSettings({
       ...settings,
       activeStyleProfileId: profile.id,
@@ -213,6 +219,7 @@ export function LongformAiSettingsPanel({
       instructions: ['延续已定稿正文的句段长度、对白密度与叙述节奏。'],
       sampleVersionIds: finalVersionIds,
     });
+    markDirty();
     setSettings({
       ...settings,
       activeStyleProfileId: profile.id,
@@ -258,6 +265,7 @@ export function LongformAiSettingsPanel({
       minimumSupport: 'verified' as const,
     };
     const next = { ...current, ...patch };
+    markDirty();
     setSettings({
       ...settings,
       taskRoutes: [...settings.taskRoutes.filter((route) => route.taskType !== taskType), next],
@@ -267,7 +275,11 @@ export function LongformAiSettingsPanel({
   const memoryCounts = memorySummary(digests);
 
   return (
-    <section className="react-settings-form longform-ai-settings" data-settings-section="longform">
+    <section
+      className="react-settings-form longform-ai-settings"
+      data-settings-section="longform"
+      data-unsaved={dirty ? 'true' : 'false'}
+    >
       <header>
         <h2>长篇创作</h2>
         <p>
@@ -335,9 +347,7 @@ export function LongformAiSettingsPanel({
           </div>
           <button
             className="quiet-button"
-            disabled={
-              !settings?.activeStyleProfileId || !finalVersionIds.length || pending !== null
-            }
+            disabled={!settings?.activeStyleProfileId || !finalVersionIds.length || pending !== null}
             type="button"
             onClick={() => void evaluateRecentStyle()}
           >
@@ -350,10 +360,11 @@ export function LongformAiSettingsPanel({
             data-active-style-profile
             disabled={!settings || readOnly || pending !== null}
             value={settings?.activeStyleProfileId ?? ''}
-            onChange={(event) =>
-              settings &&
-              setSettings({ ...settings, activeStyleProfileId: event.target.value || null })
-            }
+            onChange={(event) => {
+              if (!settings) return;
+              markDirty();
+              setSettings({ ...settings, activeStyleProfileId: event.target.value || null });
+            }}
           >
             <option value="">不指定</option>
             {settings?.styleProfiles.map((profile) => (
@@ -400,6 +411,7 @@ export function LongformAiSettingsPanel({
                   disabled={readOnly || pending !== null}
                   type="button"
                   onClick={() => {
+                    markDirty();
                     setSettings({
                       ...settings,
                       activeStyleProfileId:
@@ -426,7 +438,10 @@ export function LongformAiSettingsPanel({
               maxLength={120}
               placeholder="例如：冷峻第三人称"
               value={profileName}
-              onChange={(event) => setProfileName(event.target.value)}
+              onChange={(event) => {
+                markDirty();
+                setProfileName(event.target.value);
+              }}
             />
           </label>
           <label>
@@ -435,7 +450,10 @@ export function LongformAiSettingsPanel({
               maxLength={4000}
               placeholder={'减少解释性心理描写\n冲突场景优先短句'}
               value={profileInstructions}
-              onChange={(event) => setProfileInstructions(event.target.value)}
+              onChange={(event) => {
+                markDirty();
+                setProfileInstructions(event.target.value);
+              }}
             />
           </label>
           <button

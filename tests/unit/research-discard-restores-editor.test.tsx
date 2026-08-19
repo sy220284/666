@@ -74,7 +74,9 @@ function controlByLabel(root: TestInstance, label: string): TestInstance {
   const field = root.findAll(
     (node) => node.type === 'label' && textContent(node).startsWith(label),
   )[0];
-  const control = field?.findAll((node) => ['input', 'textarea', 'select'].includes(String(node.type)))[0];
+  const control = field?.findAll((node) =>
+    ['input', 'textarea', 'select'].includes(String(node.type)),
+  )[0];
   if (!control) throw new Error(`MISSING_CONTROL:${label}`);
   return control;
 }

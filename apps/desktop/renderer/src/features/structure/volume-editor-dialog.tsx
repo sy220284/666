@@ -5,6 +5,7 @@ import type { LifecycleStatus, Volume } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { useUnsavedChangesGuard } from '../../runtime/unsaved-changes.js';
 import { statusLabel } from './structure-formatters.js';
 
 interface VolumeEditorDialogProps {
@@ -23,6 +24,7 @@ export function VolumeEditorDialog({
   onSaved,
 }: VolumeEditorDialogProps) {
   const command = useBridgeCommand();
+  const unsaved = useUnsavedChangesGuard('卷信息');
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -38,15 +40,29 @@ export function VolumeEditorDialog({
           }),
         )
       : await command.run(() => bridge.planning.createVolume({ projectId, title }));
-    if (result) await onSaved();
+    if (result) {
+      unsaved.clearDirty();
+      await onSaved();
+    }
   };
 
   return (
     <dialog className="react-dialog" data-structure-dialog open>
-      <form data-structure-form onSubmit={(event) => void submit(event)}>
+      <form
+        data-structure-form
+        data-unsaved={unsaved.dirty ? 'true' : 'false'}
+        onChange={unsaved.markDirty}
+        onSubmit={(event) => void submit(event)}
+      >
         <header>
           <h2 data-structure-dialog-title>{volume ? '编辑卷' : '新建卷'}</h2>
-          <button type="button" disabled={command.pending} onClick={onClose}>
+          <button
+            type="button"
+            disabled={command.pending}
+            onClick={() => {
+              if (unsaved.confirmDiscard('关闭卷编辑')) onClose();
+            }}
+          >
             关闭
           </button>
         </header>

@@ -155,8 +155,7 @@ export function EntityCanonPanel({
   };
 
   const archive = async (): Promise<void> => {
-    if (!selected || !confirmEditorDiscard('归档当前设定条目')) return;
-    if (!window.confirm(`归档“${selected.name}”？`)) return;
+    if (!selected || !window.confirm(`归档“${selected.name}”？`)) return;
     const result = await command.run(() =>
       bridge.canon.archive({ projectId, authority: 'author', entityId: selected.id }),
     );
@@ -164,9 +163,7 @@ export function EntityCanonPanel({
   };
 
   const remove = async (): Promise<void> => {
-    if (!selected || selected.status !== 'archived' || !confirmEditorDiscard('永久删除当前设定条目')) {
-      return;
-    }
+    if (!selected || selected.status !== 'archived') return;
     const preview = await command.run(() =>
       bridge.canon.previewDelete({ projectId, entityId: selected.id }),
     );

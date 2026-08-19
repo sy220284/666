@@ -117,15 +117,27 @@ export function useAppSettingsPersistence({
     [aiReadiness.status, applySettings, bridge, setFailure, setMessage, setPendingKey],
   );
 
-  const resetSettings = useCallback(async (): Promise<void> => {
-    const outcome = await bridge.settings.reset();
-    if (outcome.state === 'success') {
-      applySettings(outcome.data.settings);
-      setMessage('已恢复默认设置。');
-    } else {
-      setFailure(failureFromOutcome('恢复默认设置失败', outcome));
-    }
-  }, [applySettings, bridge, setFailure, setMessage]);
+  const resetSettings = useCallback((): Promise<void> => {
+    const write = writeQueue.current.then(async () => {
+      setPendingKey('settings.reset');
+      try {
+        const outcome = await bridge.settings.reset();
+        if (outcome.state === 'success') {
+          applySettings(outcome.data.settings);
+          setMessage('已恢复默认设置。');
+        } else {
+          setFailure(failureFromOutcome('恢复默认设置失败', outcome));
+        }
+      } finally {
+        setPendingKey(null);
+      }
+    });
+    writeQueue.current = write.then(
+      () => undefined,
+      () => undefined,
+    );
+    return write;
+  }, [applySettings, bridge, setFailure, setMessage, setPendingKey]);
 
   const saveAppearance = useCallback(
     async (next: AppearancePreferences): Promise<boolean> => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   ResearchAttachment,
@@ -18,6 +18,8 @@ import {
 } from '../../bridge/research-reference-selection.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
+import { useRendererUiStore } from '../../state/ui-store.js';
+import { useResearchTargetOptions } from './research-target-options.js';
 
 interface ResearchWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
@@ -27,6 +29,7 @@ interface ResearchWorkbenchProps {
   readonly navigationQuery: string | null;
   readonly onNavigate: (target: AuthorNavigationTarget) => void;
   readonly onSelectNote: (noteId: string | null) => void;
+  readonly onReturn?: () => void;
   readonly onClose: () => void;
 }
 
@@ -83,11 +86,17 @@ export function ResearchWorkbench({
   navigationQuery,
   onNavigate,
   onSelectNote,
+  onReturn,
   onClose,
 }: ResearchWorkbenchProps) {
+  const returnLocation = useRendererUiStore((state) => state.returnLocation);
   const [catalog, setCatalog] = useState<ResearchCatalog | null>(null);
   const [query, setQuery] = useState(navigationQuery ?? '');
   const [showArchived, setShowArchived] = useState(false);
+  const [tagFilter, setTagFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
+  const [targetFilterType, setTargetFilterType] = useState<ResearchTargetType | 'all'>('all');
+  const [targetFilterId, setTargetFilterId] = useState('');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [sourceType, setSourceType] = useState('');
@@ -98,11 +107,46 @@ export function ResearchWorkbench({
   const [targetId, setTargetId] = useState('');
   const [preview, setPreview] = useState<ResearchAttachmentPreview | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const loadedNoteIdentity = useRef<string | null>(null);
   const [notice, setNotice] = useState(
     '研究资料不会自动写入人物与世界，也不会自动进入智能上下文。',
   );
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<ReadonlySet<string>>(() =>
     selectedReferenceKeys(projectId),
+  );
+  const targetOptions = useResearchTargetOptions(bridge, projectId);
+  const linkTargetOptions = useMemo(
+    () => targetOptions.filter((option) => option.type === targetType),
+    [targetOptions, targetType],
+  );
+  const filterTargetOptions = useMemo(
+    () =>
+      targetFilterType === 'all'
+        ? []
+        : targetOptions.filter((option) => option.type === targetFilterType),
+    [targetFilterType, targetOptions],
+  );
+  const availableTags = useMemo(
+    () =>
+      [
+        ...new Set(
+          [...(catalog?.notes.flatMap((note) => note.tags) ?? []), tagFilter].filter(Boolean),
+        ),
+      ].sort((left, right) => left.localeCompare(right, 'zh-CN')),
+    [catalog?.notes, tagFilter],
+  );
+  const availableSources = useMemo(
+    () =>
+      [
+        ...new Set(
+          [
+            ...(catalog?.notes.map((note) => note.sourceType).filter(Boolean) ?? []),
+            sourceFilter || null,
+          ].filter((value): value is string => Boolean(value)),
+        ),
+      ].sort((left, right) => left.localeCompare(right, 'zh-CN')),
+    [catalog?.notes, sourceFilter],
   );
 
   const selected = useMemo(
@@ -127,6 +171,10 @@ export function ResearchWorkbench({
         projectId,
         includeArchived: showArchived,
         ...(query.trim() ? { query: query.trim() } : {}),
+        ...(tagFilter ? { tags: [tagFilter] } : {}),
+        ...(sourceFilter ? { noteSourceType: sourceFilter } : {}),
+        ...(targetFilterType !== 'all' ? { targetType: targetFilterType } : {}),
+        ...(targetFilterId ? { targetId: targetFilterId } : {}),
       },
       {
         mode: 'replace',
@@ -145,7 +193,18 @@ export function ResearchWorkbench({
     } else if (!selectedNoteId && outcome.data.notes[0]) {
       onSelectNote(outcome.data.notes[0].id);
     }
-  }, [bridge.research, onSelectNote, projectId, query, selectedNoteId, showArchived]);
+  }, [
+    bridge.research,
+    onSelectNote,
+    projectId,
+    query,
+    selectedNoteId,
+    showArchived,
+    sourceFilter,
+    tagFilter,
+    targetFilterId,
+    targetFilterType,
+  ]);
 
   useEffect(() => {
     void load();
@@ -156,6 +215,9 @@ export function ResearchWorkbench({
   }, [projectId]);
 
   useEffect(() => {
+    const identity = selected ? `${selected.id}:${selected.updatedAt}` : null;
+    if (loadedNoteIdentity.current === identity) return;
+    loadedNoteIdentity.current = identity;
     setPreview(null);
     if (!selected) {
       setTitle('');
@@ -164,6 +226,7 @@ export function ResearchWorkbench({
       setSourceLabel('');
       setSourceUri('');
       setTagsText('');
+      setDirty(false);
       return;
     }
     setTitle(selected.title);
@@ -172,7 +235,22 @@ export function ResearchWorkbench({
     setSourceLabel(selected.sourceLabel ?? '');
     setSourceUri(selected.sourceUri ?? '');
     setTagsText(selected.tags.join('，'));
+    setDirty(false);
   }, [selected]);
+
+  const confirmDiscardUnsaved = (action: string): boolean => {
+    if (!dirty) return true;
+    const confirmed =
+      typeof window === 'undefined' || typeof window.confirm !== 'function'
+        ? true
+        : window.confirm(`当前研究笔记有未保存修改。${action}会放弃这些修改，是否继续？`);
+    if (!confirmed) {
+      setNotice('已保留当前研究笔记的未保存修改。');
+      return false;
+    }
+    setDirty(false);
+    return true;
+  };
 
   const applyCatalog = (next: ResearchCatalog, preferredId?: string): void => {
     setCatalog(next);
@@ -183,7 +261,7 @@ export function ResearchWorkbench({
   };
 
   const createNote = async (): Promise<void> => {
-    if (readOnly || pending || !catalog) return;
+    if (readOnly || pending || !catalog || !confirmDiscardUnsaved('新建笔记')) return;
     const existingNoteIds = new Set(catalog.notes.map((note) => note.id));
     setPending('create');
     const outcome = await bridge.research.createNote(
@@ -237,7 +315,7 @@ export function ResearchWorkbench({
   };
 
   const toggleArchived = async (): Promise<void> => {
-    if (!selected || readOnly || pending) return;
+    if (!selected || readOnly || pending || !confirmDiscardUnsaved('切换归档状态')) return;
     setPending('status');
     const outcome = await bridge.research.setNoteStatus(
       {
@@ -258,7 +336,7 @@ export function ResearchWorkbench({
   };
 
   const deleteNote = async (): Promise<void> => {
-    if (!selected || readOnly || pending) return;
+    if (!selected || readOnly || pending || !confirmDiscardUnsaved('删除笔记')) return;
     setPending('delete-note');
     const outcome = await bridge.research.deleteNote(
       {
@@ -389,6 +467,19 @@ export function ResearchWorkbench({
 
   return (
     <main className="workspace-page research-workbench" data-testid="research-workbench">
+      {returnLocation && onReturn ? (
+        <section className="feature-card navigation-return" data-navigation-return role="status">
+          <span>已从来源页面打开研究资料。</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirmDiscardUnsaved('返回来源页面')) onReturn();
+            }}
+          >
+            返回来源页面
+          </button>
+        </section>
+      ) : null}
       <header className="workspace-page__header">
         <div>
           <p className="eyebrow">本地研究资料</p>
@@ -396,7 +487,13 @@ export function ResearchWorkbench({
           <p>笔记与附件只作为作者资料；只有你明确勾选后，才允许进入一次智能生成请求。</p>
         </div>
         <div className="button-row">
-          <button type="button" className="button secondary" onClick={onClose}>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => {
+              if (confirmDiscardUnsaved('离开研究资料')) onClose();
+            }}
+          >
             返回写作
           </button>
           <button
@@ -411,7 +508,7 @@ export function ResearchWorkbench({
       </header>
 
       <p className="status-line" role="status">
-        {readOnly ? `只读作品 · ${notice}` : notice}
+        {readOnly ? `只读作品 · ${notice}` : dirty ? `有未保存修改 · ${notice}` : notice}
       </p>
 
       <section className="workspace-grid research-workbench__grid">
@@ -420,7 +517,11 @@ export function ResearchWorkbench({
             <span>搜索资料</span>
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                if (event.target.value === query || confirmDiscardUnsaved('搜索其他资料')) {
+                  setQuery(event.target.value);
+                }
+              }}
               placeholder="标题、正文、标签或来源"
             />
           </label>
@@ -428,17 +529,107 @@ export function ResearchWorkbench({
             <input
               type="checkbox"
               checked={showArchived}
-              onChange={(event) => setShowArchived(event.target.checked)}
+              onChange={(event) => {
+                if (
+                  event.target.checked === showArchived ||
+                  confirmDiscardUnsaved('切换归档筛选')
+                ) {
+                  setShowArchived(event.target.checked);
+                }
+              }}
             />
             显示已归档
           </label>
+          <label className="field">
+            <span>按标签筛选</span>
+            <select
+              value={tagFilter}
+              onChange={(event) => {
+                if (event.target.value === tagFilter || confirmDiscardUnsaved('切换标签筛选')) {
+                  setTagFilter(event.target.value);
+                }
+              }}
+            >
+              <option value="">全部标签</option>
+              {availableTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>按来源筛选</span>
+            <select
+              value={sourceFilter}
+              onChange={(event) => {
+                if (event.target.value === sourceFilter || confirmDiscardUnsaved('切换来源筛选')) {
+                  setSourceFilter(event.target.value);
+                }
+              }}
+            >
+              <option value="">全部来源</option>
+              {availableSources.map((source) => (
+                <option key={source} value={source}>
+                  {source}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>故事对象筛选</span>
+            <select
+              value={targetFilterType}
+              onChange={(event) => {
+                const next = event.target.value as ResearchTargetType | 'all';
+                if (next === targetFilterType || confirmDiscardUnsaved('切换故事对象筛选')) {
+                  setTargetFilterType(next);
+                  setTargetFilterId('');
+                }
+              }}
+            >
+              <option value="all">全部对象</option>
+              {TARGET_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {targetFilterType !== 'all' ? (
+            <label className="field">
+              <span>具体对象</span>
+              <select
+                value={targetFilterId}
+                onChange={(event) => {
+                  if (
+                    event.target.value === targetFilterId ||
+                    confirmDiscardUnsaved('切换具体故事对象')
+                  ) {
+                    setTargetFilterId(event.target.value);
+                  }
+                }}
+              >
+                <option value="">该类型全部对象</option>
+                {filterTargetOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <div className="stack-list">
             {catalog?.notes.map((note) => (
               <button
                 key={note.id}
                 type="button"
                 className={note.id === selectedNoteId ? 'list-card is-active' : 'list-card'}
-                onClick={() => onSelectNote(note.id)}
+                onClick={() => {
+                  if (note.id === selectedNoteId || confirmDiscardUnsaved('切换研究笔记')) {
+                    onSelectNote(note.id);
+                  }
+                }}
               >
                 <strong>{note.title}</strong>
                 <span>
@@ -487,7 +678,10 @@ export function ResearchWorkbench({
                 <input
                   value={title}
                   disabled={readOnly}
-                  onChange={(event) => setTitle(event.target.value)}
+                  onChange={(event) => {
+                    setTitle(event.target.value);
+                    setDirty(true);
+                  }}
                 />
               </label>
               <label className="field">
@@ -495,7 +689,10 @@ export function ResearchWorkbench({
                 <input
                   value={tagsText}
                   disabled={readOnly}
-                  onChange={(event) => setTagsText(event.target.value)}
+                  onChange={(event) => {
+                    setTagsText(event.target.value);
+                    setDirty(true);
+                  }}
                   placeholder="历史，地理，服饰"
                 />
               </label>
@@ -504,7 +701,10 @@ export function ResearchWorkbench({
                 <input
                   value={sourceType}
                   disabled={readOnly}
-                  onChange={(event) => setSourceType(event.target.value)}
+                  onChange={(event) => {
+                    setSourceType(event.target.value);
+                    setDirty(true);
+                  }}
                   placeholder="档案、网页、书籍、访谈……"
                 />
               </label>
@@ -513,7 +713,10 @@ export function ResearchWorkbench({
                 <input
                   value={sourceLabel}
                   disabled={readOnly}
-                  onChange={(event) => setSourceLabel(event.target.value)}
+                  onChange={(event) => {
+                    setSourceLabel(event.target.value);
+                    setDirty(true);
+                  }}
                   placeholder="书名、档案名称或资料来源"
                 />
               </label>
@@ -522,7 +725,10 @@ export function ResearchWorkbench({
                 <input
                   value={sourceUri}
                   disabled={readOnly}
-                  onChange={(event) => setSourceUri(event.target.value)}
+                  onChange={(event) => {
+                    setSourceUri(event.target.value);
+                    setDirty(true);
+                  }}
                   placeholder="网址、档案号或其他定位符"
                 />
               </label>
@@ -531,7 +737,10 @@ export function ResearchWorkbench({
                 <textarea
                   value={body}
                   disabled={readOnly}
-                  onChange={(event) => setBody(event.target.value)}
+                  onChange={(event) => {
+                    setBody(event.target.value);
+                    setDirty(true);
+                  }}
                   rows={16}
                 />
               </label>
@@ -627,7 +836,10 @@ export function ResearchWorkbench({
                   <select
                     value={targetType}
                     disabled={readOnly}
-                    onChange={(event) => setTargetType(event.target.value as ResearchTargetType)}
+                    onChange={(event) => {
+                      setTargetType(event.target.value as ResearchTargetType);
+                      setTargetId('');
+                    }}
                   >
                     {TARGET_OPTIONS.map(([value, label]) => (
                       <option key={value} value={value}>
@@ -637,14 +849,34 @@ export function ResearchWorkbench({
                   </select>
                 </label>
                 <label className="field">
-                  <span>目标 ID</span>
-                  <input
+                  <span>选择故事对象</span>
+                  <select
                     value={targetId}
                     disabled={readOnly}
                     onChange={(event) => setTargetId(event.target.value)}
-                    placeholder="粘贴当前作品内对象 ID"
-                  />
+                  >
+                    <option value="">
+                      请选择{TARGET_OPTIONS.find(([value]) => value === targetType)?.[1]}
+                    </option>
+                    {linkTargetOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+                <details>
+                  <summary>高级：使用内部对象标识</summary>
+                  <label className="field">
+                    <span>内部对象标识</span>
+                    <input
+                      value={targetId}
+                      disabled={readOnly}
+                      onChange={(event) => setTargetId(event.target.value)}
+                      placeholder="粘贴当前作品内对象 ID"
+                    />
+                  </label>
+                </details>
                 <button
                   type="button"
                   className="button secondary"

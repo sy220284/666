@@ -11,7 +11,7 @@ import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorTerm } from '../../presentation/author-terms.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
-import { useCallback, useEffect, useMemo, useState } from './react-hooks.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from './react-hooks.js';
 import {
   generationPollingDelay,
   registerGenerationPollingFailure,
@@ -29,7 +29,7 @@ interface ChecksWorkbenchProps {
 const ISSUE_ACTIONS = [
   ['resolve', '标记已处理'],
   ['ignore', '忽略本项'],
-  ['mute', '停用此规则'],
+  ['mute', '静音本条问题'],
   ['downgrade', '降低重要程度'],
   ['false_positive', '标记为误报'],
   ['reopen', '重新打开'],
@@ -45,6 +45,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
   const [chapterId, setChapterId] = useState('');
   const [includeClosed, setIncludeClosed] = useState(true);
   const [pending, setPending] = useState(false);
+  const immediateOperation = useRef(false);
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
   const [notice, setNotice] = useState(
     `检查只读取当前${authorTerm('finalVersion')}，不会自动改写正文。`,
@@ -122,6 +123,17 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     [catalog?.batches],
   );
 
+  const beginImmediateOperation = (): boolean => {
+    if (pending || immediateOperation.current) return false;
+    immediateOperation.current = true;
+    setPending(true);
+    return true;
+  };
+  const endImmediateOperation = (keepPending = false): void => {
+    immediateOperation.current = false;
+    if (!keepPending) setPending(false);
+  };
+
   const refreshCatalog = useCallback(async (): Promise<void> => {
     const outcome = await bridge.validation.list(
       { projectId, chapterId: chapterId || null, includeClosed },
@@ -139,6 +151,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     setProviderId('');
     setChapterId('');
     setActiveRun(null);
+    immediateOperation.current = false;
     setPending(false);
     void Promise.all([
       bridge.planning.listStructure(projectId, { mode: 'replace' }),
@@ -250,38 +263,52 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     };
   }, [activeRunId, bridge, projectId, refreshCatalog]);
 
-  const runRules = async (): Promise<void> => {
-    if (!chapter?.finalVersionId || readOnly) return;
-    setPending(true);
-    const outcome = await bridge.validation.runRules({
-      projectId,
-      sourceVersionId: chapter.finalVersionId,
+  useEffect(() => {
+    const visibleIds = new Set(visibleComments.map((comment) => comment.commentId));
+    setSelectedCommentIds((current) => {
+      const next = new Set([...current].filter((commentId) => visibleIds.has(commentId)));
+      return next.size === current.size ? current : next;
     });
-    setPending(false);
-    if (outcome.state === 'success') {
-      setCatalog(outcome.data);
-      setNotice(`规则检查完成 · ${outcome.data.issues.length} 个问题。`);
-    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+  }, [visibleComments]);
+
+  const runRules = async (): Promise<void> => {
+    if (!chapter?.finalVersionId || readOnly || !beginImmediateOperation()) return;
+    try {
+      const outcome = await bridge.validation.runRules({
+        projectId,
+        sourceVersionId: chapter.finalVersionId,
+      });
+      if (outcome.state === 'success') {
+        setCatalog(outcome.data);
+        setNotice(`规则检查完成 · ${outcome.data.issues.length} 个问题。`);
+      } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      endImmediateOperation();
+    }
   };
 
   const runAi = async (): Promise<void> => {
-    if (!chapter?.finalVersionId || !providerId || readOnly) return;
-    setPending(true);
-    const outcome = await bridge.generation.start({
-      projectId,
-      chapterId: chapter.id,
-      baseDraftId: null,
-      baseDraftRevision: null,
-      providerId,
-      continuationOfRunId: null,
-      intent: { runType: 'validate', sourceVersionId: chapter.finalVersionId },
-    });
-    if (outcome.state === 'success') {
-      setActiveRun(outcome.data.run);
-      setNotice(`智能语义检查已启动 · ${generationStageLabel(outcome.data.run.stage)}`);
-    } else {
-      setPending(false);
-      setNotice(outcome.state === 'failure' ? authorErrorSummary(outcome.error) : '请求已取消。');
+    if (!chapter?.finalVersionId || !providerId || readOnly || !beginImmediateOperation()) return;
+    let started = false;
+    try {
+      const outcome = await bridge.generation.start({
+        projectId,
+        chapterId: chapter.id,
+        baseDraftId: null,
+        baseDraftRevision: null,
+        providerId,
+        continuationOfRunId: null,
+        intent: { runType: 'validate', sourceVersionId: chapter.finalVersionId },
+      });
+      if (outcome.state === 'success') {
+        started = true;
+        setActiveRun(outcome.data.run);
+        setNotice(`智能语义检查已启动 · ${generationStageLabel(outcome.data.run.stage)}`);
+      } else {
+        setNotice(outcome.state === 'failure' ? authorErrorSummary(outcome.error) : '请求已取消。');
+      }
+    } finally {
+      endImmediateOperation(started);
     }
   };
 
@@ -289,82 +316,109 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     issue: ValidationIssue,
     action: (typeof ISSUE_ACTIONS)[number][0],
   ): Promise<void> => {
-    if (readOnly) return;
-    const outcome = await bridge.validation.updateIssue({
-      projectId,
-      issueId: issue.issueId,
-      action,
-    });
-    if (outcome.state === 'success') setCatalog(outcome.data);
-    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    if (readOnly || !beginImmediateOperation()) return;
+    try {
+      const outcome = await bridge.validation.updateIssue({
+        projectId,
+        issueId: issue.issueId,
+        action,
+      });
+      if (outcome.state === 'success') setCatalog(outcome.data);
+      else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      endImmediateOperation();
+    }
   };
 
   const createTodo = async (issue: ValidationIssue): Promise<void> => {
-    if (readOnly) return;
-    const outcome = await bridge.validation.createTodoFromIssue({
-      projectId,
-      issueId: issue.issueId,
-    });
-    if (outcome.state === 'success') {
-      setCatalog(outcome.data);
-      setNotice('已创建与问题原文位置关联的修改任务。');
-    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    if (readOnly || !beginImmediateOperation()) return;
+    try {
+      const outcome = await bridge.validation.createTodoFromIssue({
+        projectId,
+        issueId: issue.issueId,
+      });
+      if (outcome.state === 'success') {
+        setCatalog(outcome.data);
+        setNotice('已创建与问题原文位置关联的修改任务。');
+      } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      endImmediateOperation();
+    }
   };
 
   const rememberException = async (issue: ValidationIssue): Promise<void> => {
-    if (readOnly) return;
+    if (readOnly || !beginImmediateOperation()) return;
     const selected = window.prompt(
       '例外类型：倒叙、梦境、幻觉、谎言、不可靠叙述、隐藏身份、特殊规则、时间循环、替身、平行世界、作者有意或自定义。',
       '作者有意',
     );
-    if (selected === null) return;
+    if (selected === null) {
+      endImmediateOperation();
+      return;
+    }
     const exceptionType = validationExceptionType(selected);
     if (!exceptionType) {
       setNotice('例外类型无法识别，未保存。');
+      endImmediateOperation();
       return;
     }
     const notes = window.prompt('补充说明（可选）：', '') ?? '';
-    const outcome = await bridge.validation.rememberException({
-      projectId,
-      issueId: issue.issueId,
-      exceptionType,
-      scopeType: 'issue',
-      notes,
-    });
-    if (outcome.state === 'success') {
-      setCatalog(outcome.data);
-      setNotice('已记住这个例外；后续检查会读取该例外，当前问题已忽略。');
-    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    try {
+      const outcome = await bridge.validation.rememberException({
+        projectId,
+        issueId: issue.issueId,
+        exceptionType,
+        scopeType: 'issue',
+        notes,
+      });
+      if (outcome.state === 'success') {
+        setCatalog(outcome.data);
+        setNotice('已记住这个例外；后续检查会读取该例外，当前问题已忽略。');
+      } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      endImmediateOperation();
+    }
   };
 
   const addComment = async (issue: ValidationIssue): Promise<void> => {
-    if (readOnly) return;
+    if (readOnly || !beginImmediateOperation()) return;
     const body = window.prompt('添加审阅批注：')?.trim();
-    if (!body) return;
-    const outcome = await bridge.validation.addComment({
-      projectId,
-      issueId: issue.issueId,
-      chapterId: issue.anchor.chapterId,
-      sourceVersionId: issue.anchor.versionId,
-      logicalBlockId: issue.anchor.logicalBlockId,
-      body,
-    });
-    if (outcome.state === 'success') setCatalog(outcome.data);
-    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    if (!body) {
+      endImmediateOperation();
+      return;
+    }
+    try {
+      const outcome = await bridge.validation.addComment({
+        projectId,
+        issueId: issue.issueId,
+        chapterId: issue.anchor.chapterId,
+        sourceVersionId: issue.anchor.versionId,
+        logicalBlockId: issue.anchor.logicalBlockId,
+        body,
+      });
+      if (outcome.state === 'success') setCatalog(outcome.data);
+      else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      endImmediateOperation();
+    }
   };
 
   const updateComment = async (commentId: string, action: 'resolve' | 'reopen'): Promise<void> => {
-    if (readOnly) return;
-    const outcome =
-      action === 'resolve'
-        ? await bridge.validation.resolveComment({ projectId, commentId })
-        : await bridge.validation.reopenComment({ projectId, commentId });
-    if (outcome.state === 'success') setCatalog(outcome.data);
-    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    if (readOnly || !beginImmediateOperation()) return;
+    try {
+      const outcome =
+        action === 'resolve'
+          ? await bridge.validation.resolveComment({ projectId, commentId })
+          : await bridge.validation.reopenComment({ projectId, commentId });
+      if (outcome.state === 'success') setCatalog(outcome.data);
+      else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      endImmediateOperation();
+    }
   };
 
   const runCommentBatch = async (action: 'resolve' | 'reopen' | 'tag'): Promise<void> => {
-    if (readOnly || selectedCommentIds.size === 0) return;
+    if (readOnly || selectedCommentIds.size === 0 || !beginImmediateOperation()) return;
     const tags =
       action === 'tag'
         ? (window.prompt('给所选批注添加标签（多个标签用逗号分隔）：', '') ?? '')
@@ -372,19 +426,57 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             .map((tag) => tag.trim())
             .filter(Boolean)
         : [];
-    if (action === 'tag' && tags.length === 0) return;
-    const outcome = await bridge.validation.batchComments({
-      projectId,
-      commentIds: [...selectedCommentIds],
-      action,
-      tags,
-    });
-    if (outcome.state === 'success') {
-      setCatalog(outcome.data);
-      setSelectedCommentIds(new Set());
-      setNotice(`已批量处理 ${selectedCommentIds.size} 条批注。`);
-    } else if (outcome.state === 'failure') {
-      setNotice(authorErrorSummary(outcome.error));
+    if (action === 'tag' && tags.length === 0) {
+      endImmediateOperation();
+      return;
+    }
+    const selectedCount = selectedCommentIds.size;
+    try {
+      const outcome = await bridge.validation.batchComments({
+        projectId,
+        commentIds: [...selectedCommentIds],
+        action,
+        tags,
+      });
+      if (outcome.state === 'success') {
+        setCatalog(outcome.data);
+        setSelectedCommentIds(new Set());
+        setNotice(`已批量处理 ${selectedCount} 条批注。`);
+      } else if (outcome.state === 'failure') {
+        setNotice(authorErrorSummary(outcome.error));
+      }
+    } finally {
+      endImmediateOperation();
+    }
+  };
+
+  const saveTodo = async (todo: NonNullable<ValidationCatalog['todos']>[number]): Promise<void> => {
+    if (readOnly || !beginImmediateOperation()) return;
+    try {
+      const outcome = await bridge.validation.saveTodo({
+        projectId,
+        todoId: todo.todoId,
+        chapterId: todo.chapterId,
+        sceneBeatId: todo.sceneBeatId,
+        logicalBlockId: todo.logicalBlockId,
+        title: todo.title,
+        status: todo.status === 'open' ? 'done' : 'open',
+      });
+      if (outcome.state === 'success') setCatalog(outcome.data);
+      else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      endImmediateOperation();
+    }
+  };
+
+  const disableException = async (exceptionId: string): Promise<void> => {
+    if (readOnly || !beginImmediateOperation()) return;
+    try {
+      const outcome = await bridge.validation.disableException({ projectId, exceptionId });
+      if (outcome.state === 'success') setCatalog(outcome.data);
+      else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      endImmediateOperation();
     }
   };
 
@@ -543,7 +635,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                   </button>
                   {ISSUE_ACTIONS.map(([action, label]) => (
                     <button
-                      disabled={readOnly}
+                      disabled={readOnly || pending}
                       key={action}
                       type="button"
                       onClick={() => void updateIssue(issue, action)}
@@ -553,16 +645,24 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                   ))}
                   <button
                     data-remember-validation-exception={issue.issueId}
-                    disabled={readOnly}
+                    disabled={readOnly || pending}
                     type="button"
                     onClick={() => void rememberException(issue)}
                   >
                     记住这个例外
                   </button>
-                  <button disabled={readOnly} type="button" onClick={() => void createTodo(issue)}>
+                  <button
+                    disabled={readOnly || pending}
+                    type="button"
+                    onClick={() => void createTodo(issue)}
+                  >
                     转为修改任务
                   </button>
-                  <button disabled={readOnly} type="button" onClick={() => void addComment(issue)}>
+                  <button
+                    disabled={readOnly || pending}
+                    type="button"
+                    onClick={() => void addComment(issue)}
+                  >
                     添加批注
                   </button>
                 </div>
@@ -591,26 +691,9 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                 前往原文
               </button>
               <button
-                disabled={readOnly}
+                disabled={readOnly || pending}
                 type="button"
-                onClick={() =>
-                  void bridge.validation
-                    .saveTodo({
-                      projectId,
-                      todoId: todo.todoId,
-                      chapterId: todo.chapterId,
-                      sceneBeatId: todo.sceneBeatId,
-                      logicalBlockId: todo.logicalBlockId,
-                      title: todo.title,
-                      status: todo.status === 'open' ? 'done' : 'open',
-                    })
-                    .then((outcome) => {
-                      if (outcome.state === 'success') setCatalog(outcome.data);
-                      else if (outcome.state === 'failure') {
-                        setNotice(authorErrorSummary(outcome.error));
-                      }
-                    })
-                }
+                onClick={() => void saveTodo(todo)}
               >
                 {todo.status === 'open' ? '标记完成' : '重新打开'}
               </button>
@@ -680,22 +763,23 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             </select>
           </label>
           <div className="inline-actions">
+            <span role="status">已选择 {selectedCommentIds.size} 条当前可见批注</span>
             <button
-              disabled={readOnly || selectedCommentIds.size === 0}
+              disabled={readOnly || pending || selectedCommentIds.size === 0}
               type="button"
               onClick={() => void runCommentBatch('resolve')}
             >
               批量处理
             </button>
             <button
-              disabled={readOnly || selectedCommentIds.size === 0}
+              disabled={readOnly || pending || selectedCommentIds.size === 0}
               type="button"
               onClick={() => void runCommentBatch('reopen')}
             >
               批量重开
             </button>
             <button
-              disabled={readOnly || selectedCommentIds.size === 0}
+              disabled={readOnly || pending || selectedCommentIds.size === 0}
               type="button"
               onClick={() => void runCommentBatch('tag')}
             >
@@ -740,7 +824,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                 前往原文
               </button>
               <button
-                disabled={readOnly}
+                disabled={readOnly || pending}
                 type="button"
                 onClick={() =>
                   void updateComment(
@@ -763,18 +847,9 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             {exception.notes ? <p>{exception.notes}</p> : null}
             {exception.active ? (
               <button
-                disabled={readOnly}
+                disabled={readOnly || pending}
                 type="button"
-                onClick={() =>
-                  void bridge.validation
-                    .disableException({ projectId, exceptionId: exception.exceptionId })
-                    .then((outcome) => {
-                      if (outcome.state === 'success') setCatalog(outcome.data);
-                      else if (outcome.state === 'failure') {
-                        setNotice(authorErrorSummary(outcome.error));
-                      }
-                    })
-                }
+                onClick={() => void disableException(exception.exceptionId)}
               >
                 停用此例外
               </button>

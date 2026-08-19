@@ -109,6 +109,14 @@ describe('M12-03 author productivity and personalization', () => {
     const withOverride = updateShortcutOverride([], chapter.id, 'Mod+K');
     expect(shortcutForCommand(chapter, withOverride)).toBe('Mod+K');
     expect(shortcutConflict(chapter.id, 'Mod+K', [])?.id).toBe('system.commandPalette');
+    expect(shortcutConflict(chapter.id, 'Mod+S', [])).toMatchObject({
+      id: 'editor.save',
+      label: '正文保存',
+    });
+    expect(shortcutConflict(chapter.id, 'Mod+F', [])).toMatchObject({
+      id: 'editor.find',
+      label: '当前章查找',
+    });
     expect(removeShortcutOverride(withOverride, chapter.id)).toEqual([]);
     expect(updateShortcutOverride([], 'system.notRegistered', 'Mod+P')).toEqual([]);
   });

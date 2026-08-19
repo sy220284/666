@@ -378,7 +378,8 @@ describe('SearchPanel coverage', () => {
     const checkboxes = renderer.root.findAll(
       (node) => node.type === 'input' && node.props.type === 'checkbox',
     );
-    for (const checkbox of checkboxes.slice(0, 3)) {
+    expect(textContent(renderer.root)).toContain('研究资料');
+    for (const checkbox of checkboxes.slice(0, 4)) {
       await act(async () => invoke(checkbox, 'onChange', { target: { checked: false } }));
     }
     await act(async () => invoke(searchForm, 'onSubmit', submitEvent()));

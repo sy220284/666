@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   type GenerationRun,
@@ -108,18 +108,43 @@ export function JournalWorkbench({
   const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
   const [providerId, setProviderId] = useState('');
   const [pending, setPending] = useState<string | null>(null);
+  const operationRef = useRef<string | null>(null);
+  const dirtyNoteIds = useRef<Set<string>>(new Set());
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [notice, setNotice] = useState('创作日志只读取已有记录，不改动正文、设定或规划。');
+  const pendingAiEntry = catalog?.entries.find(
+    (entry) => entry.status === 'ai_pending' && entry.generationRunId,
+  );
 
   const applyCatalog = useCallback((next: JournalCatalog) => {
     setCatalog(next);
-    setNoteDrafts(
-      Object.fromEntries(next.entries.map((entry) => [entry.id, entry.authorNote ?? ''])),
+    setNoteDrafts((current) =>
+      Object.fromEntries(
+        next.entries.map((entry) => [
+          entry.id,
+          dirtyNoteIds.current.has(entry.id)
+            ? (current[entry.id] ?? entry.authorNote ?? '')
+            : (entry.authorNote ?? ''),
+        ]),
+      ),
     );
+  }, []);
+
+  const beginOperation = useCallback((key: string): boolean => {
+    if (operationRef.current) return false;
+    operationRef.current = key;
+    setPending(key);
+    return true;
+  }, []);
+
+  const endOperation = useCallback((key: string): void => {
+    if (operationRef.current !== key) return;
+    operationRef.current = null;
+    setPending(null);
   }, []);
 
   const reload = useCallback(async () => {
@@ -131,6 +156,12 @@ export function JournalWorkbench({
       setNotice(error instanceof Error ? error.message : '创作日志读取失败。');
     }
   }, [applyCatalog, projectId]);
+
+  useEffect(() => {
+    dirtyNoteIds.current.clear();
+    operationRef.current = null;
+    setPending(null);
+  }, [projectId]);
 
   useEffect(() => {
     let active = true;
@@ -150,6 +181,32 @@ export function JournalWorkbench({
       active = false;
     };
   }, [applyCatalog, bridge, projectId, reload]);
+
+  useEffect(() => {
+    const runId = pendingAiEntry?.generationRunId ?? null;
+    if (!runId || activeRun) return;
+    let active = true;
+    void bridge.generation.getRun(projectId, runId, { mode: 'share' }).then((result) => {
+      if (!active) return;
+      if (result.state !== 'success') {
+        setNotice('检测到仍在进行的智能复盘；暂时无法读取进度，已禁止重复启动。');
+        return;
+      }
+      if (
+        result.data.status === 'succeeded' ||
+        result.data.status === 'failed' ||
+        result.data.status === 'cancelled'
+      ) {
+        void reload();
+        return;
+      }
+      setActiveRun(result.data);
+      setNotice('已重新接管正在进行的智能复盘。');
+    });
+    return () => {
+      active = false;
+    };
+  }, [activeRun, bridge, pendingAiEntry?.generationRunId, projectId, reload]);
 
   useEffect(() => {
     if (!activeRun) return;
@@ -189,8 +246,7 @@ export function JournalWorkbench({
     periodStart: string,
     periodEnd: string,
   ) => {
-    if (readOnly) return;
-    setPending('generate');
+    if (readOnly || !beginOperation('generate')) return;
     try {
       const result = await journalBridge().generate({
         projectId,
@@ -203,7 +259,7 @@ export function JournalWorkbench({
         setNotice('复盘已按真实项目记录生成。');
       } else setNotice(`复盘生成失败：${result.error.message}`);
     } finally {
-      setPending(null);
+      endOperation('generate');
     }
   };
 
@@ -223,8 +279,7 @@ export function JournalWorkbench({
   };
 
   const updateSchedule = async (schedule: JournalSchedule) => {
-    if (readOnly) return;
-    setPending('schedule');
+    if (readOnly || !beginOperation('schedule')) return;
     try {
       const result = await journalBridge().updatePreferences({ projectId, schedule });
       if (result.ok) {
@@ -232,13 +287,13 @@ export function JournalWorkbench({
         setNotice(schedule === 'off' ? '定时复盘已关闭。' : '定时复盘设置已保存。');
       } else setNotice(result.error.message);
     } finally {
-      setPending(null);
+      endOperation('schedule');
     }
   };
 
   const saveNote = async (entry: JournalEntry) => {
-    if (readOnly) return;
-    setPending(`note:${entry.id}`);
+    const operationKey = `note:${entry.id}`;
+    if (readOnly || !beginOperation(operationKey)) return;
     try {
       const result = await journalBridge().updateNote({
         projectId,
@@ -247,6 +302,7 @@ export function JournalWorkbench({
         authorNote: noteDrafts[entry.id]?.trim() || null,
       });
       if (result.ok) {
+        dirtyNoteIds.current.delete(entry.id);
         applyCatalog(result.data);
         setNotice('作者备注已保存。');
       } else {
@@ -254,13 +310,18 @@ export function JournalWorkbench({
         await reload();
       }
     } finally {
-      setPending(null);
+      endOperation(operationKey);
     }
   };
 
   const startAi = async (entry: JournalEntry) => {
+    const operationKey = `ai:${entry.id}`;
     if (!providerId || readOnly) return;
-    setPending(`ai:${entry.id}`);
+    if (pendingAiEntry || activeRun) {
+      setNotice('已有智能复盘正在进行，已阻止重复启动。');
+      return;
+    }
+    if (!beginOperation(operationKey)) return;
     const result = await bridge.generation.start(
       {
         projectId,
@@ -275,7 +336,7 @@ export function JournalWorkbench({
       },
       { mode: 'replace', laneKey: `journal:${projectId}:${entry.id}` },
     );
-    setPending(null);
+    endOperation(operationKey);
     if (result.state === 'success') {
       setActiveRun(result.data.run);
       await reload();
@@ -292,8 +353,7 @@ export function JournalWorkbench({
   };
 
   const loadMore = async () => {
-    if (!catalog?.nextCursor) return;
-    setPending('more');
+    if (!catalog?.nextCursor || !beginOperation('more')) return;
     try {
       const result = await journalBridge().list({
         projectId,
@@ -313,7 +373,7 @@ export function JournalWorkbench({
         }));
       }
     } finally {
-      setPending(null);
+      endOperation('more');
     }
   };
 
@@ -361,7 +421,7 @@ export function JournalWorkbench({
           定时复盘
           <select
             value={catalog?.preferences.schedule ?? 'off'}
-            disabled={readOnly || pending === 'schedule'}
+            disabled={readOnly || pending !== null}
             onChange={(event) => void updateSchedule(event.target.value as JournalSchedule)}
           >
             <option value="off">关闭</option>
@@ -455,7 +515,13 @@ export function JournalWorkbench({
                   <p>{entry.aiSummary ?? '尚未生成；确定性复盘已完整保存。'}</p>
                   <button
                     type="button"
-                    disabled={readOnly || !providerId || pending !== null || activeRun !== null}
+                    disabled={
+                      readOnly ||
+                      !providerId ||
+                      pending !== null ||
+                      activeRun !== null ||
+                      pendingAiEntry !== undefined
+                    }
                     onClick={() => void startAi(entry)}
                   >
                     {entry.aiSummary ? '重新生成智能复盘' : '生成智能复盘'}
@@ -466,14 +532,18 @@ export function JournalWorkbench({
                       maxLength={20_000}
                       disabled={readOnly}
                       value={noteDrafts[entry.id] ?? ''}
-                      onChange={(event) =>
-                        setNoteDrafts((current) => ({ ...current, [entry.id]: event.target.value }))
-                      }
+                      onChange={(event) => {
+                        dirtyNoteIds.current.add(entry.id);
+                        setNoteDrafts((current) => ({
+                          ...current,
+                          [entry.id]: event.target.value,
+                        }));
+                      }}
                     />
                   </label>
                   <button
                     type="button"
-                    disabled={readOnly || pending === `note:${entry.id}`}
+                    disabled={readOnly || pending !== null}
                     onClick={() => void saveNote(entry)}
                   >
                     保存备注

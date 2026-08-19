@@ -167,14 +167,22 @@ const references = contractInput<NavigationReferences>([
   },
 ]);
 
-function catalog(options: { nextCursor?: boolean; schedule?: 'off' | 'daily' | 'weekly' } = {}) {
+function catalog(
+  options: {
+    nextCursor?: boolean;
+    schedule?: 'off' | 'daily' | 'weekly';
+    includePending?: boolean;
+  } = {},
+) {
   return contractInput<JournalCatalog>({
     projectId,
     entries: [
       entry(entryId, 'daily', 'deterministic', references),
       entry('88888888-8888-4888-8888-888888888888', 'weekly', 'ready'),
       entry('99999999-9999-4999-8999-999999999998', 'manual', 'ai_failed'),
-      entry('99999999-9999-4999-8999-999999999997', 'daily', 'ai_pending'),
+      ...(options.includePending
+        ? [entry('99999999-9999-4999-8999-999999999997', 'daily', 'ai_pending')]
+        : []),
     ],
     preferences: {
       projectId,
@@ -297,7 +305,6 @@ describe('M12-01 JournalWorkbench interaction coverage', () => {
     expect(textContent(renderer.root)).toContain('创作日志');
     expect(textContent(renderer.root)).toContain('智能复盘已生成');
     expect(textContent(renderer.root)).toContain('智能复盘暂不可用');
-    expect(textContent(renderer.root)).toContain('智能复盘生成中');
     expect(textContent(renderer.root)).toContain('确定性复盘');
 
     await act(async () => {
@@ -508,5 +515,69 @@ describe('M12-01 JournalWorkbench interaction coverage', () => {
     const emptyRenderer = await renderWorkbench(createBridge().bridge);
     expect(textContent(emptyRenderer.root)).toContain('还没有日志。');
     await act(async () => emptyRenderer.unmount());
+  });
+
+  it('preserves an unsaved author note while another journal operation refreshes the catalog', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const baseCatalog = catalog();
+    const journal = {
+      catchUp: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
+      list: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
+      generate: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
+      updatePreferences: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
+      updateNote: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
+      markAiFailed: vi.fn().mockResolvedValue({ ok: true, data: baseCatalog }),
+    };
+    installWindow(journal);
+    const { bridge } = createBridge();
+    const renderer = await renderWorkbench(bridge);
+    await act(async () => invoke(buttonContaining(renderer.root, '确定性复盘'), 'onClick'));
+    const note = controlByLabel(renderer.root, '作者备注');
+    await act(async () => invoke(note, 'onChange', { target: { value: '尚未保存的现场判断' } }));
+    await act(async () => {
+      invoke(buttonContaining(renderer.root, '今日复盘'), 'onClick');
+      await flushPromises();
+    });
+    expect(controlByLabel(renderer.root, '作者备注').props.value).toBe('尚未保存的现场判断');
+    await act(async () => renderer.unmount());
+  });
+
+  it('reattaches a persisted Journal AI run and blocks a duplicate model start', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const pendingCatalog = catalog({ includePending: true });
+    const timers: Array<() => void> = [];
+    const journal = {
+      catchUp: vi.fn().mockResolvedValue({ ok: true, data: pendingCatalog }),
+      list: vi.fn().mockResolvedValue({ ok: true, data: pendingCatalog }),
+      generate: vi.fn().mockResolvedValue({ ok: true, data: pendingCatalog }),
+      updatePreferences: vi.fn().mockResolvedValue({ ok: true, data: pendingCatalog }),
+      updateNote: vi.fn().mockResolvedValue({ ok: true, data: pendingCatalog }),
+      markAiFailed: vi.fn().mockResolvedValue({ ok: true, data: pendingCatalog }),
+    };
+    installWindow(journal, timers);
+    const start = vi.fn();
+    const getRun = vi.fn().mockResolvedValue({
+      state: 'success',
+      data: {
+        runId: '99999999-9999-4999-8999-999999999999',
+        projectId,
+        status: 'running',
+      },
+    });
+    const { bridge } = createBridge({ start, getRun });
+    const renderer = await renderWorkbench(bridge);
+    expect(getRun).toHaveBeenCalledWith(projectId, '99999999-9999-4999-8999-999999999999', {
+      mode: 'share',
+    });
+    expect(textContent(renderer.root)).toContain('已重新接管正在进行的智能复盘');
+    await act(async () => invoke(buttonContaining(renderer.root, '智能复盘生成中'), 'onClick'));
+    const button = buttonContaining(renderer.root, '生成智能复盘');
+    expect(button.props.disabled).toBe(true);
+    await act(async () => {
+      invoke(button, 'onClick');
+      await flushPromises();
+    });
+    expect(start).not.toHaveBeenCalled();
+    await act(async () => renderer.unmount());
   });
 });

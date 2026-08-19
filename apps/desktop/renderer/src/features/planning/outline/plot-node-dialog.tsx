@@ -5,6 +5,7 @@ import type { LifecycleStatus, PlotNode, PlotNodeType } from '@worldforge/contra
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../../presentation/author-error-message.js';
+import { useUnsavedChangesGuard } from '../../../runtime/unsaved-changes.js';
 import { lifecycleStatusLabel } from '../planning-form-values.js';
 
 export function PlotNodeDialog({
@@ -21,6 +22,7 @@ export function PlotNodeDialog({
   readonly onSaved: () => Promise<void>;
 }) {
   const command = useBridgeCommand();
+  const unsaved = useUnsavedChangesGuard('大纲节点');
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
@@ -39,15 +41,29 @@ export function PlotNodeDialog({
       : await command.run(() =>
           bridge.planning.createPlotNode({ projectId, parentId: editor.parentId, ...fields }),
         );
-    if (result) await onSaved();
+    if (result) {
+      unsaved.clearDirty();
+      await onSaved();
+    }
   };
 
   return (
     <dialog className="react-dialog" data-plot-node-dialog open>
-      <form className="stacked-form" onSubmit={(event) => void submit(event)}>
+      <form
+        className="stacked-form"
+        data-unsaved={unsaved.dirty ? 'true' : 'false'}
+        onChange={unsaved.markDirty}
+        onSubmit={(event) => void submit(event)}
+      >
         <header>
           <h2>{editor.node ? '编辑大纲节点' : '新建大纲节点'}</h2>
-          <button type="button" disabled={command.pending} onClick={onClose}>
+          <button
+            type="button"
+            disabled={command.pending}
+            onClick={() => {
+              if (unsaved.confirmDiscard('关闭大纲节点编辑')) onClose();
+            }}
+          >
             关闭
           </button>
         </header>

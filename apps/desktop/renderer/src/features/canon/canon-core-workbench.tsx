@@ -1,4 +1,5 @@
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { confirmRegisteredUnsavedChanges } from '../../runtime/unsaved-changes.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { useCanonAuthorReferences } from './canon-author-fields.js';
 import { ContinuityPanel } from './continuity-panel.js';
@@ -33,6 +34,14 @@ export function CanonWorkbench({
   onNavigate,
 }: CanonWorkbenchProps) {
   const references = useCanonAuthorReferences(bridge, projectId);
+  const changeSection = (nextSection: CanonSection): void => {
+    if (
+      nextSection === section ||
+      confirmRegisteredUnsavedChanges('切换人物与世界设定分区')
+    ) {
+      onSectionChange(nextSection);
+    }
+  };
   return (
     <section className="canon-workbench" data-canon-dialog aria-label="设定工作台">
       <header className="feature-heading">
@@ -46,31 +55,31 @@ export function CanonWorkbench({
         <Tab
           current={section === 'entities'}
           label="人物与世界设定"
-          onClick={() => onSectionChange('entities')}
+          onClick={() => changeSection('entities')}
         />
         <Tab
           current={section === 'continuity'}
           label="动态状态与时间线"
           marker="open-continuity"
-          onClick={() => onSectionChange('continuity')}
+          onClick={() => changeSection('continuity')}
         />
         <Tab
           current={section === 'narrative'}
           label="伏笔与弧光"
           marker="open-narrative-planning"
-          onClick={() => onSectionChange('narrative')}
+          onClick={() => changeSection('narrative')}
         />
         <Tab
           current={section === 'knowledge'}
           label="故事知识"
           marker="open-story-knowledge"
-          onClick={() => onSectionChange('knowledge')}
+          onClick={() => changeSection('knowledge')}
         />
         <Tab
           current={section === 'proposals'}
           label="智能审阅"
           marker="open-state-proposals"
-          onClick={() => onSectionChange('proposals')}
+          onClick={() => changeSection('proposals')}
         />
       </nav>
       {section === 'entities' ? (

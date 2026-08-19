@@ -5,6 +5,7 @@ import type { ProjectBrief } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../../presentation/author-error-message.js';
+import { useUnsavedChangesGuard } from '../../../runtime/unsaved-changes.js';
 import { lineValues } from '../planning-form-values.js';
 
 export function ProjectBriefEditor({
@@ -25,6 +26,7 @@ export function ProjectBriefEditor({
   readonly onStatus: (status: string) => void;
 }) {
   const command = useBridgeCommand(onRefresh);
+  const unsaved = useUnsavedChangesGuard('作品核心');
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (!brief) return;
@@ -41,7 +43,10 @@ export function ProjectBriefEditor({
         forbidden: lineValues(values.get('forbidden')),
       }),
     );
-    if (result) onStatus('作品核心已保存。');
+    if (result) {
+      unsaved.clearDirty();
+      onStatus('作品核心已保存。');
+    }
   };
 
   return (
@@ -56,7 +61,9 @@ export function ProjectBriefEditor({
           data-skip-brief
           disabled={command.pending}
           type="button"
-          onClick={onSkip}
+          onClick={() => {
+            if (unsaved.confirmDiscard('暂时收起作品核心')) onSkip();
+          }}
         >
           稍后填写
         </button>
@@ -66,7 +73,9 @@ export function ProjectBriefEditor({
         <form
           className="stacked-form"
           data-brief-form
+          data-unsaved={unsaved.dirty ? 'true' : 'false'}
           key={brief.updatedAt ?? 'empty'}
+          onChange={unsaved.markDirty}
           onSubmit={(event) => void submit(event)}
         >
           <label>

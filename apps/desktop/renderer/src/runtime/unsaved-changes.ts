@@ -62,9 +62,10 @@ export function useUnsavedChangesGuard(label: string): UnsavedChangesGuard {
   );
 
   useEffect(() => {
-    if (dirtyRef.current) registeredChanges.set(token.current, { label });
+    const currentToken = token.current;
+    if (dirtyRef.current) registeredChanges.set(currentToken, { label });
     return () => {
-      registeredChanges.delete(token.current);
+      registeredChanges.delete(currentToken);
     };
   }, [label]);
 

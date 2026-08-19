@@ -76,7 +76,9 @@ describe('unsaved changes governance', () => {
     await act(async () => harness.guard().markDirty());
     expect(registeredUnsavedChangeLabels()).toEqual(['作品核心']);
     expect(confirmRegisteredUnsavedChanges('离开当前页面')).toBe(false);
-    expect(confirm).toHaveBeenCalledWith('作品核心有未保存修改。离开当前页面会放弃这些修改，是否继续？');
+    expect(confirm).toHaveBeenCalledWith(
+      '作品核心有未保存修改。离开当前页面会放弃这些修改，是否继续？',
+    );
     expect(registeredUnsavedChangeLabels()).toEqual(['作品核心']);
 
     confirm.mockReturnValue(true);

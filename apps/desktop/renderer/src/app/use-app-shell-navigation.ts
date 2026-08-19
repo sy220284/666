@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { confirmRegisteredUnsavedChanges } from '../runtime/unsaved-changes.js';
 import {
   createPrimaryNavigationItems,
   resolvePrimaryNavigationIntent,
@@ -83,6 +84,10 @@ export function useAppShellNavigation({
   const transitionToRoute = useCallback(
     async (nextRoute: RendererRouteId): Promise<boolean> => {
       if (route === nextRoute) return true;
+      if (!confirmRegisteredUnsavedChanges('离开当前页面')) {
+        setMessage('已保留当前页面的未保存修改。');
+        return false;
+      }
       if (isWritingRoute(route) && !(await flushWriting())) {
         setMessage('自动保存失败，已阻止离开当前写作会话。');
         return false;
@@ -133,6 +138,10 @@ export function useAppShellNavigation({
           setMessage('目标不属于当前项目，已阻止跨项目跳转。');
           return;
         }
+        if (!confirmRegisteredUnsavedChanges('打开目标内容')) {
+          setMessage('已保留当前页面的未保存修改。');
+          return;
+        }
         const resolution = resolveAuthorNavigationTarget(target);
         if (route !== resolution.route && isWritingRoute(route) && !(await flushWriting())) {
           setMessage('自动保存失败，已阻止离开当前写作会话。');
@@ -172,6 +181,10 @@ export function useAppShellNavigation({
 
   const returnToAuthorSource = useCallback(async (): Promise<void> => {
     if (!returnLocation) return;
+    if (!confirmRegisteredUnsavedChanges('返回来源页面')) {
+      setMessage('已保留当前页面的未保存修改。');
+      return;
+    }
     if (isWritingRoute(route) && !(await flushWriting())) {
       setMessage('自动保存失败，已阻止返回来源页面。');
       return;

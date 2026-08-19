@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import type { RhythmDashboard } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
-
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { useUnsavedChangesGuard } from '../../runtime/unsaved-changes.js';
+
 export function RhythmPanel({
   bridge,
   projectId,
@@ -16,41 +17,89 @@ export function RhythmPanel({
 }) {
   const [dashboard, setDashboard] = useState<RhythmDashboard | null>(null);
   const [notice, setNotice] = useState('所有节奏结果均为 P3 建议，不阻断写作、定稿或导出。');
+  const [pending, setPending] = useState(false);
+  const operation = useRef({ busy: false, epoch: 0 });
+  const unsaved = useUnsavedChangesGuard('节奏配置');
 
   useEffect(() => {
     let active = true;
+    operation.current.epoch += 1;
+    operation.current.busy = false;
+    setPending(false);
+    const epoch = operation.current.epoch;
     void bridge.rhythm.get({ projectId }, { mode: 'replace' }).then((outcome) => {
-      if (!active) return;
+      if (!active || operation.current.epoch !== epoch) return;
       if (outcome.state === 'success') setDashboard(outcome.data);
       else if (outcome.state === 'failure')
         setNotice(`节奏读取失败 · ${authorErrorSummary(outcome.error)}`);
     });
     return () => {
       active = false;
+      operation.current.epoch += 1;
+      operation.current.busy = false;
     };
   }, [bridge, projectId]);
+
+  const beginOperation = (): number | null => {
+    if (operation.current.busy) return null;
+    operation.current.busy = true;
+    setPending(true);
+    return operation.current.epoch;
+  };
+
+  const finishOperation = (epoch: number): void => {
+    if (operation.current.epoch !== epoch) return;
+    operation.current.busy = false;
+    setPending(false);
+  };
+
+  const recalculate = async (): Promise<void> => {
+    const epoch = beginOperation();
+    if (epoch === null) return;
+    try {
+      const outcome = await bridge.rhythm.run({ projectId });
+      if (operation.current.epoch !== epoch) return;
+      if (outcome.state === 'success') {
+        setDashboard(outcome.data);
+        setNotice('节奏指标已重新计算。');
+      } else if (outcome.state === 'failure') {
+        setNotice(`节奏重新计算失败 · ${authorErrorSummary(outcome.error)}`);
+      }
+    } finally {
+      finishOperation(epoch);
+    }
+  };
 
   const save = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (!dashboard || readOnly) return;
+    const epoch = beginOperation();
+    if (epoch === null) return;
     const values = new FormData(event.currentTarget);
-    const outcome = await bridge.rhythm.updateProfile({
-      projectId,
-      authority: 'author',
-      enabled: values.get('enabled') === 'on',
-      excitementMinPer1000: Number(values.get('minimum')),
-      excitementMaxPer1000: Number(values.get('maximum')),
-      hookEnabled: values.get('hookEnabled') === 'on',
-      goldenThreeEnabled: values.get('goldenThreeEnabled') === 'on',
-      targetDailyCharacters: Number(values.get('targetDailyCharacters')),
-      idleThresholdSeconds: Number(values.get('idleThresholdSeconds')),
-      timeZone: String(values.get('timeZone')),
-    });
-    if (outcome.state === 'success') {
-      setDashboard(outcome.data);
-      setNotice('节奏参考区间与统计口径已保存。');
-    } else if (outcome.state === 'failure')
-      setNotice(`节奏配置保存失败 · ${authorErrorSummary(outcome.error)}`);
+    try {
+      const outcome = await bridge.rhythm.updateProfile({
+        projectId,
+        authority: 'author',
+        enabled: values.get('enabled') === 'on',
+        excitementMinPer1000: Number(values.get('minimum')),
+        excitementMaxPer1000: Number(values.get('maximum')),
+        hookEnabled: values.get('hookEnabled') === 'on',
+        goldenThreeEnabled: values.get('goldenThreeEnabled') === 'on',
+        targetDailyCharacters: Number(values.get('targetDailyCharacters')),
+        idleThresholdSeconds: Number(values.get('idleThresholdSeconds')),
+        timeZone: String(values.get('timeZone')),
+      });
+      if (operation.current.epoch !== epoch) return;
+      if (outcome.state === 'success') {
+        unsaved.clearDirty();
+        setDashboard(outcome.data);
+        setNotice('节奏参考区间与统计口径已保存。');
+      } else if (outcome.state === 'failure') {
+        setNotice(`节奏配置保存失败 · ${authorErrorSummary(outcome.error)}`);
+      }
+    } finally {
+      finishOperation(epoch);
+    }
   };
 
   if (!dashboard) {
@@ -68,14 +117,7 @@ export function RhythmPanel({
           <h2>网文节奏与连载指标</h2>
           <p>{notice}</p>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            void bridge.rhythm.run({ projectId }).then((outcome) => {
-              if (outcome.state === 'success') setDashboard(outcome.data);
-            })
-          }
-        >
+        <button disabled={pending} type="button" onClick={() => void recalculate()}>
           重新计算
         </button>
       </div>
@@ -88,7 +130,13 @@ export function RhythmPanel({
         统计从 {new Date(dashboard.profile.statisticsStartedAt).toLocaleString()} 开始；只计入
         manual_edit，AI采用、导入、安全替换、结构、恢复和系统变更均排除。
       </p>
-      <form className="form-grid" onSubmit={(event) => void save(event)}>
+      <form
+        className="form-grid"
+        data-unsaved={unsaved.dirty ? 'true' : 'false'}
+        key={`${projectId}:${dashboard.profile.statisticsStartedAt}`}
+        onChange={unsaved.markDirty}
+        onSubmit={(event) => void save(event)}
+      >
         <label>
           <input defaultChecked={dashboard.profile.enabled} name="enabled" type="checkbox" />
           启用节奏建议
@@ -152,7 +200,7 @@ export function RhythmPanel({
           时区
           <input defaultValue={dashboard.profile.timeZone} name="timeZone" />
         </label>
-        <button disabled={readOnly} type="submit">
+        <button disabled={readOnly || pending} type="submit">
           保存配置
         </button>
       </form>

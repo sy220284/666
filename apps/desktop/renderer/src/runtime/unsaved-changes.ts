@@ -14,7 +14,8 @@ function confirmDiscardLabels(labels: readonly string[], action: string): boolea
   const visible = distinctLabels(labels);
   if (visible.length === 0) return true;
   if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
-  const summary = visible.length <= 3 ? visible.join('、') : `${visible.slice(0, 3).join('、')}等内容`;
+  const summary =
+    visible.length <= 3 ? visible.join('、') : `${visible.slice(0, 3).join('、')}等内容`;
   return window.confirm(`${summary}有未保存修改。${action}会放弃这些修改，是否继续？`);
 }
 

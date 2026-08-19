@@ -23,20 +23,21 @@ export function RhythmPanel({
 
   useEffect(() => {
     let active = true;
-    operation.current.epoch += 1;
-    operation.current.busy = false;
+    const currentOperation = operation.current;
+    currentOperation.epoch += 1;
+    currentOperation.busy = false;
     setPending(false);
-    const epoch = operation.current.epoch;
+    const epoch = currentOperation.epoch;
     void bridge.rhythm.get({ projectId }, { mode: 'replace' }).then((outcome) => {
-      if (!active || operation.current.epoch !== epoch) return;
+      if (!active || currentOperation.epoch !== epoch) return;
       if (outcome.state === 'success') setDashboard(outcome.data);
       else if (outcome.state === 'failure')
         setNotice(`节奏读取失败 · ${authorErrorSummary(outcome.error)}`);
     });
     return () => {
       active = false;
-      operation.current.epoch += 1;
-      operation.current.busy = false;
+      currentOperation.epoch += 1;
+      currentOperation.busy = false;
     };
   }, [bridge, projectId]);
 

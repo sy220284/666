@@ -134,7 +134,9 @@ describe('rhythm panel operation ownership', () => {
 
     await act(async () => {
       (form.props.onChange as () => void)();
-      void (form.props.onSubmit as (event: { preventDefault(): void; currentTarget: object }) => void)({
+      void (
+        form.props.onSubmit as (event: { preventDefault(): void; currentTarget: object }) => void
+      )({
         preventDefault() {},
         currentTarget: {},
       });
@@ -150,9 +152,9 @@ describe('rhythm panel operation ownership', () => {
       resolveSave(success(dashboard()));
       await flushPromises();
     });
-    expect(
-      renderer.root.findAll((node) => node.type === 'form')[0]?.props['data-unsaved'],
-    ).toBe('false');
+    expect(renderer.root.findAll((node) => node.type === 'form')[0]?.props['data-unsaved']).toBe(
+      'false',
+    );
 
     await act(async () => renderer.unmount());
   });

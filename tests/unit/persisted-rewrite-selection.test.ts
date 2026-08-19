@@ -82,7 +82,9 @@ describe('persisted rewrite selection reconstruction', () => {
 
   it('rejects cross-block, locked and empty remembered selections instead of widening the rewrite scope', async () => {
     persistEditorSelectionRange(projectId, chapterId, 2, 7);
-    await expect(capturePersistedRewriteSelectionAnchor(projectId, chapter, draft())).resolves.toBeNull();
+    await expect(
+      capturePersistedRewriteSelectionAnchor(projectId, chapter, draft()),
+    ).resolves.toBeNull();
 
     persistEditorSelectionRange(projectId, chapterId, 7, 9);
     await expect(
@@ -90,6 +92,8 @@ describe('persisted rewrite selection reconstruction', () => {
     ).resolves.toBeNull();
 
     persistEditorSelectionRange(projectId, chapterId, 7, 7);
-    await expect(capturePersistedRewriteSelectionAnchor(projectId, chapter, draft())).resolves.toBeNull();
+    await expect(
+      capturePersistedRewriteSelectionAnchor(projectId, chapter, draft()),
+    ).resolves.toBeNull();
   });
 });

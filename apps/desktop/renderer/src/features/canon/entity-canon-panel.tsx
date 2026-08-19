@@ -7,6 +7,10 @@ import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resour
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorJsonValue } from '../../presentation/author-value-format.js';
 import {
+  confirmRegisteredUnsavedChanges,
+  useUnsavedChangesGuard,
+} from '../../runtime/unsaved-changes.js';
+import {
   authorFactLabel,
   COMMON_FACT_FIELDS,
   parseAuthorValue,
@@ -50,7 +54,20 @@ export function EntityCanonPanel({
   const [newEntity, setNewEntity] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const command = useBridgeCommand(resource.refresh);
+  const entityUnsaved = useUnsavedChangesGuard('设定条目');
+  const factUnsaved = useUnsavedChangesGuard('设定事实');
   const selected = resource.data?.entities.find((entity) => entity.id === selectedId) ?? null;
+
+  const confirmEditorDiscard = (action: string): boolean => {
+    if (!entityUnsaved.dirty && !factUnsaved.dirty) return true;
+    if (!confirmRegisteredUnsavedChanges(action)) {
+      setNotice('已保留当前设定的未保存修改。');
+      return false;
+    }
+    entityUnsaved.clearDirty();
+    factUnsaved.clearDirty();
+    return true;
+  };
 
   useEffect(() => {
     if (
@@ -87,6 +104,7 @@ export function EntityCanonPanel({
             bridge.canon.create({ projectId, authority: 'author', ...fields }),
           );
     if (result) {
+      entityUnsaved.clearDirty();
       const match = result.entities.find((entity) => entity.name === fields.name);
       setSelectedId(match?.id ?? null);
       setNewEntity(false);
@@ -130,13 +148,15 @@ export function EntityCanonPanel({
       }),
     );
     if (result) {
+      factUnsaved.clearDirty();
       event.currentTarget.reset();
       setNotice('静态事实已确认；同一事实键的旧值保留为历史记录。');
     }
   };
 
   const archive = async (): Promise<void> => {
-    if (!selected || !window.confirm(`归档“${selected.name}”？`)) return;
+    if (!selected || !confirmEditorDiscard('归档当前设定条目')) return;
+    if (!window.confirm(`归档“${selected.name}”？`)) return;
     const result = await command.run(() =>
       bridge.canon.archive({ projectId, authority: 'author', entityId: selected.id }),
     );
@@ -144,7 +164,9 @@ export function EntityCanonPanel({
   };
 
   const remove = async (): Promise<void> => {
-    if (!selected || selected.status !== 'archived') return;
+    if (!selected || selected.status !== 'archived' || !confirmEditorDiscard('永久删除当前设定条目')) {
+      return;
+    }
     const preview = await command.run(() =>
       bridge.canon.previewDelete({ projectId, entityId: selected.id }),
     );
@@ -183,6 +205,7 @@ export function EntityCanonPanel({
             disabled={readOnly}
             type="button"
             onClick={() => {
+              if (!confirmEditorDiscard('新建设定条目')) return;
               setNewEntity(true);
               setSelectedId(null);
             }}
@@ -196,6 +219,7 @@ export function EntityCanonPanel({
             data-canon-entity-select
             value={selectedId ?? ''}
             onChange={(event) => {
+              if (!confirmEditorDiscard('切换设定条目')) return;
               setNewEntity(false);
               setSelectedId(event.target.value || null);
             }}
@@ -227,7 +251,9 @@ export function EntityCanonPanel({
           <form
             className="stacked-form"
             data-canon-entity-form
+            data-unsaved={entityUnsaved.dirty ? 'true' : 'false'}
             key={newEntity ? 'new' : selected?.id}
+            onChange={entityUnsaved.markDirty}
             onSubmit={(event) => void saveEntity(event)}
           >
             <label>
@@ -308,6 +334,8 @@ export function EntityCanonPanel({
           <form
             className="stacked-form"
             data-canon-fact-form
+            data-unsaved={factUnsaved.dirty ? 'true' : 'false'}
+            onChange={factUnsaved.markDirty}
             onSubmit={(event) => void setFact(event)}
           >
             <label>

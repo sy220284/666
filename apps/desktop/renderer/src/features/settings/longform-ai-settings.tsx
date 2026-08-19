@@ -347,7 +347,9 @@ export function LongformAiSettingsPanel({
           </div>
           <button
             className="quiet-button"
-            disabled={!settings?.activeStyleProfileId || !finalVersionIds.length || pending !== null}
+            disabled={
+              !settings?.activeStyleProfileId || !finalVersionIds.length || pending !== null
+            }
             type="button"
             onClick={() => void evaluateRecentStyle()}
           >

@@ -13,6 +13,7 @@ import {
   type RendererCommandResult,
   type RendererCommandScope,
 } from '../runtime/command-coordinator.js';
+import { confirmRegisteredUnsavedChanges } from '../runtime/unsaved-changes.js';
 import type { RendererUiStoreState } from '../state/ui-store.js';
 import {
   continuationRoute,
@@ -78,6 +79,10 @@ export function useProjectSessionController({
 
   const prepareProjectTransition = useCallback(
     async (blockedMessage: string, scope?: RendererCommandScope): Promise<boolean> => {
+      if (!confirmRegisteredUnsavedChanges('继续当前作品操作')) {
+        if (scope?.isCurrent() ?? true) setMessage('已保留当前页面的未保存修改。');
+        return false;
+      }
       if (!(await flushWriting())) {
         if (scope?.isCurrent() ?? true) setMessage(blockedMessage);
         return false;

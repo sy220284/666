@@ -35,10 +35,7 @@ export function CanonWorkbench({
 }: CanonWorkbenchProps) {
   const references = useCanonAuthorReferences(bridge, projectId);
   const changeSection = (nextSection: CanonSection): void => {
-    if (
-      nextSection === section ||
-      confirmRegisteredUnsavedChanges('切换人物与世界设定分区')
-    ) {
+    if (nextSection === section || confirmRegisteredUnsavedChanges('切换人物与世界设定分区')) {
       onSectionChange(nextSection);
     }
   };

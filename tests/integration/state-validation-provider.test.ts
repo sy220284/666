@@ -231,6 +231,13 @@ describe('M4-04 Provider state extraction and validation', () => {
         validationIssueId: issue.issueId,
         status: 'open',
       });
+      catalog = await harness.validation.createTodoFromIssue(randomUUID(), {
+        projectId: seeded.project.projectId,
+        issueId: issue.issueId,
+      });
+      expect(catalog.todos.filter((todo) => todo.validationIssueId === issue.issueId)).toHaveLength(
+        1,
+      );
       catalog = await harness.validation.addComment(randomUUID(), {
         projectId: seeded.project.projectId,
         issueId: issue.issueId,

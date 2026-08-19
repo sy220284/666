@@ -67,6 +67,15 @@ export class ValidationIssueOperations {
         (candidate) => candidate.issueId === input.issueId,
       );
       if (!issue) throw new ValidationServiceError('VALIDATION_NOT_FOUND', 'Issue not found.');
+      const existing = database
+        .prepare(
+          `SELECT id FROM story_todos
+            WHERE project_id = ? AND validation_issue_id = ? AND status = 'open'
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1`,
+        )
+        .get(input.projectId, issue.issueId);
+      if (existing) return catalog(database, input.projectId);
       const now = this.#clock.now().toISOString();
       database
         .prepare(

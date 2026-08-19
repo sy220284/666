@@ -28,6 +28,7 @@ vi.mock(
       useCallback: <T>(callback: T): T => callback,
       useEffect: (effect: () => void | (() => void)): void => hooks.effects.push(effect),
       useMemo: <T>(factory: () => T): T => factory(),
+      useRef: <T>(initial: T): { current: T } => ({ current: initial }),
       useState: (): readonly [unknown, ReturnType<typeof vi.fn>] => {
         const setter = vi.fn();
         hooks.setters.push(setter);

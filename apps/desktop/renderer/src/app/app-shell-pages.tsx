@@ -186,6 +186,7 @@ export function AppShellPages(props: AppShellPagesProps) {
           selectedNoteId={props.selection.researchNoteId}
           navigationQuery={props.navigationQuery}
           onNavigate={props.onNavigateToAuthorTarget}
+          onReturn={() => void props.onReturnToAuthorSource()}
           onSelectNote={(noteId) => {
             if (!noteId) return;
             props.onNavigateToAuthorTarget({

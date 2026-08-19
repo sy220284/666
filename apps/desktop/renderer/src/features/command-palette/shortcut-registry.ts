@@ -47,16 +47,31 @@ export function commandForShortcut(
   return null;
 }
 
+export interface ShortcutConflict {
+  readonly id: string;
+  readonly label: string;
+}
+
+const EDITOR_RESERVED_SHORTCUTS: Readonly<Record<string, ShortcutConflict>> = {
+  'Mod+S': { id: 'editor.save', label: '正文保存' },
+  'Mod+Z': { id: 'editor.undo', label: '正文撤销' },
+  'Mod+Shift+Z': { id: 'editor.redo', label: '正文重做' },
+  'Mod+F': { id: 'editor.find', label: '当前章查找' },
+  'Mod+Shift+F': { id: 'editor.focusMode', label: '沉浸写作' },
+  'Mod+Enter': { id: 'editor.quickRewrite', label: '快速改写' },
+  'Mod+Shift+L': { id: 'editor.blockLock', label: '锁定段落' },
+};
+
 export function shortcutConflict(
   commandId: string,
   shortcut: string,
   overrides: readonly ShortcutOverride[],
-): CommandCatalogEntry | null {
-  return (
-    COMMAND_CATALOG.find(
-      (entry) => entry.id !== commandId && shortcutForCommand(entry, overrides) === shortcut,
-    ) ?? null
+): ShortcutConflict | null {
+  const commandConflict = COMMAND_CATALOG.find(
+    (entry) => entry.id !== commandId && shortcutForCommand(entry, overrides) === shortcut,
   );
+  if (commandConflict) return commandConflict;
+  return EDITOR_RESERVED_SHORTCUTS[shortcut] ?? null;
 }
 
 export function updateShortcutOverride(

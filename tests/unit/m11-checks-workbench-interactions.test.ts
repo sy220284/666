@@ -31,6 +31,7 @@ vi.mock(
         hookHarness.effects.push(effect);
       },
       useMemo: <T>(factory: () => T): T => factory(),
+      useRef: <T>(initial: T): { current: T } => ({ current: initial }),
       useState: (): readonly [unknown, ReturnType<typeof vi.fn>] => {
         const index = hookHarness.stateIndex++;
         const setter = vi.fn();
@@ -265,7 +266,7 @@ describe('M11 内容检查工作台交互覆盖', () => {
     for (const label of [
       '标记已处理',
       '忽略本项',
-      '停用此规则',
+      '静音本条问题',
       '降低重要程度',
       '标记为误报',
       '重新打开',
@@ -503,5 +504,56 @@ describe('M11 内容检查工作台交互覆盖', () => {
     await invoke(buttons(tree, '标记批注已处理')[0]!);
     await invoke(buttons(tree, '停用此例外')[0]!);
     expect(hookHarness.setters[8]).toHaveBeenCalledWith(expect.stringContaining('操作未完成'));
+  });
+
+  it('同步拦截同一检查操作的双击，避免累计执行两次', async () => {
+    let release!: (value: { state: 'success'; data: ValidationCatalog }) => void;
+    const updateIssue = vi.fn(
+      () =>
+        new Promise<{ state: 'success'; data: ValidationCatalog }>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const bridge = contractInput<RendererBridgeAdapter>({
+      planning: {
+        listStructure: vi.fn(async () => ({ state: 'success' as const, data: structure })),
+      },
+      providers: {
+        list: vi.fn(async () => ({ state: 'success' as const, data: { providers: [provider] } })),
+      },
+      generation: { start: vi.fn(), getRun: vi.fn() },
+      validation: {
+        list: vi.fn(async () => ({ state: 'success' as const, data: catalog })),
+        runRules: vi.fn(),
+        updateIssue,
+        createTodoFromIssue: vi.fn(),
+        rememberException: vi.fn(),
+        addComment: vi.fn(),
+        saveTodo: vi.fn(),
+        resolveComment: vi.fn(),
+        disableException: vi.fn(),
+      },
+    });
+    vi.stubGlobal('window', { prompt: vi.fn(), setTimeout: vi.fn(), clearTimeout: vi.fn() });
+    resetHooks([
+      structure,
+      catalog,
+      [provider],
+      provider.id,
+      chapterId,
+      true,
+      false,
+      null,
+      '检查已就绪。',
+    ]);
+    const tree = ChecksWorkbench({ bridge, projectId, readOnly: false, onNavigate: vi.fn() });
+    const downgrade = buttons(tree, '降低重要程度')[0]!;
+    const handler = downgrade.props.onClick as () => void;
+    handler();
+    handler();
+    expect(updateIssue).toHaveBeenCalledTimes(1);
+    release({ state: 'success', data: catalog });
+    await Promise.resolve();
+    await Promise.resolve();
   });
 });

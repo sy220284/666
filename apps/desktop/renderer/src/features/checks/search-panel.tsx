@@ -33,7 +33,7 @@ export function SearchPanel({
 }) {
   const [query, setQuery] = useState('');
   const [sourceTypes, setSourceTypes] = useState<Set<SearchSourceType>>(
-    new Set(['draft', 'version', 'entity']),
+    new Set(['draft', 'version', 'entity', 'research']),
   );
   const [result, setResult] = useState<SearchProjectResult | null>(null);
   const [indexState, setIndexState] = useState<SearchIndexState | null>(null);
@@ -303,11 +303,11 @@ export function SearchPanel({
       <form className="filter-bar" onSubmit={(event) => void search(event)}>
         <input
           aria-label="全文搜索词"
-          placeholder="搜索正文、历史版本和设定"
+          placeholder="搜索正文、历史版本、设定和研究资料"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        {(['draft', 'version', 'entity'] as const).map((source) => (
+        {(['draft', 'version', 'entity', 'research'] as const).map((source) => (
           <label key={source}>
             <input
               checked={sourceTypes.has(source)}
@@ -325,7 +325,9 @@ export function SearchPanel({
               ? authorTerm('draft')
               : source === 'version'
                 ? authorTerm('version')
-                : '人物设定'}
+                : source === 'research'
+                  ? '研究资料'
+                  : '人物设定'}
           </label>
         ))}
         <button disabled={searchToolsPending} type="submit">
@@ -432,6 +434,7 @@ export function SearchPanel({
 function searchSourceLabel(source: SearchSourceType): string {
   if (source === 'draft') return '当前稿';
   if (source === 'version') return '历史版本 · 只读';
+  if (source === 'research') return '研究资料';
   return '人物世界设定 · 专用编辑入口';
 }
 

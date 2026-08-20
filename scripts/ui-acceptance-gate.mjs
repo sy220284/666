@@ -11,6 +11,11 @@ const COMMIT_PATTERN = /^[0-9a-f]{7,40}$/iu;
 const VERIFIED_COMMIT_AUTHORITY = 'verified-commit';
 const RELEASE_E2E_AUTHORITY = 'release-e2e';
 const RELEASE_WORKFLOW_AUTHORITY = 'release-workflow';
+const FRESHNESS_AUTHORITIES = new Set([
+  VERIFIED_COMMIT_AUTHORITY,
+  RELEASE_E2E_AUTHORITY,
+  RELEASE_WORKFLOW_AUTHORITY,
+]);
 
 function validDate(value) {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value));
@@ -95,11 +100,7 @@ export function evaluateUiAcceptanceState(state, options = {}) {
   const changedSinceVerification = options.changedSinceVerification ?? (() => []);
   const freshnessAuthority = options.freshnessAuthority ?? VERIFIED_COMMIT_AUTHORITY;
 
-  if (
-    ![VERIFIED_COMMIT_AUTHORITY, RELEASE_E2E_AUTHORITY, RELEASE_WORKFLOW_AUTHORITY].includes(
-      freshnessAuthority,
-    )
-  ) {
+  if (!FRESHNESS_AUTHORITIES.has(freshnessAuthority)) {
     errors.push(`Unsupported UI freshness authority: ${String(freshnessAuthority)}`);
   }
   if (!state || state.schemaVersion !== 2) {
@@ -203,9 +204,8 @@ export async function validateUiAcceptanceEvidence(state, repositoryRoot = root)
   return errors;
 }
 
-export async function runUiAcceptanceGate({
-  freshnessAuthority = VERIFIED_COMMIT_AUTHORITY,
-} = {}) {
+export async function runUiAcceptanceGate(options = {}) {
+  const freshnessAuthority = options.freshnessAuthority ?? VERIFIED_COMMIT_AUTHORITY;
   const state = JSON.parse(await readFile(acceptancePath, 'utf8'));
   const head = currentHead();
   const errors = [

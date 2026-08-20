@@ -144,18 +144,17 @@ function publicManifestAssetName(manifest, version) {
   if (!['linux', 'windows', 'macos'].includes(manifest.platform)) {
     throw new Error(`Unsupported package platform in release assets: ${String(manifest.platform)}`);
   }
-  const architecture = typeof manifest.architecture === 'string' ? manifest.architecture.trim() : '';
+  const architecture =
+    typeof manifest.architecture === 'string' ? manifest.architecture.trim() : '';
   if (!architecture || !/^[0-9A-Za-z._-]+$/u.test(architecture)) {
-    throw new Error(`Invalid package architecture in release assets: ${String(manifest.architecture)}`);
+    throw new Error(
+      `Invalid package architecture in release assets: ${String(manifest.architecture)}`,
+    );
   }
   return `WorldForge-v${version}-${manifest.platform}-${architecture}-manifest.json`;
 }
 
-export async function prepareReleasePublicationAssets(
-  assetDirectory,
-  version,
-  excludedPaths = [],
-) {
+export async function prepareReleasePublicationAssets(assetDirectory, version, excludedPaths = []) {
   const base = path.resolve(assetDirectory);
   const directories = await findPackageManifestDirectories(base);
   if (directories.length !== 3) {

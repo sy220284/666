@@ -53,12 +53,9 @@ export function parseReleaseVersion(value) {
 
 export function normalizeReleasePolicy(releaseKind, distributionTrust) {
   if (!releaseKinds.has(releaseKind)) throw new Error(`Unsupported release kind: ${releaseKind}`);
-  const trustMode = distributionTrust ?? (releaseKind === 'stable' ? 'required' : 'allow-unsigned');
+  const trustMode = distributionTrust ?? 'allow-unsigned';
   if (!distributionTrustModes.has(trustMode)) {
     throw new Error(`Unsupported distribution trust mode: ${trustMode}`);
-  }
-  if (releaseKind === 'stable' && trustMode !== 'required') {
-    throw new Error('Stable releases must require platform distribution trust');
   }
   return { releaseKind, distributionTrust: trustMode };
 }
@@ -93,11 +90,24 @@ export function validateReleaseConfiguration({ packageJson, workflowSource }) {
     'main-verification',
     '--distribution-trust',
     'verify-package-assets.mjs',
-    'MACOS_CERTIFICATE_BASE64',
-    'WINDOWS_CERTIFICATE_BASE64',
+    'DISTRIBUTION_TRUST_MODE: allow-unsigned',
     'gh release create',
   ]) {
     if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
+  }
+  for (const token of [
+    'WINDOWS_CERTIFICATE_BASE64',
+    'WINDOWS_CERTIFICATE_PASSWORD',
+    'MACOS_CERTIFICATE_BASE64',
+    'MACOS_CERTIFICATE_PASSWORD',
+    'MACOS_SIGN_IDENTITY',
+    'APPLE_API_KEY_BASE64',
+    'APPLE_API_KEY_ID',
+    'APPLE_API_ISSUER',
+  ]) {
+    if (workflowSource.includes(token)) {
+      errors.push('Release workflow must not use distribution signing credential: ' + token);
+    }
   }
   if (workflowSource.includes('single-work-release-gate.mjs')) {
     errors.push('Release workflow must not use Task Runtime as a release authority');

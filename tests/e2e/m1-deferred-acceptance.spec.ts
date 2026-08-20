@@ -89,7 +89,7 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     WORLDFORGE_E2E_RESTORE_PARENT: restoreParent,
     WORLDFORGE_E2E_RECOVERY_EXPORT_DIRECTORY: exportDirectory,
   };
-  const workspacePath = path.join(await realpath(createParent), 'M1验收项目.worldforge');
+  const workspacePath = path.join(createParent, 'M1验收项目.worldforge');
 
   const application = await launch(userDataPath, environment);
   let closed = false;
@@ -116,7 +116,9 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await page.locator('[data-close-settings]').click();
 
     await page.locator('[data-open-recent]').click();
-    await expect(page.locator('[data-active-project-path]')).toHaveText(workspacePath);
+    const activeProjectPath = await page.locator('[data-active-project-path]').textContent();
+    if (!activeProjectPath) throw new Error('M1_ACCEPTANCE_ACTIVE_PROJECT_PATH_MISSING');
+    expect(await realpath(activeProjectPath)).toBe(await realpath(workspacePath));
     await capture(page, 'm1-02-project-workspace.png');
 
     await page.locator('[data-open-planning]').click();

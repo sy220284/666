@@ -119,6 +119,10 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'JournalUpdatePreferencesCommandSchema',
   'JournalUpdatePreferencesInputSchema',
   'JournalWindowInputSchema',
+  'journalCompletedScheduleWindow',
+  'journalCurrentDayWindow',
+  'journalCurrentWeekWindow',
+  'journalDateRangeWindow',
   'KnowledgeStateProposalDraftSchema',
   'KnowledgeStateProposalValueSchema',
   'LONGFORM_AI_COMMANDS',
@@ -132,6 +136,7 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'LongformAiSettingsSchema',
   'LongformAiSettingsUpdateInputSchema',
   'LongformAiUpdateSettingsCommandSchema',
+  'normalizeJournalTimeZone',
   'RESEARCH_COMMANDS',
   'RESEARCH_IPC_CHANNELS',
   'ResearchAddLinkCommandSchema',
@@ -220,7 +225,7 @@ const BASELINE = {
   protocolVersion: 1,
   ipcChannelCount: 97,
   appCommandCount: 96,
-  runtimeExportCount: 1032,
+  runtimeExportCount: 1037,
   legacySurfaceSha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
 } as const;
 

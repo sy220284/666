@@ -31,6 +31,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 90_000,
+  expect: { timeout: 15_000 },
   retries: 0,
   reporter: 'line',
   outputDir: process.env.WORLDFORGE_E2E_OUTPUT_DIR ?? 'test-results/electron',

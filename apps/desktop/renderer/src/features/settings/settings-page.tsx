@@ -170,7 +170,10 @@ export function SettingsPage(props: SettingsPageProps) {
 function GeneralSettings(props: SettingsPageProps) {
   const [draft, setDraft] = useState(props.settings);
   const { dirty, markDirty, clearDirty } = useUnsavedChangesGuard('通用设置');
-  useEffect(() => setDraft(props.settings), [props.settings]);
+  useEffect(() => {
+    setDraft(props.settings);
+    clearDirty();
+  }, [clearDirty, props.settings]);
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();

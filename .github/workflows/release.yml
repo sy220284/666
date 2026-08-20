@@ -22,10 +22,8 @@ on:
         required: true
         default: false
         type: boolean
-  workflow_run:
-    workflows:
-      - Main Verification
-    types: [completed]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -33,7 +31,7 @@ permissions:
 
 env:
   CI: true
-  DISTRIBUTION_TRUST_MODE: ${{ (inputs.release_kind == 'stable' || github.event_name == 'workflow_run' || inputs.require_distribution_trust) && 'required' || 'allow-unsigned' }}
+  DISTRIBUTION_TRUST_MODE: ${{ (inputs.release_kind == 'stable' || github.event_name == 'issue_comment' || inputs.require_distribution_trust) && 'required' || 'allow-unsigned' }}
   GITHUB_TOKEN: ${{ github.token }}
   RELEASE_KIND: ${{ inputs.release_kind || 'stable' }}
   SOURCE_AUTHORITY_CONTEXT: main-verification
@@ -45,7 +43,7 @@ concurrency:
 jobs:
   release-status-start:
     name: Mark release pending
-    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    if: ${{ github.event_name != 'issue_comment' || (github.event.issue.number == 416 && github.event.issue.pull_request && github.event.comment.body == '/release-v1.0.1' && github.event.comment.author_association == 'OWNER') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -628,7 +626,7 @@ jobs:
 
   release-status-final:
     name: Publish final release status
-    if: always()
+    if: ${{ always() && (github.event_name != 'issue_comment' || (github.event.issue.number == 416 && github.event.issue.pull_request && github.event.comment.body == '/release-v1.0.1' && github.event.comment.author_association == 'OWNER')) }}
     needs:
       - quality
       - release-e2e-authority

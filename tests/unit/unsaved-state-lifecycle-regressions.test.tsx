@@ -1,6 +1,11 @@
 import { createRequire } from 'node:module';
 
-import type { AppSettings, AppearancePreferences, Entity, EntityCatalog } from '@worldforge/contracts';
+import type {
+  AppSettings,
+  AppearancePreferences,
+  Entity,
+  EntityCatalog,
+} from '@worldforge/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { createElement as createReactElement, ReactElement } from 'react';
 
@@ -208,9 +213,9 @@ describe('unsaved state lifecycle regressions', () => {
     const mode = nodeWithProp(renderer.root, 'data-default-mode');
 
     await invoke(mode, 'onChange', { target: { value: 'professional' } });
-    expect(nodeWithProp(renderer.root, 'data-settings-section', 'general').props['data-unsaved']).toBe(
-      'true',
-    );
+    expect(
+      nodeWithProp(renderer.root, 'data-settings-section', 'general').props['data-unsaved'],
+    ).toBe('true');
 
     await invoke(button(renderer.root, '恢复默认'), 'onClick');
     expect(onResetSettings).toHaveBeenCalledOnce();
@@ -226,9 +231,9 @@ describe('unsaved state lifecycle regressions', () => {
       await Promise.resolve();
     });
 
-    expect(nodeWithProp(renderer.root, 'data-settings-section', 'general').props['data-unsaved']).toBe(
-      'false',
-    );
+    expect(
+      nodeWithProp(renderer.root, 'data-settings-section', 'general').props['data-unsaved'],
+    ).toBe('false');
     expect(registeredUnsavedChangeLabels()).not.toContain('通用设置');
   });
 
@@ -247,13 +252,19 @@ describe('unsaved state lifecycle regressions', () => {
       }),
     );
 
-    expect(nodeWithProp(renderer.root, 'data-provider-settings').props['data-unsaved']).toBe('false');
+    expect(nodeWithProp(renderer.root, 'data-provider-settings').props['data-unsaved']).toBe(
+      'false',
+    );
     await invoke(nodeWithProp(renderer.root, 'data-provider-preset', 'anthropic'), 'onClick');
-    expect(nodeWithProp(renderer.root, 'data-provider-settings').props['data-unsaved']).toBe('true');
+    expect(nodeWithProp(renderer.root, 'data-provider-settings').props['data-unsaved']).toBe(
+      'true',
+    );
     expect(registeredUnsavedChangeLabels()).toContain('智能连接设置');
 
     await invoke(button(renderer.root, '新建本机连接'), 'onClick');
-    expect(nodeWithProp(renderer.root, 'data-provider-settings').props['data-unsaved']).toBe('true');
+    expect(nodeWithProp(renderer.root, 'data-provider-settings').props['data-unsaved']).toBe(
+      'true',
+    );
     expect(registeredUnsavedChangeLabels()).toContain('智能连接设置');
   });
 

@@ -102,15 +102,21 @@ export function validateReleaseConfiguration({ packageJson, workflowSource }) {
     '--distribution-trust',
     'verify-package-assets.mjs',
     'DISTRIBUTION_TRUST_MODE: allow-unsigned',
-    'release-e2e-authority:',
     'gh release create',
   ]) {
     if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
   }
+
   const publishJob = workflowJobBody(workflowSource, 'publish');
-  if (!publishJob?.includes('- release-e2e-authority')) {
-    errors.push('Release publish job must depend on release-e2e-authority');
+  if (publishJob !== null) {
+    if (!workflowSource.includes('\n  release-e2e-authority:\n')) {
+      errors.push('Release workflow is missing: release-e2e-authority:');
+    }
+    if (!publishJob.includes('- release-e2e-authority')) {
+      errors.push('Release publish job must depend on release-e2e-authority');
+    }
   }
+
   for (const token of [
     'WINDOWS_CERTIFICATE_BASE64',
     'WINDOWS_CERTIFICATE_PASSWORD',

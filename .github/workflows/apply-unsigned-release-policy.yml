@@ -47,6 +47,9 @@ jobs:
             tests/unit/package-desktop.test.ts \
             docs/process/RELEASE_QUALIFICATION.md \
             docs/product/SELF_USE_RELEASE_POLICY.md
+          sed -i 's/[[:space:]]\+$//' \
+            docs/process/RELEASE_QUALIFICATION.md \
+            docs/product/SELF_USE_RELEASE_POLICY.md
           pnpm exec vitest run tests/unit/release-tool.test.ts tests/unit/package-desktop.test.ts
           node scripts/documentation-consistency.mjs
           pnpm release:check

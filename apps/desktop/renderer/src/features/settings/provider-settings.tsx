@@ -84,6 +84,7 @@ export function ProviderSettings({
   const choosePreset = (presetId: ProviderPresetId): void => {
     if (dirty && !confirmDiscard('切换智能连接预设')) return;
     applyPreset(presetId);
+    markDirty();
   };
 
   const edit = (provider: ProviderSummary): void => {
@@ -99,6 +100,7 @@ export function ProviderSettings({
   const reset = (): void => {
     if (dirty && !confirmDiscard('新建本机连接')) return;
     applyPreset('ollama');
+    markDirty();
   };
 
   const save = async (event: FormEvent<HTMLFormElement>): Promise<void> => {

@@ -186,6 +186,8 @@ export function EntityCanonPanel({
       }),
     );
     if (result) {
+      entityUnsaved.clearDirty();
+      factUnsaved.clearDirty();
       setSelectedId(null);
       setNotice('设定条目已永久删除。');
     }

@@ -119,10 +119,7 @@ function compareLocalDates(left: LocalDateParts, right: LocalDateParts): number 
   );
 }
 
-export function journalCurrentDayWindow(
-  now: Date,
-  timeZoneInput: string,
-): JournalCalendarWindow {
+export function journalCurrentDayWindow(now: Date, timeZoneInput: string): JournalCalendarWindow {
   const timeZone = normalizeJournalTimeZone(timeZoneInput);
   const today = localDateParts(now, timeZone);
   return {
@@ -131,10 +128,7 @@ export function journalCurrentDayWindow(
   };
 }
 
-export function journalCurrentWeekWindow(
-  now: Date,
-  timeZoneInput: string,
-): JournalCalendarWindow {
+export function journalCurrentWeekWindow(now: Date, timeZoneInput: string): JournalCalendarWindow {
   const timeZone = normalizeJournalTimeZone(timeZoneInput);
   const today = localDateParts(now, timeZone);
   const day = weekday(today);

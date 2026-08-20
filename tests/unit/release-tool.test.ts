@@ -27,8 +27,7 @@ const releaseWorkflow = [
   'main-verification',
   '--distribution-trust',
   'verify-package-assets.mjs',
-  'MACOS_CERTIFICATE_BASE64',
-  'WINDOWS_CERTIFICATE_BASE64',
+  'DISTRIBUTION_TRUST_MODE: allow-unsigned',
   'gh release create',
 ].join('\n');
 
@@ -67,6 +66,14 @@ describe('release tool', () => {
     expect(
       validateReleaseConfiguration({
         packageJson,
+        workflowSource: releaseWorkflow + '\nWINDOWS_CERTIFICATE_BASE64',
+      }),
+    ).toContain(
+      'Release workflow must not use distribution signing credential: WINDOWS_CERTIFICATE_BASE64',
+    );
+    expect(
+      validateReleaseConfiguration({
+        packageJson,
         workflowSource: releaseWorkflow + '\nnode .github/governance/single-work-release-gate.mjs',
       }),
     ).toContain('Release workflow must not use Task Runtime as a release authority');
@@ -83,7 +90,7 @@ describe('release tool', () => {
     expect(result.errors).toContain('Current release commit must have main-verification=success');
   });
 
-  it('blocks version drift, non-main publication, and unsigned stable policy', () => {
+  it('blocks version drift and non-main publication while allowing unsigned stable releases', () => {
     const result = evaluateReleaseGate({
       statuses: successStatuses,
       packageVersion: '1.0.0',
@@ -97,25 +104,25 @@ describe('release tool', () => {
       expect.arrayContaining([
         'Requested version 1.0.1 does not match package.json version 1.0.0',
         'Releases may only run from main, found feature',
-        'Stable releases must require platform distribution trust',
       ]),
     );
+    expect(result.distributionTrust).toBe('allow-unsigned');
   });
 
-  it('allows publishing from main solely from engineering and release acceptance authority', () => {
+  it('allows unsigned stable publishing from main after engineering acceptance', () => {
     const result = evaluateReleaseGate({
       statuses: successStatuses,
       packageVersion: '1.0.0',
       requestedVersion: '1.0.0',
       refName: 'main',
       releaseKind: 'stable',
-      distributionTrust: 'required',
+      distributionTrust: 'allow-unsigned',
     });
 
     expect(result).toMatchObject({
       version: '1.0.0',
       releaseKind: 'stable',
-      distributionTrust: 'required',
+      distributionTrust: 'allow-unsigned',
       errors: [],
     });
   });

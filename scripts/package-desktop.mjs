@@ -82,16 +82,10 @@ export function parsePackageArguments(
   if (!supportedReleaseKinds.has(releaseKind)) {
     throw new Error(`Unsupported release kind: ${releaseKind}`);
   }
-  const distributionTrust =
-    option(argumentsList, '--distribution-trust') ??
-    (releaseKind === 'stable' ? 'required' : 'allow-unsigned');
+  const distributionTrust = option(argumentsList, '--distribution-trust') ?? 'allow-unsigned';
   if (!supportedDistributionTrustModes.has(distributionTrust)) {
     throw new Error(`Unsupported distribution trust mode: ${distributionTrust}`);
   }
-  if (releaseKind === 'stable' && distributionTrust !== 'required') {
-    throw new Error('Stable packages must require distribution trust');
-  }
-
   const output = path.resolve(
     repositoryRoot,
     option(argumentsList, '--output') ?? path.join('release', platform),

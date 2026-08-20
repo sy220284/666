@@ -75,19 +75,23 @@ describe('desktop package command', () => {
         repositoryRoot,
       }),
     ).toThrow(/inside the repository/);
-    expect(() =>
-      parsePackageArguments(
-        ['--release-kind', 'stable', '--distribution-trust', 'allow-unsigned'],
-        {
-          packageVersion: '1.2.3',
-          nodePlatform: 'linux',
-          repositoryRoot,
-        },
-      ),
-    ).toThrow(/Stable packages must require distribution trust/);
   });
 
-  it('requires native trust evidence for stable Windows and macOS packages', () => {
+  it('allows stable packages to use unsigned self-use distribution mode', () => {
+    const repositoryRoot = path.resolve('/workspace/worldforge');
+    expect(
+      parsePackageArguments(['--release-kind', 'stable'], {
+        packageVersion: '1.2.3',
+        nodePlatform: 'linux',
+        repositoryRoot,
+      }),
+    ).toMatchObject({
+      releaseKind: 'stable',
+      distributionTrust: 'allow-unsigned',
+    });
+  });
+
+  it('keeps native trust verification for explicitly required packages', () => {
     expect(() =>
       assertRequiredDistributionTrust('windows', {
         signed: false,

@@ -235,10 +235,7 @@ async function requireReleaseGate(
 async function writeChecksums(requestedVersion) {
   const assetDirectory = path.resolve(root, readOption('--assets', 'release'));
   const releaseKind = readOption('--kind', 'draft');
-  const distributionTrust = readOption(
-    '--distribution-trust',
-    releaseKind === 'stable' ? 'required' : 'allow-unsigned',
-  );
+  const distributionTrust = readOption('--distribution-trust', 'allow-unsigned');
   const version = await requireReleaseGate(
     requestedVersion,
     releaseKind,
@@ -273,10 +270,7 @@ async function main() {
     const version = readOption('--version');
     if (!version) throw new Error('gate requires --version');
     const releaseKind = readOption('--kind', 'draft');
-    const distributionTrust = readOption(
-      '--distribution-trust',
-      releaseKind === 'stable' ? 'required' : 'allow-unsigned',
-    );
+    const distributionTrust = readOption('--distribution-trust', 'allow-unsigned');
     const assetDirectory = readOption('--assets', null);
     await requireReleaseGate(version, releaseKind, distributionTrust, assetDirectory);
     return;

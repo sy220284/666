@@ -17,11 +17,6 @@ on:
           - draft
           - prerelease
           - stable
-      require_distribution_trust:
-        description: Require Windows signing plus macOS signing/notarization for non-stable builds
-        required: true
-        default: false
-        type: boolean
   issue_comment:
     types: [created]
 
@@ -31,7 +26,7 @@ permissions:
 
 env:
   CI: true
-  DISTRIBUTION_TRUST_MODE: ${{ (inputs.release_kind == 'stable' || github.event_name == 'issue_comment' || inputs.require_distribution_trust) && 'required' || 'allow-unsigned' }}
+  DISTRIBUTION_TRUST_MODE: allow-unsigned
   GITHUB_TOKEN: ${{ github.token }}
   RELEASE_KIND: ${{ inputs.release_kind || 'stable' }}
   SOURCE_AUTHORITY_CONTEXT: main-verification
@@ -323,29 +318,6 @@ jobs:
         run: |
           pnpm audit --audit-level=high
           node scripts/scan-secrets.mjs --history
-      - name: Validate required distribution credentials
-        env:
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
-          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: |
-          if [ "$DISTRIBUTION_TRUST_MODE" != required ]; then
-            exit 0
-          fi
-          for name in \
-            WINDOWS_CERTIFICATE_BASE64 WINDOWS_CERTIFICATE_PASSWORD \
-            MACOS_CERTIFICATE_BASE64 MACOS_CERTIFICATE_PASSWORD MACOS_SIGN_IDENTITY \
-            APPLE_API_KEY_BASE64 APPLE_API_KEY_ID APPLE_API_ISSUER; do
-            if [ -z "${!name}" ]; then
-              echo "Required distribution credential is not configured: $name" >&2
-              exit 1
-            fi
-          done
       - name: Enforce source and product release acceptance gates
         run: |
           test "$GITHUB_REF_NAME" = main
@@ -390,48 +362,6 @@ jobs:
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
           fc-match "Noto Serif CJK SC"
       - run: pnpm build
-      - name: Prepare Windows signing certificate
-        if: matrix.platform == 'windows' && env.DISTRIBUTION_TRUST_MODE == 'required'
-        shell: pwsh
-        env:
-          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
-        run: |
-          $certificatePath = Join-Path $env:RUNNER_TEMP 'worldforge-signing.pfx'
-          [IO.File]::WriteAllBytes(
-            $certificatePath,
-            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64)
-          )
-          "WINDOWS_CERTIFICATE_FILE=$certificatePath" >> $env:GITHUB_ENV
-      - name: Prepare macOS signing and notarization credentials
-        if: matrix.platform == 'macos' && env.DISTRIBUTION_TRUST_MODE == 'required'
-        shell: bash
-        env:
-          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
-          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-        run: |
-          certificate_path="$RUNNER_TEMP/worldforge-signing.p12"
-          api_key_path="$RUNNER_TEMP/AuthKey_WorldForge.p8"
-          keychain_path="$RUNNER_TEMP/worldforge-signing.keychain-db"
-          keychain_password="$(openssl rand -hex 32)"
-          printf '%s' "$MACOS_CERTIFICATE_BASE64" | base64 -D > "$certificate_path"
-          printf '%s' "$APPLE_API_KEY_BASE64" | base64 -D > "$api_key_path"
-          chmod 600 "$certificate_path" "$api_key_path"
-          security create-keychain -p "$keychain_password" "$keychain_path"
-          security set-keychain-settings -lut 21600 "$keychain_path"
-          security unlock-keychain -p "$keychain_password" "$keychain_path"
-          security import "$certificate_path" \
-            -k "$keychain_path" \
-            -P "$MACOS_CERTIFICATE_PASSWORD" \
-            -T /usr/bin/codesign
-          security set-key-partition-list \
-            -S apple-tool:,apple:,codesign: \
-            -s \
-            -k "$keychain_password" \
-            "$keychain_path"
-          security list-keychains -d user -s "$keychain_path"
-          echo "APPLE_API_KEY=$api_key_path" >> "$GITHUB_ENV"
-          echo "WORLDFORGE_MACOS_KEYCHAIN=$keychain_path" >> "$GITHUB_ENV"
       - name: Build Linux platform package
         if: matrix.platform == 'linux'
         run: >-
@@ -441,8 +371,8 @@ jobs:
           --release-kind "$RELEASE_KIND"
           --distribution-trust "$DISTRIBUTION_TRUST_MODE"
           --output "release/${{ matrix.platform }}"
-      - name: Build unsigned Windows platform package
-        if: matrix.platform == 'windows' && env.DISTRIBUTION_TRUST_MODE == 'allow-unsigned'
+      - name: Build Windows platform package
+        if: matrix.platform == 'windows'
         run: >-
           pnpm run package --
           --platform "${{ matrix.platform }}"
@@ -450,32 +380,8 @@ jobs:
           --release-kind "$RELEASE_KIND"
           --distribution-trust "$DISTRIBUTION_TRUST_MODE"
           --output "release/${{ matrix.platform }}"
-      - name: Build trusted Windows platform package
-        if: matrix.platform == 'windows' && env.DISTRIBUTION_TRUST_MODE == 'required'
-        env:
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: >-
-          pnpm run package --
-          --platform "${{ matrix.platform }}"
-          --version "$RELEASE_VERSION"
-          --release-kind "$RELEASE_KIND"
-          --distribution-trust "$DISTRIBUTION_TRUST_MODE"
-          --output "release/${{ matrix.platform }}"
-      - name: Build unsigned macOS platform package
-        if: matrix.platform == 'macos' && env.DISTRIBUTION_TRUST_MODE == 'allow-unsigned'
-        run: >-
-          pnpm run package --
-          --platform "${{ matrix.platform }}"
-          --version "$RELEASE_VERSION"
-          --release-kind "$RELEASE_KIND"
-          --distribution-trust "$DISTRIBUTION_TRUST_MODE"
-          --output "release/${{ matrix.platform }}"
-      - name: Build trusted macOS platform package
-        if: matrix.platform == 'macos' && env.DISTRIBUTION_TRUST_MODE == 'required'
-        env:
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          WORLDFORGE_MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      - name: Build macOS platform package
+        if: matrix.platform == 'macos'
         run: >-
           pnpm run package --
           --platform "${{ matrix.platform }}"
@@ -491,18 +397,6 @@ jobs:
           --release-kind "$RELEASE_KIND"
           --distribution-trust "$DISTRIBUTION_TRUST_MODE"
           --directory "release/${{ matrix.platform }}"
-      - name: Remove temporary distribution credentials
-        if: always() && env.DISTRIBUTION_TRUST_MODE == 'required'
-        shell: bash
-        run: |
-          if [ "${{ matrix.platform }}" = windows ]; then
-            rm -f "$RUNNER_TEMP/worldforge-signing.pfx"
-          elif [ "${{ matrix.platform }}" = macos ]; then
-            security delete-keychain "$RUNNER_TEMP/worldforge-signing.keychain-db" || true
-            rm -f \
-              "$RUNNER_TEMP/worldforge-signing.p12" \
-              "$RUNNER_TEMP/AuthKey_WorldForge.p8"
-          fi
       - name: Run Linux packaged startup smoke
         if: matrix.platform == 'linux'
         env:

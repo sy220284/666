@@ -71,11 +71,7 @@ export async function verifyPackageAssets(
   const platform = option(argumentsList, '--platform');
   const version = option(argumentsList, '--version');
   const releaseKind = optionalOption(argumentsList, '--release-kind', 'draft');
-  const trustMode = optionalOption(
-    argumentsList,
-    '--distribution-trust',
-    releaseKind === 'stable' ? 'required' : 'allow-unsigned',
-  );
+  const trustMode = optionalOption(argumentsList, '--distribution-trust', 'allow-unsigned');
   const directory = path.resolve(root, option(argumentsList, '--directory'));
   const manifest = JSON.parse(
     await readFile(path.join(directory, 'package-manifest.json'), 'utf8'),
@@ -89,9 +85,6 @@ export async function verifyPackageAssets(
     manifest.distributionTrustMode !== trustMode
   ) {
     throw new Error('Package manifest does not match the requested release trust policy');
-  }
-  if (releaseKind === 'stable' && trustMode !== 'required') {
-    throw new Error('Stable packages cannot allow unsigned distribution artifacts');
   }
   verifyDistributionTrust(manifest, platform, trustMode);
   if (

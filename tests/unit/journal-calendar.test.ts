@@ -43,8 +43,8 @@ describe('创作日志作品时区窗口', () => {
 
   it('无效作品时区与倒置日期范围失败关闭', () => {
     expect(normalizeJournalTimeZone('Invalid/Zone')).toBe('Asia/Shanghai');
-    expect(() =>
-      journalDateRangeWindow('2026-08-20', '2026-08-19', 'Asia/Shanghai'),
-    ).toThrow('JOURNAL_CALENDAR_RANGE_INVALID');
+    expect(() => journalDateRangeWindow('2026-08-20', '2026-08-19', 'Asia/Shanghai')).toThrow(
+      'JOURNAL_CALENDAR_RANGE_INVALID',
+    );
   });
 });

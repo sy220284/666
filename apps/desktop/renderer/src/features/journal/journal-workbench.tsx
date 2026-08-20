@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  journalCurrentDayWindow,
+  journalCurrentWeekWindow,
+  journalDateRangeWindow,
+  normalizeJournalTimeZone,
   type GenerationRun,
   type JournalCatalog,
   type JournalEntry,
@@ -68,27 +72,11 @@ function navigationTarget(
   };
 }
 
-function localDay(): { start: string; end: string } {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start: start.toISOString(), end: end.toISOString() };
-}
-
-function localWeek(): { start: string; end: string } {
-  const start = new Date();
-  const day = start.getDay();
-  start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  return { start: start.toISOString(), end: end.toISOString() };
-}
-
-function formatPeriod(entry: JournalEntry): string {
+function formatPeriod(entry: JournalEntry, timeZone: string): string {
   const kind =
     entry.periodType === 'daily' ? '每日' : entry.periodType === 'weekly' ? '每周' : '手动';
-  return `${kind} · ${new Date(entry.periodStart).toLocaleString()} — ${new Date(entry.periodEnd).toLocaleString()}`;
+  const options: Intl.DateTimeFormatOptions = { timeZone };
+  return `${kind} · ${new Date(entry.periodStart).toLocaleString('zh-CN', options)} — ${new Date(entry.periodEnd).toLocaleString('zh-CN', options)}`;
 }
 
 function statusText(entry: JournalEntry): string {
@@ -107,6 +95,7 @@ export function JournalWorkbench({
   const [catalog, setCatalog] = useState<JournalCatalog | null>(null);
   const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
   const [providerId, setProviderId] = useState('');
+  const [projectTimeZone, setProjectTimeZone] = useState('Asia/Shanghai');
   const [pending, setPending] = useState<string | null>(null);
   const operationRef = useRef<string | null>(null);
   const dirtyNoteIds = useRef<Set<string>>(new Set());
@@ -161,20 +150,29 @@ export function JournalWorkbench({
     dirtyNoteIds.current.clear();
     operationRef.current = null;
     setPending(null);
+    setProjectTimeZone('Asia/Shanghai');
   }, [projectId]);
 
   useEffect(() => {
     let active = true;
+    const rhythmRequest =
+      typeof bridge.rhythm?.get === 'function'
+        ? bridge.rhythm.get({ projectId }, { mode: 'share' })
+        : Promise.resolve(null);
     void Promise.all([
       journalBridge().catchUp({ projectId }),
       bridge.providers.list({ mode: 'share' }),
-    ]).then(([journalResult, providerResult]) => {
+      rhythmRequest,
+    ]).then(([journalResult, providerResult, rhythmResult]) => {
       if (!active) return;
       if (journalResult.ok) applyCatalog(journalResult.data);
       else void reload();
       if (providerResult.state === 'success') {
         setProviders(providerResult.data.providers);
         setProviderId(providerResult.data.providers[0]?.id ?? '');
+      }
+      if (rhythmResult?.state === 'success') {
+        setProjectTimeZone(normalizeJournalTimeZone(rhythmResult.data.profile.timeZone));
       }
     });
     return () => {
@@ -268,14 +266,16 @@ export function JournalWorkbench({
       setNotice('请先选择复盘起止日期。');
       return;
     }
-    const start = new Date(`${customStart}T00:00:00`);
-    const end = new Date(`${customEnd}T00:00:00`);
-    end.setDate(end.getDate() + 1);
-    if (start >= end) {
-      setNotice('复盘结束日期必须晚于开始日期。');
+    if (customStart > customEnd) {
+      setNotice('复盘结束日期必须晚于或等于开始日期。');
       return;
     }
-    await generate('manual', start.toISOString(), end.toISOString());
+    try {
+      const window = journalDateRangeWindow(customStart, customEnd, projectTimeZone);
+      await generate('manual', window.start, window.end);
+    } catch {
+      setNotice('复盘日期范围无效，请重新选择。');
+    }
   };
 
   const updateSchedule = async (schedule: JournalSchedule) => {
@@ -389,13 +389,14 @@ export function JournalWorkbench({
           <p className="eyebrow">长期项目复盘</p>
           <h2>创作日志</h2>
           <p>把写作、定稿、智能采用、设定变化和检查处理汇成可追溯时间线。</p>
+          <small>日期窗口按作品时区 {projectTimeZone} 计算。</small>
         </div>
         <div>
           <button
             type="button"
             disabled={readOnly || pending !== null}
             onClick={() => {
-              const window = localDay();
+              const window = journalCurrentDayWindow(new Date(), projectTimeZone);
               void generate('manual', window.start, window.end);
             }}
           >
@@ -405,7 +406,7 @@ export function JournalWorkbench({
             type="button"
             disabled={readOnly || pending !== null}
             onClick={() => {
-              const window = localWeek();
+              const window = journalCurrentWeekWindow(new Date(), projectTimeZone);
               void generate('manual', window.start, window.end);
             }}
           >
@@ -477,7 +478,7 @@ export function JournalWorkbench({
           return (
             <li key={entry.id} className="journal-entry">
               <button type="button" onClick={() => setExpandedId(expanded ? null : entry.id)}>
-                <strong>{formatPeriod(entry)}</strong>
+                <strong>{formatPeriod(entry, projectTimeZone)}</strong>
                 <small>{statusText(entry)}</small>
               </button>
               <p>

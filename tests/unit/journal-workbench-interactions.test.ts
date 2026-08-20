@@ -350,7 +350,7 @@ describe('M12-01 JournalWorkbench interaction coverage', () => {
       invoke(buttonContaining(renderer.root, '指定范围复盘'), 'onClick');
       await flushPromises();
     });
-    expect(textContent(renderer.root)).toContain('复盘结束日期必须晚于开始日期。');
+    expect(textContent(renderer.root)).toContain('复盘结束日期必须晚于或等于开始日期。');
 
     await act(async () => {
       invoke(controlByLabel(renderer.root, '起始日期'), 'onChange', {

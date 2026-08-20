@@ -5,36 +5,46 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { prepareReleasePublicationAssets, renderChecksums } from '../../scripts/release-tool.mjs';
+import {
+  prepareReleasePublicationAssets as prepareAssets,
+  renderChecksums,
+} from '../../scripts/release-tool.mjs';
 
 const temporaryDirectories: string[] = [];
+const version = '1.0.1';
 
-async function createPublicationFixture(artifactName?: string) {
+function archiveName(platform: string) {
+  return `WorldForge-v${version}-${platform}-x64.zip`;
+}
+
+function manifestName(platform: string) {
+  return `WorldForge-v${version}-${platform}-x64-manifest.json`;
+}
+
+async function createPublicationFixture(sharedArchive?: string) {
   const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-release-publication-'));
   temporaryDirectories.push(directory);
+
   for (const platform of ['linux', 'windows', 'macos'] as const) {
     const packageDirectory = path.join(directory, platform);
     await mkdir(packageDirectory);
-    const archive = artifactName ?? `WorldForge-v1.0.1-${platform}-x64.zip`;
+
+    const archive = sharedArchive ?? archiveName(platform);
     const content = Buffer.from(`artifact-${platform}`);
     await writeFile(path.join(packageDirectory, archive), content);
-    await writeFile(
-      path.join(packageDirectory, 'package-manifest.json'),
-      `${JSON.stringify(
-        {
-          version: '1.0.1',
-          platform,
-          architecture: 'x64',
-          artifact: archive,
-          bytes: content.byteLength,
-          sha256: createHash('sha256').update(content).digest('hex'),
-        },
-        null,
-        2,
-      )}\n`,
-      'utf8',
-    );
+
+    const manifest = {
+      version,
+      platform,
+      architecture: 'x64',
+      artifact: archive,
+      bytes: content.byteLength,
+      sha256: createHash('sha256').update(content).digest('hex'),
+    };
+    const manifestSource = `${JSON.stringify(manifest, null, 2)}\n`;
+    await writeFile(path.join(packageDirectory, 'package-manifest.json'), manifestSource, 'utf8');
   }
+
   return directory;
 }
 
@@ -45,46 +55,43 @@ afterEach(async () => {
 });
 
 describe('release publication assets', () => {
-  it(
-    'renames platform manifests and renders checksums using public GitHub asset names',
-    async () => {
-      const directory = await createPublicationFixture();
+  it('publishes unique manifest names and public checksums', async () => {
+    const directory = await createPublicationFixture();
+    const assets = await prepareAssets(directory, version);
+    const names = assets.map((asset) => asset.path);
 
-      const assets = await prepareReleasePublicationAssets(directory, '1.0.1');
-      const names = assets.map((asset) => asset.path);
+    expect(names).toEqual([
+      manifestName('linux'),
+      archiveName('linux'),
+      manifestName('macos'),
+      archiveName('macos'),
+      manifestName('windows'),
+      archiveName('windows'),
+    ]);
+    expect(new Set(names).size).toBe(names.length);
 
-      expect(names).toEqual([
-        'WorldForge-v1.0.1-linux-x64-manifest.json',
-        'WorldForge-v1.0.1-linux-x64.zip',
-        'WorldForge-v1.0.1-macos-x64-manifest.json',
-        'WorldForge-v1.0.1-macos-x64.zip',
-        'WorldForge-v1.0.1-windows-x64-manifest.json',
-        'WorldForge-v1.0.1-windows-x64.zip',
-      ]);
-      expect(new Set(names).size).toBe(names.length);
-      expect(renderChecksums(assets)).not.toContain('linux/');
-      expect(renderChecksums(assets)).not.toContain('windows/');
-      expect(renderChecksums(assets)).not.toContain('macos/');
+    const checksums = renderChecksums(assets);
+    expect(checksums).not.toContain('linux/');
+    expect(checksums).not.toContain('windows/');
+    expect(checksums).not.toContain('macos/');
 
-      for (const platform of ['linux', 'windows', 'macos'] as const) {
-        const files = await readdir(path.join(directory, platform));
-        expect(files).not.toContain('package-manifest.json');
-        expect(files).toContain(`WorldForge-v1.0.1-${platform}-x64-manifest.json`);
-        const manifest = JSON.parse(
-          await readFile(
-            path.join(directory, platform, `WorldForge-v1.0.1-${platform}-x64-manifest.json`),
-            'utf8',
-          ),
-        );
-        expect(manifest.platform).toBe(platform);
-      }
-    },
-  );
+    for (const platform of ['linux', 'windows', 'macos'] as const) {
+      const packageDirectory = path.join(directory, platform);
+      const files = await readdir(packageDirectory);
+      expect(files).not.toContain('package-manifest.json');
+      expect(files).toContain(manifestName(platform));
 
-  it('rejects duplicate public asset basenames before mutating manifests', async () => {
-    const directory = await createPublicationFixture('WorldForge-v1.0.1-shared.zip');
+      const manifestPath = path.join(packageDirectory, manifestName(platform));
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      expect(manifest.platform).toBe(platform);
+    }
+  });
 
-    await expect(prepareReleasePublicationAssets(directory, '1.0.1')).rejects.toThrow(
+  it('rejects duplicate public asset names before mutating manifests', async () => {
+    const sharedArchive = `WorldForge-v${version}-shared.zip`;
+    const directory = await createPublicationFixture(sharedArchive);
+
+    await expect(prepareAssets(directory, version)).rejects.toThrow(
       /publication asset names must be unique/,
     );
 

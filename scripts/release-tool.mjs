@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -135,6 +135,81 @@ async function findPackageManifestDirectories(assetDirectory) {
   return directories.sort((left, right) => left.localeCompare(right, 'en'));
 }
 
+function publicManifestAssetName(manifest, version) {
+  if (manifest.version !== version) {
+    throw new Error(
+      `Release manifest version ${String(manifest.version)} does not match requested version ${version}`,
+    );
+  }
+  if (!['linux', 'windows', 'macos'].includes(manifest.platform)) {
+    throw new Error(`Unsupported package platform in release assets: ${String(manifest.platform)}`);
+  }
+  const architecture = typeof manifest.architecture === 'string' ? manifest.architecture.trim() : '';
+  if (!architecture || !/^[0-9A-Za-z._-]+$/u.test(architecture)) {
+    throw new Error(`Invalid package architecture in release assets: ${String(manifest.architecture)}`);
+  }
+  return `WorldForge-v${version}-${manifest.platform}-${architecture}-manifest.json`;
+}
+
+export async function prepareReleasePublicationAssets(
+  assetDirectory,
+  version,
+  excludedPaths = [],
+) {
+  const base = path.resolve(assetDirectory);
+  const directories = await findPackageManifestDirectories(base);
+  if (directories.length !== 3) {
+    throw new Error(
+      `Release assets must contain exactly three package manifests, found ${directories.length}`,
+    );
+  }
+
+  const renamePlan = [];
+  for (const directory of directories) {
+    const sourcePath = path.join(directory, 'package-manifest.json');
+    const content = await readFile(sourcePath);
+    const manifest = JSON.parse(content.toString('utf8'));
+    const publicName = publicManifestAssetName(manifest, version);
+    renamePlan.push({
+      sourcePath,
+      targetPath: path.join(directory, publicName),
+      publicName,
+      bytes: content.byteLength,
+      sha256: createHash('sha256').update(content).digest('hex'),
+    });
+  }
+
+  const manifestSourcePaths = renamePlan.map((entry) =>
+    toPosix(path.relative(base, entry.sourcePath)),
+  );
+  const sourceAssets = await collectReleaseAssets(base, [...excludedPaths, ...manifestSourcePaths]);
+  const publicationAssets = sourceAssets.map((asset) => ({
+    ...asset,
+    path: path.posix.basename(toPosix(asset.path)),
+  }));
+  publicationAssets.push(
+    ...renamePlan.map((entry) => ({
+      path: entry.publicName,
+      bytes: entry.bytes,
+      sha256: entry.sha256,
+    })),
+  );
+  publicationAssets.sort((left, right) => left.path.localeCompare(right.path, 'en'));
+
+  const seen = new Set();
+  for (const asset of publicationAssets) {
+    if (seen.has(asset.path)) {
+      throw new Error(`Release publication asset names must be unique: ${asset.path}`);
+    }
+    seen.add(asset.path);
+  }
+
+  for (const entry of renamePlan) {
+    await rename(entry.sourcePath, entry.targetPath);
+  }
+  return publicationAssets;
+}
+
 export async function verifyReleaseAssetSet({
   assetDirectory,
   version,
@@ -256,11 +331,19 @@ async function writeChecksums(requestedVersion) {
     throw new Error('Checksum output must be located inside the release asset directory');
   }
 
-  const assets = await collectReleaseAssets(assetDirectory, [toPosix(relativeOutput)]);
+  const assets = await prepareReleasePublicationAssets(assetDirectory, version, [
+    toPosix(relativeOutput),
+  ]);
   if (assets.length === 0) throw new Error('No release assets were found');
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, renderChecksums(assets), 'utf8');
-  console.log('Wrote checksums for ' + assets.length + ' assets in WorldForge v' + version + '.');
+  console.log(
+    'Prepared ' +
+      assets.length +
+      ' unique public assets and wrote checksums for WorldForge v' +
+      version +
+      '.',
+  );
 }
 
 async function main() {

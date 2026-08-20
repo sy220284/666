@@ -96,32 +96,40 @@ describe('UI acceptance gate', () => {
     );
   });
 
-  it('allows scoped changes only when the current release E2E authority has succeeded', () => {
+  it('delegates freshness only inside the permanent Release workflow or after live E2E success', () => {
+    expect(
+      resolveUiFreshnessAuthority([], {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_WORKFLOW: 'Release',
+      }),
+    ).toBe('release-workflow');
+    expect(
+      evaluateUiAcceptanceState(acceptanceState(), {
+        head: 'b'.repeat(40),
+        freshnessAuthority: 'release-workflow',
+        isReachable: () => true,
+        changedSinceVerification: () => ['apps/desktop/renderer/src/App.tsx'],
+      }),
+    ).toEqual([]);
+
     const liveAuthority = resolveUiFreshnessAuthority(
       ['--release-e2e-authority'],
       { RELEASE_E2E_AUTHORITY: 'success' },
     );
     expect(liveAuthority).toBe('release-e2e');
-    expect(
-      evaluateUiAcceptanceState(acceptanceState(), {
-        head: 'b'.repeat(40),
-        freshnessAuthority: liveAuthority,
-        isReachable: () => true,
-        changedSinceVerification: () => ['apps/desktop/renderer/src/App.tsx'],
-      }),
-    ).toEqual([]);
     expect(() =>
       resolveUiFreshnessAuthority(['--release-e2e-authority'], {
         RELEASE_E2E_AUTHORITY: 'failure',
       }),
     ).toThrow(/RELEASE_E2E_AUTHORITY=success/);
+    expect(resolveUiFreshnessAuthority([], {})).toBe('verified-commit');
   });
 
-  it('requires every PASS to declare a freshness scope even with live release authority', () => {
+  it('requires every PASS to declare a freshness scope even with delegated release authority', () => {
     const state = acceptanceState();
     delete (state.items[0] as { scope?: string[] }).scope;
     expect(
-      evaluateUiAcceptanceState(state, { freshnessAuthority: 'release-e2e' }),
+      evaluateUiAcceptanceState(state, { freshnessAuthority: 'release-workflow' }),
     ).toContain('CHN-TERM-001: PASS requires a non-empty freshness scope');
   });
 

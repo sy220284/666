@@ -17,7 +17,7 @@ function workflowJobBody(workflowSource, jobName) {
   if (start < 0) return null;
   const bodyStart = start + marker.length;
   const remainder = normalized.slice(bodyStart);
-  const nextJob = /\n  [a-z0-9_-]+:\n/iu.exec(remainder);
+  const nextJob = /\n {2}[a-z0-9_-]+:\n/iu.exec(remainder);
   return nextJob ? remainder.slice(0, nextJob.index) : remainder;
 }
 

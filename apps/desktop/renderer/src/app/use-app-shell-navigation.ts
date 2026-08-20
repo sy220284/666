@@ -54,6 +54,9 @@ export function useAppShellNavigation({
   const foregroundTaskId = useRendererUiStore((state) => state.foregroundRequestKey);
   const dispatch = useRendererUiStore((state) => state.dispatch);
   const [navOpen, setNavOpen] = useState(false);
+  const [pendingReturnRestore, setPendingReturnRestore] = useState<RendererReturnLocation | null>(
+    null,
+  );
   const navToggle = useRef<HTMLButtonElement>(null);
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const settingsReturnRoute = useRef<RendererRouteId>('home');
@@ -69,6 +72,45 @@ export function useAppShellNavigation({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [navOpen]);
+
+  useEffect(() => {
+    const location = pendingReturnRestore;
+    if (!location || route !== location.route) return;
+
+    let frameId: number | null = null;
+    let observer: MutationObserver | null = null;
+
+    const restore = (): boolean => {
+      if (mainContent.current) mainContent.current.scrollTop = location.scrollTop;
+      if (!focusAuthorReturnTarget(location.focusKey)) return false;
+      setPendingReturnRestore((current) => (current === location ? null : current));
+      return true;
+    };
+
+    const restoreAfterCommit = (): void => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = null;
+        if (restore()) observer?.disconnect();
+      });
+    };
+
+    if (restore()) return;
+
+    observer = new MutationObserver(restoreAfterCommit);
+    observer.observe(mainContent.current ?? document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['disabled', 'tabindex'],
+    });
+    restoreAfterCommit();
+
+    return () => {
+      observer?.disconnect();
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+    };
+  }, [pendingReturnRestore, route]);
 
   const navigation = useMemo(
     () =>
@@ -190,13 +232,8 @@ export function useAppShellNavigation({
       return;
     }
     const location = returnLocation;
+    setPendingReturnRestore(location);
     dispatch({ type: 'return-to-source' });
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        if (mainContent.current) mainContent.current.scrollTop = location.scrollTop;
-        focusAuthorReturnTarget(location.focusKey);
-      });
-    });
   }, [dispatch, flushWriting, returnLocation, route, setMessage]);
 
   return {

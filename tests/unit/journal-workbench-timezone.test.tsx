@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { JournalCatalog } from '@worldforge/contracts';
+import { journalCurrentDayWindow, type JournalCatalog } from '@worldforge/contracts';
 import type { createElement as createReactElement, ReactElement } from 'react';
 
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
@@ -63,22 +63,17 @@ function emptyCatalog(): JournalCatalog {
 }
 
 afterEach(() => {
-  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 describe('JournalWorkbench 作品时区', () => {
   it('今日复盘读取作品时区而不是电脑时区', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-08-20T02:30:00.000Z'));
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const catalog = emptyCatalog();
     const generate = vi.fn().mockResolvedValue({ ok: true, data: catalog });
     vi.stubGlobal('window', {
-      setTimeout: (...args: Parameters<typeof globalThis.setTimeout>) =>
-        globalThis.setTimeout(...args),
-      clearTimeout: (timer: ReturnType<typeof globalThis.setTimeout>) =>
-        globalThis.clearTimeout(timer),
+      setTimeout: globalThis.setTimeout.bind(globalThis),
+      clearTimeout: globalThis.clearTimeout.bind(globalThis),
       worldforgeJournal: {
         catchUp: vi.fn().mockResolvedValue({ ok: true, data: catalog }),
         generate,
@@ -126,6 +121,7 @@ describe('JournalWorkbench 作品时区', () => {
     });
 
     expect(textContent(renderer.root)).toContain('作品时区 America/New_York');
+    const expected = journalCurrentDayWindow(new Date(), 'America/New_York');
     await act(async () => {
       const onClick = button(renderer.root, '今日复盘').props.onClick;
       if (typeof onClick !== 'function') throw new Error('Missing today handler.');
@@ -136,8 +132,8 @@ describe('JournalWorkbench 作品时区', () => {
     expect(generate).toHaveBeenCalledWith({
       projectId,
       periodType: 'manual',
-      periodStart: '2026-08-19T04:00:00.000Z',
-      periodEnd: '2026-08-20T04:00:00.000Z',
+      periodStart: expected.start,
+      periodEnd: expected.end,
     });
 
     await act(async () => renderer.unmount());

@@ -10,6 +10,7 @@ const ALLOWED_STATUSES = new Set(['PASS', 'FAIL', 'NOT_APPLICABLE', 'ACCEPTED_RI
 const COMMIT_PATTERN = /^[0-9a-f]{7,40}$/iu;
 const VERIFIED_COMMIT_AUTHORITY = 'verified-commit';
 const RELEASE_E2E_AUTHORITY = 'release-e2e';
+const RELEASE_WORKFLOW_AUTHORITY = 'release-workflow';
 
 function validDate(value) {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value));
@@ -39,13 +40,18 @@ function isAncestor(ancestor, descendant) {
 }
 
 export function resolveUiFreshnessAuthority(args = [], environment = {}) {
-  if (!args.includes('--release-e2e-authority')) return VERIFIED_COMMIT_AUTHORITY;
-  if (environment.RELEASE_E2E_AUTHORITY !== 'success') {
-    throw new Error(
-      'Release E2E freshness authority requires RELEASE_E2E_AUTHORITY=success from the release workflow',
-    );
+  if (args.includes('--release-e2e-authority')) {
+    if (environment.RELEASE_E2E_AUTHORITY !== 'success') {
+      throw new Error(
+        'Release E2E freshness authority requires RELEASE_E2E_AUTHORITY=success from the release workflow',
+      );
+    }
+    return RELEASE_E2E_AUTHORITY;
   }
-  return RELEASE_E2E_AUTHORITY;
+  if (environment.GITHUB_ACTIONS === 'true' && environment.GITHUB_WORKFLOW === 'Release') {
+    return RELEASE_WORKFLOW_AUTHORITY;
+  }
+  return VERIFIED_COMMIT_AUTHORITY;
 }
 
 export function scopeMatches(file, scopeEntry) {
@@ -89,7 +95,11 @@ export function evaluateUiAcceptanceState(state, options = {}) {
   const changedSinceVerification = options.changedSinceVerification ?? (() => []);
   const freshnessAuthority = options.freshnessAuthority ?? VERIFIED_COMMIT_AUTHORITY;
 
-  if (![VERIFIED_COMMIT_AUTHORITY, RELEASE_E2E_AUTHORITY].includes(freshnessAuthority)) {
+  if (
+    ![VERIFIED_COMMIT_AUTHORITY, RELEASE_E2E_AUTHORITY, RELEASE_WORKFLOW_AUTHORITY].includes(
+      freshnessAuthority,
+    )
+  ) {
     errors.push(`Unsupported UI freshness authority: ${String(freshnessAuthority)}`);
   }
   if (!state || state.schemaVersion !== 2) {

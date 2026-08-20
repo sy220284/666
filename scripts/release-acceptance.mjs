@@ -21,12 +21,6 @@ function workflowJobBody(workflowSource, jobName) {
   return nextJob ? remainder.slice(0, nextJob.index) : remainder;
 }
 
-function isMainEffectivelyVerified(statuses) {
-  return statuses.some(
-    (status) => status?.context === 'main-verification' && status?.state === 'success',
-  );
-}
-
 export async function loadReleaseCommitStatuses(commitSha) {
   if (!fullShaPattern.test(commitSha ?? '')) return [];
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) return [];

@@ -10,6 +10,23 @@ function isMainEffectivelyVerified(statuses) {
   );
 }
 
+function workflowJobBody(workflowSource, jobName) {
+  const marker = `\n  ${jobName}:\n`;
+  const normalized = `\n${workflowSource}`;
+  const start = normalized.indexOf(marker);
+  if (start < 0) return null;
+  const bodyStart = start + marker.length;
+  const remainder = normalized.slice(bodyStart);
+  const nextJob = /\n  [a-z0-9_-]+:\n/iu.exec(remainder);
+  return nextJob ? remainder.slice(0, nextJob.index) : remainder;
+}
+
+function isMainEffectivelyVerified(statuses) {
+  return statuses.some(
+    (status) => status?.context === 'main-verification' && status?.state === 'success',
+  );
+}
+
 export async function loadReleaseCommitStatuses(commitSha) {
   if (!fullShaPattern.test(commitSha ?? '')) return [];
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) return [];
@@ -91,9 +108,14 @@ export function validateReleaseConfiguration({ packageJson, workflowSource }) {
     '--distribution-trust',
     'verify-package-assets.mjs',
     'DISTRIBUTION_TRUST_MODE: allow-unsigned',
+    'release-e2e-authority:',
     'gh release create',
   ]) {
     if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
+  }
+  const publishJob = workflowJobBody(workflowSource, 'publish');
+  if (!publishJob?.includes('- release-e2e-authority')) {
+    errors.push('Release publish job must depend on release-e2e-authority');
   }
   for (const token of [
     'WINDOWS_CERTIFICATE_BASE64',

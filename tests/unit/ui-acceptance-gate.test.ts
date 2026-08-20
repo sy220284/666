@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   evaluateUiAcceptanceState,
   filterScopeChanges,
+  resolveUiFreshnessAuthority,
   scopeMatches,
   validateUiAcceptanceEvidence,
 } from '../../scripts/ui-acceptance-gate.mjs';
@@ -95,12 +96,33 @@ describe('UI acceptance gate', () => {
     );
   });
 
-  it('requires every PASS to declare a freshness scope', () => {
+  it('allows scoped changes only when the current release E2E authority has succeeded', () => {
+    const liveAuthority = resolveUiFreshnessAuthority(
+      ['--release-e2e-authority'],
+      { RELEASE_E2E_AUTHORITY: 'success' },
+    );
+    expect(liveAuthority).toBe('release-e2e');
+    expect(
+      evaluateUiAcceptanceState(acceptanceState(), {
+        head: 'b'.repeat(40),
+        freshnessAuthority: liveAuthority,
+        isReachable: () => true,
+        changedSinceVerification: () => ['apps/desktop/renderer/src/App.tsx'],
+      }),
+    ).toEqual([]);
+    expect(() =>
+      resolveUiFreshnessAuthority(['--release-e2e-authority'], {
+        RELEASE_E2E_AUTHORITY: 'failure',
+      }),
+    ).toThrow(/RELEASE_E2E_AUTHORITY=success/);
+  });
+
+  it('requires every PASS to declare a freshness scope even with live release authority', () => {
     const state = acceptanceState();
     delete (state.items[0] as { scope?: string[] }).scope;
-    expect(evaluateUiAcceptanceState(state)).toContain(
-      'CHN-TERM-001: PASS requires a non-empty freshness scope',
-    );
+    expect(
+      evaluateUiAcceptanceState(state, { freshnessAuthority: 'release-e2e' }),
+    ).toContain('CHN-TERM-001: PASS requires a non-empty freshness scope');
   });
 
   it('matches exact and recursive UI freshness scopes', () => {

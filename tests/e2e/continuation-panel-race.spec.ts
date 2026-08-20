@@ -96,7 +96,7 @@ test('persists the final editor panel after a rapid versions round trip and rest
 
     await page.locator('.writing-more-menu > summary').click();
     await page.locator('[data-open-versions]').click();
-    await page.getByRole('button', { name: '返回正文', exact: true }).click();
+    await page.locator('[data-close-versions]').click();
 
     await expect
       .poll(() => continuationPanel(path.join(workspace, 'project.sqlite')), { timeout: 5_000 })

@@ -129,10 +129,7 @@ async function setAppearance(page: Page, appearance: AppearancePreferences): Pro
     const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge }).worldforge;
     return bridge.app.getWindowPreferences();
   });
-  expect(stored).toMatchObject({
-    ok: true,
-    data: appearance,
-  });
+  expect(stored).toMatchObject({ ok: true, data: appearance });
   await page.locator('[data-close-settings]').click();
 }
 

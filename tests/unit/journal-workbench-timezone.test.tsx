@@ -75,8 +75,10 @@ describe('JournalWorkbench 作品时区', () => {
     const catalog = emptyCatalog();
     const generate = vi.fn().mockResolvedValue({ ok: true, data: catalog });
     vi.stubGlobal('window', {
-      setTimeout: (...args: Parameters<typeof globalThis.setTimeout>) => globalThis.setTimeout(...args),
-      clearTimeout: (timer: ReturnType<typeof globalThis.setTimeout>) => globalThis.clearTimeout(timer),
+      setTimeout: (...args: Parameters<typeof globalThis.setTimeout>) =>
+        globalThis.setTimeout(...args),
+      clearTimeout: (timer: ReturnType<typeof globalThis.setTimeout>) =>
+        globalThis.clearTimeout(timer),
       worldforgeJournal: {
         catchUp: vi.fn().mockResolvedValue({ ok: true, data: catalog }),
         generate,

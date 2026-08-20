@@ -9,6 +9,7 @@ on:
     paths:
       - .github/workflows/apply-unsigned-release-policy.yml
       - scripts/apply-unsigned-release-policy-v2.py
+      - scripts/fix-unsigned-release-migration.py
 
 permissions:
   contents: write
@@ -29,7 +30,9 @@ jobs:
           node-version: 24.18.1
           cache: pnpm
       - name: Apply policy patch
-        run: python3 scripts/apply-unsigned-release-policy-v2.py
+        run: |
+          python3 scripts/fix-unsigned-release-migration.py
+          python3 scripts/apply-unsigned-release-policy-v2.py
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Format and validate policy change
@@ -55,7 +58,8 @@ jobs:
           rm -f \
             .github/workflows/apply-unsigned-release-policy.yml \
             scripts/apply-unsigned-release-policy.py \
-            scripts/apply-unsigned-release-policy-v2.py
+            scripts/apply-unsigned-release-policy-v2.py \
+            scripts/fix-unsigned-release-migration.py
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A

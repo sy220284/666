@@ -373,6 +373,7 @@ jobs:
           --output "release/${{ matrix.platform }}"
       - name: Build Windows platform package
         if: matrix.platform == 'windows'
+        shell: bash
         run: >-
           pnpm run package --
           --platform "${{ matrix.platform }}"
@@ -390,6 +391,7 @@ jobs:
           --distribution-trust "$DISTRIBUTION_TRUST_MODE"
           --output "release/${{ matrix.platform }}"
       - name: Verify platform package assets
+        shell: bash
         run: >-
           node scripts/verify-package-assets.mjs
           --platform "${{ matrix.platform }}"

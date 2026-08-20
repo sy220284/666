@@ -1,12 +1,15 @@
 import { execFileSync } from 'node:child_process';
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
 const acceptancePath = path.join(root, 'docs/ui/UI_ACCEPTANCE_STATE.json');
 const ALLOWED_STATUSES = new Set(['PASS', 'FAIL', 'NOT_APPLICABLE', 'ACCEPTED_RISK']);
 const COMMIT_PATTERN = /^[0-9a-f]{7,40}$/iu;
+const VERIFIED_COMMIT_AUTHORITY = 'verified-commit';
+const RELEASE_E2E_AUTHORITY = 'release-e2e';
 
 function validDate(value) {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value));
@@ -33,6 +36,16 @@ function isAncestor(ancestor, descendant) {
   } catch {
     return false;
   }
+}
+
+export function resolveUiFreshnessAuthority(args = [], environment = {}) {
+  if (!args.includes('--release-e2e-authority')) return VERIFIED_COMMIT_AUTHORITY;
+  if (environment.RELEASE_E2E_AUTHORITY !== 'success') {
+    throw new Error(
+      'Release E2E freshness authority requires RELEASE_E2E_AUTHORITY=success from the release workflow',
+    );
+  }
+  return RELEASE_E2E_AUTHORITY;
 }
 
 export function scopeMatches(file, scopeEntry) {
@@ -74,7 +87,11 @@ export function evaluateUiAcceptanceState(state, options = {}) {
   const head = options.head ?? null;
   const reachable = options.isReachable ?? (() => true);
   const changedSinceVerification = options.changedSinceVerification ?? (() => []);
+  const freshnessAuthority = options.freshnessAuthority ?? VERIFIED_COMMIT_AUTHORITY;
 
+  if (![VERIFIED_COMMIT_AUTHORITY, RELEASE_E2E_AUTHORITY].includes(freshnessAuthority)) {
+    errors.push(`Unsupported UI freshness authority: ${String(freshnessAuthority)}`);
+  }
   if (!state || state.schemaVersion !== 2) {
     errors.push('UI acceptance state must use schemaVersion 2');
   }
@@ -122,7 +139,11 @@ export function evaluateUiAcceptanceState(state, options = {}) {
       }
       if (!Array.isArray(item?.scope) || item.scope.length === 0) {
         errors.push(`${id}: PASS requires a non-empty freshness scope`);
-      } else if (head && COMMIT_PATTERN.test(item?.verifiedCommit ?? '')) {
+      } else if (
+        freshnessAuthority === VERIFIED_COMMIT_AUTHORITY &&
+        head &&
+        COMMIT_PATTERN.test(item?.verifiedCommit ?? '')
+      ) {
         const stalePaths = changedSinceVerification(item.verifiedCommit, item.scope, head);
         if (stalePaths.length > 0) {
           errors.push(
@@ -172,12 +193,15 @@ export async function validateUiAcceptanceEvidence(state, repositoryRoot = root)
   return errors;
 }
 
-export async function runUiAcceptanceGate() {
+export async function runUiAcceptanceGate({
+  freshnessAuthority = VERIFIED_COMMIT_AUTHORITY,
+} = {}) {
   const state = JSON.parse(await readFile(acceptancePath, 'utf8'));
   const head = currentHead();
   const errors = [
     ...evaluateUiAcceptanceState(state, {
       head,
+      freshnessAuthority,
       isReachable: isAncestor,
       changedSinceVerification: (verifiedCommit, scope, releaseHead) =>
         filterScopeChanges(changedFilesBetween(verifiedCommit, releaseHead), scope),
@@ -185,15 +209,23 @@ export async function runUiAcceptanceGate() {
     ...(await validateUiAcceptanceEvidence(state)),
   ];
   if (errors.length > 0) throw new Error(errors.join('\n'));
-  console.log(`UI acceptance gate passed for ${state.taskId} at ${head}.`);
+  console.log(
+    `UI acceptance gate passed for ${state.taskId} at ${head} with ${freshnessAuthority} freshness authority.`,
+  );
 }
 
 const invokedDirectly = process.argv[1]
   ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
   : false;
 if (invokedDirectly) {
-  runUiAcceptanceGate().catch((error) => {
+  try {
+    const freshnessAuthority = resolveUiFreshnessAuthority(process.argv.slice(2), process.env);
+    runUiAcceptanceGate({ freshnessAuthority }).catch((error) => {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    });
+  } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
-  });
+  }
 }

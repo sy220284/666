@@ -129,7 +129,10 @@ async function setAppearance(page: Page, appearance: AppearancePreferences): Pro
     const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge }).worldforge;
     return bridge.app.getWindowPreferences();
   });
-  expect(stored).toMatchObject({ ok: true, data: appearance });
+  expect(stored).toMatchObject({
+    ok: true,
+    data: appearance,
+  });
   await page.locator('[data-close-settings]').click();
 }
 
@@ -677,7 +680,9 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.keyboard.press('End');
     await page.locator('[data-insert-separator]').click();
     await expect(editor.locator('[data-block-type="separator"]')).toHaveCount(1);
-    await page.keyboard.insertText('第二节');
+    const trailingParagraph = editor.locator('[data-block-type="paragraph"]').last();
+    await trailingParagraph.click();
+    await page.keyboard.type('第二节');
     await page.locator('[data-set-block-type="heading"]').click();
     await expect(editor.locator('[data-block-type="heading"]')).toContainText('第二节');
 

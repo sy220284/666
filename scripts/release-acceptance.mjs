@@ -10,6 +10,17 @@ function isMainEffectivelyVerified(statuses) {
   );
 }
 
+function workflowJobBody(workflowSource, jobName) {
+  const marker = `\n  ${jobName}:\n`;
+  const normalized = `\n${workflowSource}`;
+  const start = normalized.indexOf(marker);
+  if (start < 0) return null;
+  const bodyStart = start + marker.length;
+  const remainder = normalized.slice(bodyStart);
+  const nextJob = /\n {2}[a-z0-9_-]+:\n/iu.exec(remainder);
+  return nextJob ? remainder.slice(0, nextJob.index) : remainder;
+}
+
 export async function loadReleaseCommitStatuses(commitSha) {
   if (!fullShaPattern.test(commitSha ?? '')) return [];
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) return [];
@@ -95,6 +106,17 @@ export function validateReleaseConfiguration({ packageJson, workflowSource }) {
   ]) {
     if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
   }
+
+  const publishJob = workflowJobBody(workflowSource, 'publish');
+  if (publishJob !== null) {
+    if (!workflowSource.includes('\n  release-e2e-authority:\n')) {
+      errors.push('Release workflow is missing: release-e2e-authority:');
+    }
+    if (!publishJob.includes('- release-e2e-authority')) {
+      errors.push('Release publish job must depend on release-e2e-authority');
+    }
+  }
+
   for (const token of [
     'WINDOWS_CERTIFICATE_BASE64',
     'WINDOWS_CERTIFICATE_PASSWORD',

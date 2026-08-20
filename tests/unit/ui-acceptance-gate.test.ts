@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   evaluateUiAcceptanceState,
   filterScopeChanges,
+  resolveUiFreshnessAuthority,
   scopeMatches,
   validateUiAcceptanceEvidence,
 } from '../../scripts/ui-acceptance-gate.mjs';
@@ -95,12 +96,41 @@ describe('UI acceptance gate', () => {
     );
   });
 
-  it('requires every PASS to declare a freshness scope', () => {
+  it('delegates freshness only inside the permanent Release workflow or after live E2E success', () => {
+    const workflowAuthority = resolveUiFreshnessAuthority([], {
+      GITHUB_ACTIONS: 'true',
+      GITHUB_WORKFLOW: 'Release',
+    });
+    expect(workflowAuthority).toBe('release-workflow');
+
+    const delegatedErrors = evaluateUiAcceptanceState(acceptanceState(), {
+      head: 'b'.repeat(40),
+      freshnessAuthority: workflowAuthority,
+      isReachable: () => true,
+      changedSinceVerification: () => ['apps/desktop/renderer/src/App.tsx'],
+    });
+    expect(delegatedErrors).toEqual([]);
+
+    const liveAuthority = resolveUiFreshnessAuthority(['--release-e2e-authority'], {
+      RELEASE_E2E_AUTHORITY: 'success',
+    });
+    expect(liveAuthority).toBe('release-e2e');
+
+    expect(() =>
+      resolveUiFreshnessAuthority(['--release-e2e-authority'], {
+        RELEASE_E2E_AUTHORITY: 'failure',
+      }),
+    ).toThrow(/RELEASE_E2E_AUTHORITY=success/);
+    expect(resolveUiFreshnessAuthority([], {})).toBe('verified-commit');
+  });
+
+  it('requires every PASS to declare a freshness scope even with delegated release authority', () => {
     const state = acceptanceState();
     delete (state.items[0] as { scope?: string[] }).scope;
-    expect(evaluateUiAcceptanceState(state)).toContain(
-      'CHN-TERM-001: PASS requires a non-empty freshness scope',
-    );
+    const errors = evaluateUiAcceptanceState(state, {
+      freshnessAuthority: 'release-workflow',
+    });
+    expect(errors).toContain('CHN-TERM-001: PASS requires a non-empty freshness scope');
   });
 
   it('matches exact and recursive UI freshness scopes', () => {

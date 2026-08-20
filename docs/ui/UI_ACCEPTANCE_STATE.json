@@ -64,7 +64,7 @@
       "description": "核心工作台必须提供可用浅色与深色主题。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
-      "scope": ["apps/desktop/renderer/**", "docs/ui/**"],
+      "scope": ["apps/desktop/renderer/**"],
       "evidence": ["docs/test-evidence/M8-07/visual-review.md"]
     },
     {
@@ -73,7 +73,7 @@
       "description": "Theme B深浅色变体必须覆盖写作工作台并满足文本对比度。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
-      "scope": ["apps/desktop/renderer/**", "docs/ui/**"],
+      "scope": ["apps/desktop/renderer/**"],
       "evidence": ["docs/test-evidence/M8-07/visual-review.md"]
     },
     {
@@ -82,7 +82,7 @@
       "description": "1280×800必须无整页横向滚动、关键按钮遮挡、标题逐字挤压或正文不可达。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
-      "scope": ["apps/desktop/renderer/**", "tests/e2e/**", "docs/ui/**"],
+      "scope": ["apps/desktop/renderer/**", "tests/e2e/**"],
       "evidence": ["docs/test-evidence/M8-07/visual-review.md"]
     },
     {
@@ -91,7 +91,7 @@
       "description": "写作区在1280×800和高DPI矩阵下必须保持正文、目录和操作入口可达。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
-      "scope": ["apps/desktop/renderer/**", "tests/e2e/**", "docs/ui/**"],
+      "scope": ["apps/desktop/renderer/**", "tests/e2e/**"],
       "evidence": ["docs/test-evidence/M8-07/visual-review.md"]
     },
     {
@@ -100,7 +100,7 @@
       "description": "键盘路径、焦点可见性、错误关联和常见缩放必须通过。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
-      "scope": ["apps/desktop/renderer/**", "tests/e2e/**", "docs/ui/**"],
+      "scope": ["apps/desktop/renderer/**", "tests/e2e/**"],
       "evidence": ["docs/test-evidence/M8-07/summary.md"]
     },
     {

@@ -97,26 +97,25 @@ describe('UI acceptance gate', () => {
   });
 
   it('delegates freshness only inside the permanent Release workflow or after live E2E success', () => {
-    expect(
-      resolveUiFreshnessAuthority([], {
-        GITHUB_ACTIONS: 'true',
-        GITHUB_WORKFLOW: 'Release',
-      }),
-    ).toBe('release-workflow');
-    expect(
-      evaluateUiAcceptanceState(acceptanceState(), {
-        head: 'b'.repeat(40),
-        freshnessAuthority: 'release-workflow',
-        isReachable: () => true,
-        changedSinceVerification: () => ['apps/desktop/renderer/src/App.tsx'],
-      }),
-    ).toEqual([]);
+    const workflowAuthority = resolveUiFreshnessAuthority([], {
+      GITHUB_ACTIONS: 'true',
+      GITHUB_WORKFLOW: 'Release',
+    });
+    expect(workflowAuthority).toBe('release-workflow');
 
-    const liveAuthority = resolveUiFreshnessAuthority(
-      ['--release-e2e-authority'],
-      { RELEASE_E2E_AUTHORITY: 'success' },
-    );
+    const delegatedErrors = evaluateUiAcceptanceState(acceptanceState(), {
+      head: 'b'.repeat(40),
+      freshnessAuthority: workflowAuthority,
+      isReachable: () => true,
+      changedSinceVerification: () => ['apps/desktop/renderer/src/App.tsx'],
+    });
+    expect(delegatedErrors).toEqual([]);
+
+    const liveAuthority = resolveUiFreshnessAuthority(['--release-e2e-authority'], {
+      RELEASE_E2E_AUTHORITY: 'success',
+    });
     expect(liveAuthority).toBe('release-e2e');
+
     expect(() =>
       resolveUiFreshnessAuthority(['--release-e2e-authority'], {
         RELEASE_E2E_AUTHORITY: 'failure',
@@ -128,9 +127,10 @@ describe('UI acceptance gate', () => {
   it('requires every PASS to declare a freshness scope even with delegated release authority', () => {
     const state = acceptanceState();
     delete (state.items[0] as { scope?: string[] }).scope;
-    expect(
-      evaluateUiAcceptanceState(state, { freshnessAuthority: 'release-workflow' }),
-    ).toContain('CHN-TERM-001: PASS requires a non-empty freshness scope');
+    const errors = evaluateUiAcceptanceState(state, {
+      freshnessAuthority: 'release-workflow',
+    });
+    expect(errors).toContain('CHN-TERM-001: PASS requires a non-empty freshness scope');
   });
 
   it('matches exact and recursive UI freshness scopes', () => {

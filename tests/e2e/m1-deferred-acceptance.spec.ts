@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -89,7 +89,7 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     WORLDFORGE_E2E_RESTORE_PARENT: restoreParent,
     WORLDFORGE_E2E_RECOVERY_EXPORT_DIRECTORY: exportDirectory,
   };
-  const workspacePath = path.join(createParent, 'M1验收项目.worldforge');
+  const workspacePath = path.join(await realpath(createParent), 'M1验收项目.worldforge');
 
   const application = await launch(userDataPath, environment);
   let closed = false;

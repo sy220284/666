@@ -144,14 +144,26 @@ export function useWritingEditorTools(input: UseWritingEditorToolsInput) {
   const insertSeparator = useCallback((): void => {
     const instance = input.editor.current;
     if (!instance || input.composing.current || input.readOnly) return;
-    instance
+    const separatorClientBlockId = input.temporaryClientBlockId();
+    const paragraphClientBlockId = input.temporaryClientBlockId();
+    const inserted = instance
       .chain()
       .focus()
       .insertContent([
-        separatorBlock(input.temporaryClientBlockId()),
-        paragraphBlock(input.temporaryClientBlockId()),
+        separatorBlock(separatorClientBlockId),
+        paragraphBlock(paragraphClientBlockId),
       ])
       .run();
+    if (!inserted) return;
+
+    let paragraphPosition: number | null = null;
+    instance.state.doc.descendants((node, position) => {
+      if (node.attrs.clientBlockId !== paragraphClientBlockId) return;
+      paragraphPosition = position + 1;
+      return false;
+    });
+    if (paragraphPosition === null) return;
+    instance.chain().setTextSelection(paragraphPosition).focus().run();
   }, [input]);
 
   const toggleLock = useCallback((): void => {

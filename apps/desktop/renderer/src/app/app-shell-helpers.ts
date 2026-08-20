@@ -19,12 +19,14 @@ export function authorReturnFocusKey(element: Element | null): string | null {
   return element instanceof HTMLElement ? (element.dataset.authorReturnKey ?? null) : null;
 }
 
-export function focusAuthorReturnTarget(focusKey: string | null): void {
-  if (!focusKey) return;
+export function focusAuthorReturnTarget(focusKey: string | null): boolean {
+  if (!focusKey) return true;
   const target = Array.from(
     document.querySelectorAll<HTMLElement>('[data-author-return-key]'),
   ).find((element) => element.dataset.authorReturnKey === focusKey);
-  target?.focus();
+  if (!target) return false;
+  target.focus();
+  return document.activeElement === target;
 }
 
 export function continuationRoute(

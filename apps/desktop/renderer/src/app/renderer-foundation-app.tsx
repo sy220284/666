@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
+import { AuthorDialogHost } from '../components/author-dialog-host.js';
 import { DraftFlushFailureDialog } from '../components/draft-flush-failure-dialog.js';
 import { createCapabilityTrackingBridge } from '../runtime/capability-runtime.js';
 import type {
@@ -72,6 +73,7 @@ export function RendererFoundationApp({
       <>
         <AppShell applicationController={applicationController} bridge={trackedBridge} />
         <DraftFlushFailureDialog />
+        <AuthorDialogHost />
       </>
     );
   }

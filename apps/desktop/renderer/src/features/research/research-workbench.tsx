@@ -22,6 +22,12 @@ import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
 import { useResearchTargetOptions } from './research-target-options.js';
 
+interface ResearchEditingSnapshot {
+  readonly note: ResearchCatalog['notes'][number];
+  readonly attachments: readonly ResearchAttachment[];
+  readonly links: readonly ResearchLink[];
+}
+
 interface ResearchWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
@@ -92,6 +98,10 @@ export function ResearchWorkbench({
 }: ResearchWorkbenchProps) {
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
   const [catalog, setCatalog] = useState<ResearchCatalog | null>(null);
+  const [editingSnapshot, setEditingSnapshot] = useState<ResearchEditingSnapshot | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const knownNoteIds = useRef<Set<string>>(new Set());
+  const filterChangePending = useRef(false);
   const [query, setQuery] = useState(navigationQuery ?? '');
   const [showArchived, setShowArchived] = useState(false);
   const [tagFilter, setTagFilter] = useState('');
@@ -150,21 +160,33 @@ export function ResearchWorkbench({
     [catalog?.notes, sourceFilter],
   );
 
-  const selected = useMemo(
+  const filteredSelected = useMemo(
     () => catalog?.notes.find((note) => note.id === selectedNoteId) ?? null,
     [catalog?.notes, selectedNoteId],
   );
-  const selectedAttachments = useMemo(
-    () => catalog?.attachments.filter((attachment) => attachment.noteId === selectedNoteId) ?? [],
-    [catalog?.attachments, selectedNoteId],
-  );
-  const selectedLinks = useMemo(
-    () =>
-      catalog?.links.filter(
+  const selected =
+    filteredSelected ??
+    (editingSnapshot?.note.id === selectedNoteId ? editingSnapshot.note : null);
+  const selectedAttachments = filteredSelected
+    ? (catalog?.attachments.filter((attachment) => attachment.noteId === selectedNoteId) ?? [])
+    : editingSnapshot?.note.id === selectedNoteId
+      ? editingSnapshot.attachments
+      : [];
+  const selectedLinks = filteredSelected
+    ? (catalog?.links.filter(
         (link) => link.sourceType === 'note' && link.sourceId === selectedNoteId,
-      ) ?? [],
-    [catalog?.links, selectedNoteId],
-  );
+      ) ?? [])
+    : editingSnapshot?.note.id === selectedNoteId
+      ? editingSnapshot.links
+      : [];
+  const selectedOutsideCurrentFilter = Boolean(selected && !filteredSelected);
+
+  const restrictiveFiltersActive =
+    Boolean(query.trim()) ||
+    Boolean(tagFilter) ||
+    Boolean(sourceFilter) ||
+    targetFilterType !== 'all' ||
+    Boolean(targetFilterId);
 
   const load = useCallback(async (): Promise<void> => {
     const outcome = await bridge.research.list(
@@ -189,16 +211,24 @@ export function ResearchWorkbench({
       return;
     }
     setCatalog(outcome.data);
+    for (const note of outcome.data.notes) knownNoteIds.current.add(note.id);
     if (selectedNoteId && !outcome.data.notes.some((note) => note.id === selectedNoteId)) {
-      onSelectNote(outcome.data.notes[0]?.id ?? null);
+      const hasLoadedEditingContext = loadedNoteIdentity.current?.startsWith(`${selectedNoteId}:`);
+      const preserveSelection = restrictiveFiltersActive || filterChangePending.current;
+      if (!preserveSelection || !hasLoadedEditingContext) {
+        onSelectNote(outcome.data.notes[0]?.id ?? null);
+      }
     } else if (!selectedNoteId && outcome.data.notes[0]) {
       onSelectNote(outcome.data.notes[0].id);
     }
+    filterChangePending.current = false;
   }, [
     bridge.research,
+    restrictiveFiltersActive,
     onSelectNote,
     projectId,
     query,
+    refreshVersion,
     selectedNoteId,
     showArchived,
     sourceFilter,
@@ -214,6 +244,24 @@ export function ResearchWorkbench({
   useEffect(() => {
     setSelectedReferenceIds(selectedReferenceKeys(projectId));
   }, [projectId]);
+
+  useEffect(() => {
+    if (!selectedNoteId) {
+      setEditingSnapshot(null);
+      loadedNoteIdentity.current = null;
+      return;
+    }
+    const note = catalog?.notes.find((item) => item.id === selectedNoteId);
+    if (!note) return;
+    setEditingSnapshot({
+      note,
+      attachments: catalog?.attachments.filter((attachment) => attachment.noteId === note.id) ?? [],
+      links:
+        catalog?.links.filter(
+          (link) => link.sourceType === 'note' && link.sourceId === note.id,
+        ) ?? [],
+    });
+  }, [catalog, selectedNoteId]);
 
   const restoreSelectedDraft = useCallback((): void => {
     setPreview(null);
@@ -243,6 +291,10 @@ export function ResearchWorkbench({
     restoreSelectedDraft();
   }, [restoreSelectedDraft, selected]);
 
+  const markFilterChange = (): void => {
+    filterChangePending.current = true;
+  };
+
   const confirmDiscardUnsaved = (action: string): boolean => {
     if (!dirty) return true;
     if (!confirmDiscard(action)) {
@@ -254,16 +306,38 @@ export function ResearchWorkbench({
   };
 
   const applyCatalog = (next: ResearchCatalog, preferredId?: string): void => {
+    knownNoteIds.current = new Set(next.notes.map((note) => note.id));
+    const visibleFallbackId = catalog?.notes.find((note) =>
+      next.notes.some((candidate) => candidate.id === note.id),
+    )?.id;
+    const nextSelectedId =
+      preferredId ??
+      (selectedNoteId && next.notes.some((note) => note.id === selectedNoteId)
+        ? selectedNoteId
+        : (visibleFallbackId ?? null));
     setCatalog(next);
-    if (preferredId) onSelectNote(preferredId);
-    else if (selectedNoteId && next.notes.some((note) => note.id === selectedNoteId)) {
-      onSelectNote(selectedNoteId);
-    } else onSelectNote(next.notes[0]?.id ?? null);
+    if (nextSelectedId) {
+      const note = next.notes.find((item) => item.id === nextSelectedId);
+      if (note) {
+        setEditingSnapshot({
+          note,
+          attachments: next.attachments.filter((attachment) => attachment.noteId === note.id),
+          links: next.links.filter(
+            (link) => link.sourceType === 'note' && link.sourceId === note.id,
+          ),
+        });
+      }
+    } else {
+      setEditingSnapshot(null);
+      loadedNoteIdentity.current = null;
+    }
+    onSelectNote(nextSelectedId);
+    setRefreshVersion((version) => version + 1);
   };
 
   const createNote = async (): Promise<void> => {
     if (readOnly || pending || !catalog || !confirmDiscardUnsaved('新建笔记')) return;
-    const existingNoteIds = new Set(catalog.notes.map((note) => note.id));
+    const existingNoteIds = new Set(knownNoteIds.current);
     setPending('create');
     const outcome = await bridge.research.createNote(
       {
@@ -520,9 +594,8 @@ export function ResearchWorkbench({
             <input
               value={query}
               onChange={(event) => {
-                if (event.target.value === query || confirmDiscardUnsaved('搜索其他资料')) {
-                  setQuery(event.target.value);
-                }
+                markFilterChange();
+                setQuery(event.target.value);
               }}
               placeholder="标题、正文、标签或来源"
             />
@@ -532,12 +605,8 @@ export function ResearchWorkbench({
               type="checkbox"
               checked={showArchived}
               onChange={(event) => {
-                if (
-                  event.target.checked === showArchived ||
-                  confirmDiscardUnsaved('切换归档筛选')
-                ) {
-                  setShowArchived(event.target.checked);
-                }
+                markFilterChange();
+                setShowArchived(event.target.checked);
               }}
             />
             显示已归档
@@ -547,9 +616,8 @@ export function ResearchWorkbench({
             <select
               value={tagFilter}
               onChange={(event) => {
-                if (event.target.value === tagFilter || confirmDiscardUnsaved('切换标签筛选')) {
-                  setTagFilter(event.target.value);
-                }
+                markFilterChange();
+                setTagFilter(event.target.value);
               }}
             >
               <option value="">全部标签</option>
@@ -565,9 +633,8 @@ export function ResearchWorkbench({
             <select
               value={sourceFilter}
               onChange={(event) => {
-                if (event.target.value === sourceFilter || confirmDiscardUnsaved('切换来源筛选')) {
-                  setSourceFilter(event.target.value);
-                }
+                markFilterChange();
+                setSourceFilter(event.target.value);
               }}
             >
               <option value="">全部来源</option>
@@ -583,11 +650,9 @@ export function ResearchWorkbench({
             <select
               value={targetFilterType}
               onChange={(event) => {
-                const next = event.target.value as ResearchTargetType | 'all';
-                if (next === targetFilterType || confirmDiscardUnsaved('切换故事对象筛选')) {
-                  setTargetFilterType(next);
-                  setTargetFilterId('');
-                }
+                markFilterChange();
+                setTargetFilterType(event.target.value as ResearchTargetType | 'all');
+                setTargetFilterId('');
               }}
             >
               <option value="all">全部对象</option>
@@ -604,12 +669,8 @@ export function ResearchWorkbench({
               <select
                 value={targetFilterId}
                 onChange={(event) => {
-                  if (
-                    event.target.value === targetFilterId ||
-                    confirmDiscardUnsaved('切换具体故事对象')
-                  ) {
-                    setTargetFilterId(event.target.value);
-                  }
+                  markFilterChange();
+                  setTargetFilterId(event.target.value);
                 }}
               >
                 <option value="">该类型全部对象</option>
@@ -647,6 +708,11 @@ export function ResearchWorkbench({
         </aside>
 
         <section className="panel research-workbench__editor">
+          {selectedOutsideCurrentFilter ? (
+            <p className="feature-status" data-research-selection-outside-filter role="status">
+              当前编辑的笔记不在本次筛选结果中；未保存修改仍保留在右侧。
+            </p>
+          ) : null}
           {selected ? (
             <>
               <div className="button-row button-row--end">

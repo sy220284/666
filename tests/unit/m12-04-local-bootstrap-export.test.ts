@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 const outputDirectory = join(process.cwd(), 'test-results', 'unit');
 const stagingDirectory = '/tmp/m12-04-local-bootstrap';
 const archivePath = join(outputDirectory, 'm12-04-local-bootstrap.tar.zst');
+const sourceArchivePath = join(outputDirectory, 'm12-04-work-source.tar.zst');
 
 function shell(command: string): string {
   return execFileSync('bash', ['-lc', command], {
@@ -17,7 +18,7 @@ function shell(command: string): string {
 }
 
 describe('M12-04 local workspace bootstrap export', () => {
-  it('exports the exact CI Node, pnpm runtime and installed workspace dependencies', () => {
+  it('exports the exact CI Node, pnpm runtime, installed dependencies and work source', () => {
     mkdirSync(outputDirectory, { recursive: true });
     rmSync(stagingDirectory, { recursive: true, force: true });
     mkdirSync(join(stagingDirectory, 'runtime', 'node', 'bin'), { recursive: true });
@@ -55,11 +56,24 @@ describe('M12-04 local workspace bootstrap export', () => {
     );
 
     execFileSync('tar', ['--zstd', '-cf', archivePath, '-C', stagingDirectory, '.']);
+    execFileSync('tar', [
+      '--zstd',
+      '-cf',
+      sourceArchivePath,
+      '--exclude=.git',
+      '--exclude=node_modules',
+      '--exclude=*/node_modules',
+      '--exclude=test-results',
+      '--exclude=*/test-results',
+      '.',
+    ]);
     const size = statSync(archivePath).size;
+    const sourceSize = statSync(sourceArchivePath).size;
     rmSync(stagingDirectory, { recursive: true, force: true });
 
     expect(process.version).toBe('v24.18.1');
     expect(shell('pnpm --version')).toBe('11.21.0');
     expect(size).toBeGreaterThan(1_000_000);
+    expect(sourceSize).toBeGreaterThan(100_000);
   }, 120_000);
 });

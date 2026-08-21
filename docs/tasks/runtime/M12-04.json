@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "id": "M12-04",
+  "source": "docs/tasks/M12/M12-04_AUTHOR_EXPERIENCE_CONVERGENCE.md",
+  "priority": "P1",
+  "status": "IN_PROGRESS",
+  "startedAt": "2026-08-21T15:00:00+08:00",
+  "baseline": "b2dd6aa30c76ef9d8277098c54761b9b5ab9697b",
+  "executionBranch": "work",
+  "dependencies": ["M12-03"],
+  "allowedPaths": [
+    "apps/desktop/renderer/src/",
+    "tests/unit/",
+    "tests/integration/",
+    "tests/e2e/",
+    "tests/performance/",
+    "docs/tasks/M12/M12-04_AUTHOR_EXPERIENCE_CONVERGENCE.md",
+    "docs/tasks/runtime/M12-04.json",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/test-evidence/M12-04/"
+  ],
+  "forbiddenPaths": [
+    "pnpm-lock.yaml",
+    "packages/core-service/",
+    "packages/contracts/",
+    "apps/desktop/main/",
+    "apps/desktop/preload/",
+    "packages/core-service/src/database/migrations/"
+  ],
+  "verificationCommands": [
+    "pnpm task:validate",
+    "pnpm check:language",
+    "pnpm check:structure",
+    "pnpm check:boundaries",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:coverage",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e",
+    "pnpm ci:policy",
+    "pnpm release:check"
+  ],
+  "verificationBinding": null
+}

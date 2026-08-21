@@ -38,6 +38,12 @@ describe('M10-17 planning disclosure ownership', () => {
     expect(modeWorkbench).not.toContain('MutationObserver');
     expect(modeWorkbench).not.toContain('currentDisclosureMode');
     expect(modeWorkbench).not.toContain('useState');
+
+    const professionalWorkbench = await source(
+      'apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx',
+    );
+    expect(professionalWorkbench).not.toContain('setProfessional');
+    expect(professionalWorkbench).not.toContain('data-planning-mode=');
   });
 
   it('executes both controlled mode transitions without creating local state', () => {

@@ -43,7 +43,7 @@ export type AuthorDialogRequest =
 
 export type AuthorDialogResult = boolean | string | null;
 
-interface PendingAuthorDialog {
+export interface PendingAuthorDialog {
   readonly id: number;
   readonly request: AuthorDialogRequest;
   readonly resolve: (result: AuthorDialogResult) => void;

@@ -4,6 +4,7 @@ import type { Chapter, Volume } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, type BridgeCommand } from '../../bridge/use-bridge-resource.js';
+import { authorConfirm, authorPrompt } from '../../runtime/author-dialog.js';
 import { useDraftBlockPicker } from '../writing/draft-block-picker.js';
 import { previewMessage } from './structure-formatters.js';
 
@@ -40,7 +41,13 @@ export function StructureOperationDialog({
   const { pickMultipleBlocks, pickBlockAnchor, picker } = useDraftBlockPicker();
 
   const removeVolume = async (volume: Volume): Promise<void> => {
-    if (!window.confirm(`将“${volume.title}”移入回收站？`)) return;
+    const confirmed = await authorConfirm({
+      title: '将卷移入回收站',
+      message: `将“${volume.title}”移入回收站？`,
+      confirmLabel: '移入回收站',
+      danger: true,
+    });
+    if (!confirmed) return;
     if (onBeforeWrite && !(await onBeforeWrite())) return;
     const result = await command.run(() =>
       bridge.planning.deleteVolume({ projectId, volumeId: volume.id }),
@@ -49,7 +56,13 @@ export function StructureOperationDialog({
   };
 
   const removeChapter = async (chapter: Chapter): Promise<void> => {
-    if (!window.confirm(`将“${chapter.title}”移入回收站？`)) return;
+    const confirmed = await authorConfirm({
+      title: '将章节移入回收站',
+      message: `将“${chapter.title}”移入回收站？`,
+      confirmLabel: '移入回收站',
+      danger: true,
+    });
+    if (!confirmed) return;
     if (onBeforeWrite && !(await onBeforeWrite())) return;
     const result = await command.run(() =>
       bridge.planning.deleteChapter({ projectId, chapterId: chapter.id }),
@@ -58,7 +71,13 @@ export function StructureOperationDialog({
   };
 
   const splitChapter = async (chapter: Chapter): Promise<void> => {
-    const title = window.prompt('新章节标题：', `${chapter.title}（下）`)?.trim();
+    const title = (
+      await authorPrompt({
+        title: '新章节标题',
+        initialValue: `${chapter.title}（下）`,
+        confirmLabel: '继续拆章',
+      })
+    )?.trim();
     if (!title || (onBeforeWrite && !(await onBeforeWrite()))) return;
     const draft = await previewCommand.run(() =>
       bridge.draft.open({ projectId, chapterId: chapter.id }, { mode: 'replace' }),
@@ -86,12 +105,16 @@ export function StructureOperationDialog({
     };
     const preview = await previewCommand.run(() => bridge.planning.previewSplitChapter(input));
     if (!preview) return;
-    onStatus?.(previewMessage(preview));
-    if (
-      !preview.canExecute ||
-      !window.confirm(`${previewMessage(preview)}\n确认执行并创建恢复点？`)
-    )
-      return;
+    const message = previewMessage(preview);
+    onStatus?.(message);
+    if (!preview.canExecute) return;
+    const confirmed = await authorConfirm({
+      title: '确认拆分章节',
+      message: `${message}\n确认执行并创建恢复点？`,
+      confirmLabel: '拆分并创建恢复点',
+      danger: true,
+    });
+    if (!confirmed) return;
     const result = await command.run(() =>
       bridge.planning.splitChapter({ ...input, planHash: preview.planHash }),
     );
@@ -126,12 +149,16 @@ export function StructureOperationDialog({
     };
     const preview = await previewCommand.run(() => bridge.planning.previewMergeChapters(input));
     if (!preview) return;
-    onStatus?.(previewMessage(preview));
-    if (
-      !preview.canExecute ||
-      !window.confirm(`将“${chapter.title}”合并到“${target.title}”？\n${previewMessage(preview)}`)
-    )
-      return;
+    const message = previewMessage(preview);
+    onStatus?.(message);
+    if (!preview.canExecute) return;
+    const confirmed = await authorConfirm({
+      title: '确认合并章节',
+      message: `将“${chapter.title}”合并到“${target.title}”？\n${message}`,
+      confirmLabel: '合并章节',
+      danger: true,
+    });
+    if (!confirmed) return;
     const result = await command.run(() =>
       bridge.planning.mergeChapters({ ...input, planHash: preview.planHash }),
     );
@@ -184,12 +211,16 @@ export function StructureOperationDialog({
     };
     const preview = await previewCommand.run(() => bridge.planning.previewMoveBlocks(input));
     if (!preview) return;
-    onStatus?.(previewMessage(preview));
-    if (
-      !preview.canExecute ||
-      !window.confirm(`${previewMessage(preview)}\n确认移动并创建恢复点？`)
-    )
-      return;
+    const message = previewMessage(preview);
+    onStatus?.(message);
+    if (!preview.canExecute) return;
+    const confirmed = await authorConfirm({
+      title: '确认移动正文段落',
+      message: `${message}\n确认移动并创建恢复点？`,
+      confirmLabel: '移动并创建恢复点',
+      danger: true,
+    });
+    if (!confirmed) return;
     const result = await command.run(() =>
       bridge.planning.moveBlocks({ ...input, planHash: preview.planHash }),
     );

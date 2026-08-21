@@ -12,6 +12,7 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { authorConfirm } from '../../runtime/author-dialog.js';
 import {
   rendererCommandCoordinatorFor,
   type RendererCommandScope,
@@ -71,13 +72,14 @@ export async function discardCandidate(
   input: CandidateActionContext,
   candidate: CandidateDocument | null,
 ): Promise<void> {
-  if (
-    input.readOnly ||
-    !candidate ||
-    candidate.status !== 'pending' ||
-    !window.confirm('丢弃后不能再采用，当前稿不会改变。继续吗？')
-  )
-    return;
+  if (input.readOnly || !candidate || candidate.status !== 'pending') return;
+  const confirmed = await authorConfirm({
+    title: '丢弃建议稿',
+    message: '丢弃后不能再采用，当前稿不会改变。继续吗？',
+    confirmLabel: '丢弃建议稿',
+    danger: true,
+  });
+  if (!confirmed) return;
   await runCandidateMutation(input, async (scope) => {
     const outcome = await input.bridge.candidate.discard({
       projectId: input.projectId,

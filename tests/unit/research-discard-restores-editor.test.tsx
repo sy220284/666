@@ -55,6 +55,13 @@ const catalog: ResearchCatalog = {
   links: [],
 };
 
+const emptyCatalog: ResearchCatalog = {
+  projectId,
+  notes: [],
+  attachments: [],
+  links: [],
+};
+
 function success<T>(data: T) {
   return {
     state: 'success' as const,
@@ -91,15 +98,17 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('research discard restoration', () => {
-  it('restores persisted note fields before a same-note filter reload and prevents discarded text from being saved later', async () => {
+describe('research draft preservation across filtering', () => {
+  it('keeps the current unsaved note while filtering and saves the preserved draft later', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const confirm = vi.fn(() => true);
     vi.stubGlobal('window', { confirm });
     const updateNote = vi.fn(async () => success(catalog));
     const bridge = contractInput<RendererBridgeAdapter>({
       research: {
-        list: vi.fn(async () => success(catalog)),
+        list: vi.fn(async (input: { query?: string }) =>
+          success(input.query ? emptyCatalog : catalog),
+        ),
         updateNote,
       },
     });
@@ -137,9 +146,10 @@ describe('research discard restoration', () => {
       await flushPromises();
     });
 
-    expect(confirm).toHaveBeenCalledOnce();
-    expect(controlByLabel(renderer.root, '标题').props.value).toBe('原始资料标题');
-    expect(textContent(renderer.root)).not.toContain('有未保存修改');
+    expect(confirm).not.toHaveBeenCalled();
+    expect(controlByLabel(renderer.root, '标题').props.value).toBe('准备放弃的标题');
+    expect(textContent(renderer.root)).toContain('有未保存修改');
+    expect(textContent(renderer.root)).toContain('当前编辑的笔记不在本次筛选结果中');
 
     const save = renderer.root.findAll(
       (node) => node.type === 'button' && textContent(node) === '保存笔记',
@@ -150,7 +160,7 @@ describe('research discard restoration', () => {
       await flushPromises();
     });
     expect(updateNote).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '原始资料标题', body: '原始正文' }),
+      expect.objectContaining({ title: '准备放弃的标题', body: '原始正文' }),
       expect.anything(),
     );
 

@@ -98,7 +98,9 @@ export function ResearchWorkbench({
 }: ResearchWorkbenchProps) {
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
   const [catalog, setCatalog] = useState<ResearchCatalog | null>(null);
-  const [editingSnapshot, setEditingSnapshot] = useState<ResearchEditingSnapshot | null>(null);
+  const [editingSnapshot, setEditingSnapshot] = useState<ResearchEditingSnapshot | null>(
+    null,
+  );
   const [refreshVersion, setRefreshVersion] = useState(0);
   const knownNoteIds = useRef<Set<string>>(new Set());
   const filterChangePending = useRef(false);
@@ -168,7 +170,9 @@ export function ResearchWorkbench({
     filteredSelected ??
     (editingSnapshot?.note.id === selectedNoteId ? editingSnapshot.note : null);
   const selectedAttachments = filteredSelected
-    ? (catalog?.attachments.filter((attachment) => attachment.noteId === selectedNoteId) ?? [])
+    ? (catalog?.attachments.filter(
+        (attachment) => attachment.noteId === selectedNoteId,
+      ) ?? [])
     : editingSnapshot?.note.id === selectedNoteId
       ? editingSnapshot.attachments
       : [];
@@ -213,7 +217,9 @@ export function ResearchWorkbench({
     setCatalog(outcome.data);
     for (const note of outcome.data.notes) knownNoteIds.current.add(note.id);
     if (selectedNoteId && !outcome.data.notes.some((note) => note.id === selectedNoteId)) {
-      const hasLoadedEditingContext = loadedNoteIdentity.current?.startsWith(`${selectedNoteId}:`);
+      const hasLoadedEditingContext = loadedNoteIdentity.current?.startsWith(
+        `${selectedNoteId}:`,
+      );
       const preserveSelection = restrictiveFiltersActive || filterChangePending.current;
       if (!preserveSelection || !hasLoadedEditingContext) {
         onSelectNote(outcome.data.notes[0]?.id ?? null);
@@ -255,7 +261,8 @@ export function ResearchWorkbench({
     if (!note) return;
     setEditingSnapshot({
       note,
-      attachments: catalog?.attachments.filter((attachment) => attachment.noteId === note.id) ?? [],
+      attachments:
+        catalog?.attachments.filter((attachment) => attachment.noteId === note.id) ?? [],
       links:
         catalog?.links.filter(
           (link) => link.sourceType === 'note' && link.sourceId === note.id,
@@ -321,7 +328,9 @@ export function ResearchWorkbench({
       if (note) {
         setEditingSnapshot({
           note,
-          attachments: next.attachments.filter((attachment) => attachment.noteId === note.id),
+          attachments: next.attachments.filter(
+            (attachment) => attachment.noteId === note.id,
+          ),
           links: next.links.filter(
             (link) => link.sourceType === 'note' && link.sourceId === note.id,
           ),
@@ -651,7 +660,9 @@ export function ResearchWorkbench({
               value={targetFilterType}
               onChange={(event) => {
                 markFilterChange();
-                setTargetFilterType(event.target.value as ResearchTargetType | 'all');
+                setTargetFilterType(
+                  event.target.value as ResearchTargetType | 'all',
+                );
                 setTargetFilterId('');
               }}
             >
@@ -709,7 +720,11 @@ export function ResearchWorkbench({
 
         <section className="panel research-workbench__editor">
           {selectedOutsideCurrentFilter ? (
-            <p className="feature-status" data-research-selection-outside-filter role="status">
+            <p
+              className="feature-status"
+              data-research-selection-outside-filter
+              role="status"
+            >
               当前编辑的笔记不在本次筛选结果中；未保存修改仍保留在右侧。
             </p>
           ) : null}

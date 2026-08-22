@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "taskId": "M12-04",
+  "implementationCommit": "ff40812c8171b905501f8d5c4bfc7126c5a5406b",
+  "generatedAt": "2026-08-22T03:04:49Z",
+  "files": [
+    {
+      "path": "author-dialog-and-safety.md",
+      "bytes": 1062,
+      "sha256": "9b9e75f61475bb0045ccd013803c0dae8f1489b572e1c2344d0b12a44f9cc82c"
+    },
+    {
+      "path": "checks-refresh-continuity.md",
+      "bytes": 808,
+      "sha256": "3ad39734c466848ca6130ab6b3ccb42dfaae39272a8f5c7b6d273c25e84963fd"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 2347,
+      "sha256": "b88c039d8a1e0a9b6b5f47e5909e76a6067391bd74422063eca7aa5919139ef5"
+    },
+    {
+      "path": "creative-path-ai-disclosure.md",
+      "bytes": 1038,
+      "sha256": "5d49190c8037d4ab94a3165decb74ccc4f85656dde50ec80fb8ea043972484f4"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 1477,
+      "sha256": "622115981f60b368ffa8303c5ae259d7eb856a473878cf185d6065d03bad3290"
+    },
+    {
+      "path": "performance-baseline.json",
+      "bytes": 640,
+      "sha256": "181696b94736ec28f5abcbe3d19245b61c99625a52bcd4207f3e23e75535e94e"
+    },
+    {
+      "path": "planning-research-state.md",
+      "bytes": 910,
+      "sha256": "b3e40e62bf5e02f698e60733862cb45e02c38711d1de6706ebc56673992fc835"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 2255,
+      "sha256": "f0a23b0dea433043890f34f1e24ea2c5bbd7eba89299e55f0bdf34e7d0e3c532"
+    }
+  ]
+}

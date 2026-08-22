@@ -10,6 +10,7 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorTerm } from '../../presentation/author-terms.js';
+import { authorPrompt, authorSelect } from '../../runtime/author-dialog.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from './react-hooks.js';
 import {
@@ -60,6 +61,9 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
   const [selectedCommentIds = new Set<string>(), setSelectedCommentIds] = useState<Set<string>>(
     new Set(),
   );
+  const [activeSection = 'checks', setActiveSection] = useState<
+    'checks' | 'search' | 'rhythm' | 'review'
+  >('checks');
 
   const chapters = useMemo(
     () => structure?.volumes.flatMap((volume) => volume.chapters) ?? [],
@@ -348,10 +352,25 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
 
   const rememberException = async (issue: ValidationIssue): Promise<void> => {
     if (readOnly || !beginImmediateOperation()) return;
-    const selected = window.prompt(
-      '例外类型：倒叙、梦境、幻觉、谎言、不可靠叙述、隐藏身份、特殊规则、时间循环、替身、平行世界、作者有意或自定义。',
-      '作者有意',
-    );
+    const selected = await authorSelect({
+      title: '选择例外类型',
+      options: [
+        '倒叙',
+        '梦境',
+        '幻觉',
+        '谎言',
+        '不可靠叙述',
+        '隐藏身份',
+        '特殊规则',
+        '时间循环',
+        '替身',
+        '平行世界',
+        '作者有意',
+        '自定义',
+      ].map((label) => ({ value: label, label })),
+      initialValue: '作者有意',
+      confirmLabel: '继续',
+    });
     if (selected === null) {
       endImmediateOperation();
       return;
@@ -362,7 +381,12 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
       endImmediateOperation();
       return;
     }
-    const notes = window.prompt('补充说明（可选）：', '') ?? '';
+    const notes =
+      (await authorPrompt({
+        title: '补充说明（可选）',
+        initialValue: '',
+        confirmLabel: '保存例外',
+      })) ?? '';
     try {
       const outcome = await bridge.validation.rememberException({
         projectId,
@@ -382,7 +406,9 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
 
   const addComment = async (issue: ValidationIssue): Promise<void> => {
     if (readOnly || !beginImmediateOperation()) return;
-    const body = window.prompt('添加审阅批注：')?.trim();
+    const body = (
+      await authorPrompt({ title: '添加审阅批注', multiline: true, confirmLabel: '保存批注' })
+    )?.trim();
     if (!body) {
       endImmediateOperation();
       return;
@@ -421,7 +447,14 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     if (readOnly || selectedCommentIds.size === 0 || !beginImmediateOperation()) return;
     const tags =
       action === 'tag'
-        ? (window.prompt('给所选批注添加标签（多个标签用逗号分隔）：', '') ?? '')
+        ? (
+            (await authorPrompt({
+              title: '给所选批注添加标签',
+              message: '多个标签用逗号分隔。',
+              initialValue: '',
+              confirmLabel: '添加标签',
+            })) ?? ''
+          )
             .split(/[,，]/u)
             .map((tag) => tag.trim())
             .filter(Boolean)
@@ -531,148 +564,179 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
           <p>检查结果保留内容依据；只有作者可以处理、忽略或转为修改任务。</p>
         </div>
       </header>
-      <SearchPanel
-        bridge={bridge}
-        projectId={projectId}
-        readOnly={readOnly}
-        onNavigate={onNavigate}
-      />
-      <RhythmPanel bridge={bridge} projectId={projectId} readOnly={readOnly} />
-      <section className="feature-card">
-        <div className="filter-bar">
-          <label>
-            定稿章节
-            <select value={chapterId} onChange={(event) => setChapterId(event.target.value)}>
-              <option value="">选择章节</option>
-              {chapters.map((item) => (
-                <option disabled={!item.finalVersionId} key={item.id} value={item.id}>
-                  {item.title}
-                  {item.finalVersionId ? '' : '（尚未定稿）'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            智能连接
-            <select value={providerId} onChange={(event) => setProviderId(event.target.value)}>
-              <option value="">选择智能连接</option>
-              {providers.map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <input
-              checked={includeClosed}
-              type="checkbox"
-              onChange={(event) => setIncludeClosed(event.target.checked)}
-            />
-            包含已处理问题
-          </label>
-          <button disabled={pending || readOnly || !chapter?.finalVersionId} onClick={runRules}>
-            运行规则检查
-          </button>
+      <nav className="feature-tabs" aria-label="内容检查工作台分区">
+        {(
+          [
+            ['checks', '内容检查'],
+            ['search', '搜索'],
+            ['rhythm', '节奏'],
+            ['review', '任务与批注'],
+          ] as const
+        ).map(([section, label]) => (
           <button
-            disabled={pending || readOnly || !chapter?.finalVersionId || !providerId}
-            onClick={runAi}
+            aria-pressed={activeSection === section}
+            data-checks-section={section}
+            key={section}
+            type="button"
+            onClick={() => setActiveSection(section)}
           >
-            运行智能语义检查
+            {label}
           </button>
-        </div>
-        <p className="feature-status" role="status">
-          {notice}
-        </p>
+        ))}
+      </nav>
+      <section data-checks-section-panel="search" hidden={activeSection !== 'search'}>
+        <SearchPanel
+          bridge={bridge}
+          projectId={projectId}
+          readOnly={readOnly}
+          onNavigate={onNavigate}
+        />
       </section>
+      <section data-checks-section-panel="rhythm" hidden={activeSection !== 'rhythm'}>
+        <RhythmPanel bridge={bridge} projectId={projectId} readOnly={readOnly} />
+      </section>
+      <div data-checks-section-panel="checks" hidden={activeSection !== 'checks'}>
+        <section className="feature-card">
+          <div className="filter-bar">
+            <label>
+              定稿章节
+              <select value={chapterId} onChange={(event) => setChapterId(event.target.value)}>
+                <option value="">选择章节</option>
+                {chapters.map((item) => (
+                  <option disabled={!item.finalVersionId} key={item.id} value={item.id}>
+                    {item.title}
+                    {item.finalVersionId ? '' : '（尚未定稿）'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              智能连接
+              <select value={providerId} onChange={(event) => setProviderId(event.target.value)}>
+                <option value="">选择智能连接</option>
+                {providers.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <input
+                checked={includeClosed}
+                type="checkbox"
+                onChange={(event) => setIncludeClosed(event.target.checked)}
+              />
+              包含已处理问题
+            </label>
+            <button disabled={pending || readOnly || !chapter?.finalVersionId} onClick={runRules}>
+              运行规则检查
+            </button>
+            <button
+              disabled={pending || readOnly || !chapter?.finalVersionId || !providerId}
+              onClick={runAi}
+            >
+              运行智能语义检查
+            </button>
+          </div>
+          <p className="feature-status" role="status">
+            {notice}
+          </p>
+        </section>
 
-      <section className="feature-card">
-        <h2>问题清单</h2>
-        {visibleIssues.length === 0 ? (
-          <p>当前筛选范围没有检查问题。</p>
-        ) : (
-          <div className="ledger-list">
-            {visibleIssues.map((issue) => (
-              <article
-                className="ledger-record"
-                data-validation-issue={issue.issueId}
-                key={issue.issueId}
-              >
-                <h3>
-                  {issueTypeLabel(issue.issueType)} · {authorStatusLabel(issue.severity)}
-                </h3>
-                <p>
-                  {issue.source === 'rule' ? '确定性规则' : '智能语义检查'} ·{' '}
-                  {authorStatusLabel(issue.status)} · 原文位置{' '}
-                  {issue.anchor.state === 'current' ? '有效' : '已经变化'} · 语义上下文{' '}
-                  {batchById.get(issue.batchId)?.semanticFreshness === 'current'
-                    ? '有效'
-                    : '已经变化'}
-                </p>
-                <p>{issue.rationale}</p>
-                {issue.currentEvidenceIds.length > 0 || issue.conflictEvidenceIds.length > 0 ? (
-                  <div className="validation-evidence-pair" data-validation-evidence-pair>
-                    <p>当前依据：{issue.currentEvidenceIds.join(' · ') || '无'}</p>
-                    <p>冲突依据：{issue.conflictEvidenceIds.join(' · ') || '无'}</p>
-                  </div>
-                ) : null}
-                {issue.anchor.textQuote ? <blockquote>{issue.anchor.textQuote}</blockquote> : null}
-                {issue.suggestion ? <p>修改建议：{issue.suggestion}</p> : null}
-                <details>
-                  <summary>技术详情</summary>
-                  <p>定稿标识：{issue.anchor.versionId ?? '作品级问题'}</p>
-                  <p>正文段落标识：{issue.anchor.logicalBlockId ?? '没有正文段落位置'}</p>
-                  <p>内容依据标识：{issue.evidenceIds.join(' · ') || '无'}</p>
-                </details>
-                <div className="inline-actions">
-                  <button
-                    data-author-return-key={`validation-issue:${issue.issueId}`}
-                    disabled={!issue.anchor.chapterId}
-                    type="button"
-                    onClick={() => navigateToIssue(issue)}
-                  >
-                    前往原文
-                  </button>
-                  {ISSUE_ACTIONS.map(([action, label]) => (
+        <section className="feature-card">
+          <h2>问题清单</h2>
+          {visibleIssues.length === 0 ? (
+            <p>当前筛选范围没有检查问题。</p>
+          ) : (
+            <div className="ledger-list">
+              {visibleIssues.map((issue) => (
+                <article
+                  className="ledger-record"
+                  data-validation-issue={issue.issueId}
+                  key={issue.issueId}
+                >
+                  <h3>
+                    {issueTypeLabel(issue.issueType)} · {authorStatusLabel(issue.severity)}
+                  </h3>
+                  <p>
+                    {issue.source === 'rule' ? '确定性规则' : '智能语义检查'} ·{' '}
+                    {authorStatusLabel(issue.status)} · 原文位置{' '}
+                    {issue.anchor.state === 'current' ? '有效' : '已经变化'} · 语义上下文{' '}
+                    {batchById.get(issue.batchId)?.semanticFreshness === 'current'
+                      ? '有效'
+                      : '已经变化'}
+                  </p>
+                  <p>{issue.rationale}</p>
+                  {issue.currentEvidenceIds.length > 0 || issue.conflictEvidenceIds.length > 0 ? (
+                    <div className="validation-evidence-pair" data-validation-evidence-pair>
+                      <p>当前依据：{issue.currentEvidenceIds.join(' · ') || '无'}</p>
+                      <p>冲突依据：{issue.conflictEvidenceIds.join(' · ') || '无'}</p>
+                    </div>
+                  ) : null}
+                  {issue.anchor.textQuote ? (
+                    <blockquote>{issue.anchor.textQuote}</blockquote>
+                  ) : null}
+                  {issue.suggestion ? <p>修改建议：{issue.suggestion}</p> : null}
+                  <details>
+                    <summary>技术详情</summary>
+                    <p>定稿标识：{issue.anchor.versionId ?? '作品级问题'}</p>
+                    <p>正文段落标识：{issue.anchor.logicalBlockId ?? '没有正文段落位置'}</p>
+                    <p>内容依据标识：{issue.evidenceIds.join(' · ') || '无'}</p>
+                  </details>
+                  <div className="inline-actions">
+                    <button
+                      data-author-return-key={`validation-issue:${issue.issueId}`}
+                      disabled={!issue.anchor.chapterId}
+                      type="button"
+                      onClick={() => navigateToIssue(issue)}
+                    >
+                      前往原文
+                    </button>
+                    {ISSUE_ACTIONS.map(([action, label]) => (
+                      <button
+                        disabled={readOnly || pending}
+                        key={action}
+                        type="button"
+                        onClick={() => void updateIssue(issue, action)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    <button
+                      data-remember-validation-exception={issue.issueId}
+                      disabled={readOnly || pending}
+                      type="button"
+                      onClick={() => void rememberException(issue)}
+                    >
+                      记住这个例外
+                    </button>
                     <button
                       disabled={readOnly || pending}
-                      key={action}
                       type="button"
-                      onClick={() => void updateIssue(issue, action)}
+                      onClick={() => void createTodo(issue)}
                     >
-                      {label}
+                      转为修改任务
                     </button>
-                  ))}
-                  <button
-                    data-remember-validation-exception={issue.issueId}
-                    disabled={readOnly || pending}
-                    type="button"
-                    onClick={() => void rememberException(issue)}
-                  >
-                    记住这个例外
-                  </button>
-                  <button
-                    disabled={readOnly || pending}
-                    type="button"
-                    onClick={() => void createTodo(issue)}
-                  >
-                    转为修改任务
-                  </button>
-                  <button
-                    disabled={readOnly || pending}
-                    type="button"
-                    onClick={() => void addComment(issue)}
-                  >
-                    添加批注
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="feature-card">
+                    <button
+                      disabled={readOnly || pending}
+                      type="button"
+                      onClick={() => void addComment(issue)}
+                    >
+                      添加批注
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+      <section
+        className="feature-card"
+        data-checks-section-panel="review"
+        hidden={activeSection !== 'review'}
+      >
         <h2>修改任务与批注</h2>
         {(catalog?.todos ?? []).map((todo) => (
           <article className="ledger-record" data-writing-todo={todo.todoId} key={todo.todoId}>

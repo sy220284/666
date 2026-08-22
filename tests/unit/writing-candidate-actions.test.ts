@@ -11,6 +11,12 @@ import {
 } from '../../apps/desktop/renderer/src/features/writing/candidate-preview-actions.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
+const dialogControls = vi.hoisted(() => ({ authorConfirm: vi.fn(async () => true) }));
+
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: dialogControls.authorConfirm,
+}));
+
 const success = <Data>(data: Data) => ({ state: 'success' as const, data });
 
 function state<T>(initial: T) {
@@ -55,6 +61,7 @@ function setup(bridge: RendererBridgeAdapter) {
 }
 
 beforeEach(() => {
+  dialogControls.authorConfirm.mockReset().mockResolvedValue(true);
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: { confirm: vi.fn(() => true) },
@@ -82,7 +89,7 @@ describe('Writing候选操作', () => {
       context.context,
       contractInput({ candidateId: 'candidate-a', status: 'accepted' }),
     );
-    vi.mocked(window.confirm).mockReturnValueOnce(false);
+    dialogControls.authorConfirm.mockResolvedValueOnce(false);
     await discardCandidate(
       context.context,
       contractInput({ candidateId: 'candidate-a', status: 'pending' }),

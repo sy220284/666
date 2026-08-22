@@ -158,7 +158,7 @@ describe('M10-12 Renderer生成刷新代次', () => {
     await refreshCandidateGenerationRun(input);
 
     expect(setActiveRun).toHaveBeenCalledWith(current);
-    expect(setGenerationStatus).toHaveBeenCalledWith('receiving_output · running');
+    expect(setGenerationStatus).toHaveBeenCalledWith('生成建议稿');
     expect(setActiveTaskId).not.toHaveBeenCalled();
   });
 
@@ -175,7 +175,9 @@ describe('M10-12 Renderer生成刷新代次', () => {
       await refreshCandidateGenerationRun(input);
 
       expect(list).toHaveBeenCalledOnce();
-      expect(setGenerationStatus).toHaveBeenCalledWith(`completed · ${status} · 输出 42 tokens`);
+      expect(setGenerationStatus).toHaveBeenCalledWith(
+        status === 'succeeded' ? '已完成' : status === 'failed' ? '失败' : '已取消',
+      );
       expect(setActiveTaskId).toHaveBeenCalledWith(null);
     },
   );

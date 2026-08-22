@@ -5,10 +5,15 @@ import type { createElement as createReactElement, ReactElement } from 'react';
 
 import {
   confirmRegisteredUnsavedChanges,
+  confirmRegisteredUnsavedChangesForShutdown,
   registeredUnsavedChangeLabels,
   useUnsavedChangesGuard,
   type UnsavedChangesGuard,
 } from '../../apps/desktop/renderer/src/runtime/unsaved-changes.js';
+
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: async ({ message }: { message: string }) => window.confirm(message),
+}));
 
 const rendererRequire = createRequire(
   new URL('../../apps/desktop/renderer/package.json', import.meta.url),
@@ -75,7 +80,7 @@ describe('unsaved changes governance', () => {
 
     await act(async () => harness.guard().markDirty());
     expect(registeredUnsavedChangeLabels()).toEqual(['作品核心']);
-    expect(confirmRegisteredUnsavedChanges('离开当前页面')).toBe(false);
+    expect(await confirmRegisteredUnsavedChanges('离开当前页面')).toBe(false);
     expect(confirm).toHaveBeenCalledWith(
       '作品核心有未保存修改。离开当前页面会放弃这些修改，是否继续？',
     );
@@ -83,7 +88,7 @@ describe('unsaved changes governance', () => {
 
     confirm.mockReturnValue(true);
     await act(async () => {
-      expect(harness.guard().confirmDiscard('暂时收起作品核心')).toBe(true);
+      expect(await harness.guard().confirmDiscard('暂时收起作品核心')).toBe(true);
     });
     expect(registeredUnsavedChangeLabels()).toEqual([]);
     expect(harness.guard().dirty).toBe(false);
@@ -111,5 +116,20 @@ describe('unsaved changes governance', () => {
     expect(registeredUnsavedChangeLabels()).toEqual(['章节信息']);
     await act(async () => third.renderer.unmount());
     expect(registeredUnsavedChangeLabels()).toEqual([]);
+  });
+
+  it('仅为 Electron 关闭准备握手保留同步原生安全确认', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('window', { confirm });
+    const harness = await renderGuard('正文修改');
+    await act(async () => harness.guard().markDirty());
+
+    expect(confirmRegisteredUnsavedChangesForShutdown('关闭应用')).toBe(false);
+    expect(confirm).toHaveBeenCalledWith(
+      '正文修改有未保存修改。关闭应用会放弃这些修改，是否继续？',
+    );
+
+    await act(async () => harness.renderer.unmount());
   });
 });

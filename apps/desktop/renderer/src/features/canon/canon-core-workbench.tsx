@@ -34,8 +34,11 @@ export function CanonWorkbench({
   onNavigate,
 }: CanonWorkbenchProps) {
   const references = useCanonAuthorReferences(bridge, projectId);
-  const changeSection = (nextSection: CanonSection): void => {
-    if (nextSection === section || confirmRegisteredUnsavedChanges('切换人物与世界设定分区')) {
+  const changeSection = async (nextSection: CanonSection): Promise<void> => {
+    if (
+      nextSection === section ||
+      (await confirmRegisteredUnsavedChanges('切换人物与世界设定分区'))
+    ) {
       onSectionChange(nextSection);
     }
   };

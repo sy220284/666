@@ -62,7 +62,13 @@ export function ProjectBriefEditor({
           disabled={command.pending}
           type="button"
           onClick={() => {
-            if (unsaved.confirmDiscard('暂时收起作品核心')) onSkip();
+            if (!unsaved.dirty) {
+              onSkip();
+              return;
+            }
+            void (async () => {
+              if (await unsaved.confirmDiscard('暂时收起作品核心')) onSkip();
+            })();
           }}
         >
           稍后填写

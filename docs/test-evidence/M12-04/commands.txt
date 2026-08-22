@@ -1,0 +1,48 @@
+# M12-04 Runtime 权威验证命令；正式 GitHub Actions 使用锁定 pnpm 执行
+
+pnpm task:validate
+pnpm check:language
+pnpm check:structure
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:coverage
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+pnpm ci:policy
+pnpm release:check
+
+# 冻结实现
+# implementationCommit: ff40812c8171b905501f8d5c4bfc7126c5a5406b
+
+# 冻结实现永久门禁
+# Quality: 32547402251 success
+# Security: 32547402126 success
+# Performance: 32547402128 success
+
+# GitHub Actions 验收产物
+# Quality / desktop-e2e-evidence-1-of-3: 9469109167 (sha256:cc90f446a5fcfbba52232cb90bce44427492d8a92b45cdcbf8931685e3b0239d)
+# Quality / desktop-e2e-evidence-3-of-3: 9469050562 (sha256:cd911e48ff49eb37ce35b0d002f46782108f5a828009e56042e5d307652d8fd4)
+# Quality / product-tests-and-coverage: 9469014488 (sha256:1f7d84cc683e7c44d70666918978eede8f59e57333a42af28ab9abc2d23e9473)
+# Quality / m8-07-windows-native-ime: 9469013538 (sha256:201b64a2a9261ef98925e218bb5bad659fa6a0f1a814f729a0fdab03b789f258)
+# Quality / platform-experience-windows: 9469013148 (sha256:beb31b5445a7f8bf7eecc61da3dbf5ca984763f542121a6e3b967a1bc77cbf9a)
+# Quality / desktop-e2e-evidence-2-of-3: 9469010817 (sha256:90f199d08df09deb6b8a1cad9279157c0fe4239cada62276cdbeebad55529ec0)
+# Quality / platform-experience-linux: 9468993117 (sha256:231d15d2ee193f21a69ab582ceb3033998e08cc111cc54191a38f19310532f37)
+# Quality / reliability-evidence: 9468977942 (sha256:b109fc6094884dae19a8ef8e4ddfad008618d3dbccc824ad5d5e0445f8e13862)
+# Quality / platform-experience-macos: 9468976695 (sha256:795bf85b8b5e1c92623b3805f8436eecb1c58ba2e87d533ff019f838cd652956)
+# Security / secret-scan-diagnostics: 9468958621 (sha256:3b9894b6ec2c8f1beb90bae9cb0f83c63c77dc642dc5285ca43de6a59a660551)
+# Performance / performance-and-ai-eval-evidence: 9469003518 (sha256:72b64ea6a7e135bf4ab68ff77dec069bd0e135c845f34dc7f88f03ec08efdbf6)
+
+# 本地依赖工作区恢复自官方 GitHub Actions toolchain bundle
+# Node 24.18.1
+# pnpm 11.21.0
+# TypeScript 6.0.3
+# Vitest 4.1.10
+# Playwright 1.62.0
+# Electron 43.2.0
+# 本地使用已锁定二进制直接执行 tsc、vitest、eslint、prettier、esbuild 和 node 治理脚本。
+# Electron 桌面交互由冻结提交正式 GitHub Actions 三分片和三平台体验真实运行。

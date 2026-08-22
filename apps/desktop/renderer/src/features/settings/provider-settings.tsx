@@ -81,14 +81,14 @@ export function ProviderSettings({
     setMessage(`${providerPreset(presetId).label}预设已填入，请确认模型名称后保存。`);
   };
 
-  const choosePreset = (presetId: ProviderPresetId): void => {
-    if (dirty && !confirmDiscard('切换智能连接预设')) return;
+  const choosePreset = async (presetId: ProviderPresetId): Promise<void> => {
+    if (dirty && !(await confirmDiscard('切换智能连接预设'))) return;
     applyPreset(presetId);
     markDirty();
   };
 
-  const edit = (provider: ProviderSummary): void => {
-    if (dirty && !confirmDiscard('编辑其他智能连接')) return;
+  const edit = async (provider: ProviderSummary): Promise<void> => {
+    if (dirty && !(await confirmDiscard('编辑其他智能连接'))) return;
     setDraft(editableProviderConfig(provider));
     setActivePreset(null);
     setCredential('');
@@ -97,8 +97,8 @@ export function ProviderSettings({
     setMessage(`正在编辑“${provider.name}”；密钥不会回显。`);
   };
 
-  const reset = (): void => {
-    if (dirty && !confirmDiscard('新建本机连接')) return;
+  const reset = async (): Promise<void> => {
+    if (dirty && !(await confirmDiscard('新建本机连接'))) return;
     applyPreset('ollama');
     markDirty();
   };
@@ -146,7 +146,7 @@ export function ProviderSettings({
     if (
       draft.id === provider.id &&
       dirty &&
-      !confirmRegisteredUnsavedChanges('删除正在编辑的智能连接')
+      !(await confirmRegisteredUnsavedChanges('删除正在编辑的智能连接'))
     ) {
       setMessage('已保留当前智能连接的未保存修改。');
       return;

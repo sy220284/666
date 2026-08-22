@@ -12,6 +12,7 @@ import type {
 } from '@worldforge/contracts';
 
 import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+import { confirmAuthorDialog } from './author-dialog.js';
 
 type CandidateE2EBridge = WorldforgeBridge & {
   readonly candidate: {
@@ -130,9 +131,8 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     await page.locator('[data-open-candidate-preview]').click();
     await expect(page.locator('[data-candidate-preview-dialog]')).toBeVisible();
     await expect(page.locator('[data-candidate-preview-select]')).toHaveCount(1);
-    await expect(page.locator('[data-candidate-preview-status]')).toContainText(
-      `基础保存序号 ${fixture.revision}`,
-    );
+    await expect(page.locator('[data-candidate-preview-status]')).toContainText('已准备采用');
+    await expect(page.locator('[data-candidate-preview-status]')).not.toContainText('保存序号');
     await expect(page.locator('[data-candidate-preview-warning]')).toContainText('不完整建议稿');
     const candidateDiff = page.locator('[data-review-diff="candidate"]');
     await expect(candidateDiff.locator('[data-side="current"]').first()).toContainText(
@@ -143,8 +143,8 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     );
     await captureAcceptanceScreenshot(page, 'M2-02', 'candidate-readonly-preview.png');
 
-    page.once('dialog', (dialog) => dialog.accept());
     await page.locator('[data-discard-candidate]').click();
+    await confirmAuthorDialog(page);
     await expect(page.locator('[data-candidate-preview-status]')).toContainText(
       '建议稿已丢弃，当前稿未改变',
     );

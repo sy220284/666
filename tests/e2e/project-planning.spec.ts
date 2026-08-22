@@ -113,7 +113,11 @@ test('skips and completes 作品核心, drags PlotNodes, and leaves Draft unchan
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-open-planning]').click();
-    await page.locator('[data-planning-mode="professional"]').click();
+    const beginner = page.locator('[data-planning-disclosure="beginner"]');
+    if (await beginner.isVisible()) {
+      await page.locator('[data-planning-mode="professional"]').click();
+    }
+    await expect(page.locator('[data-planning-disclosure="professional"]')).toBeVisible();
     await expect(page.locator('textarea[name="concept"]')).toHaveValue(
       '失去名字的人追查被改写的历史。',
     );

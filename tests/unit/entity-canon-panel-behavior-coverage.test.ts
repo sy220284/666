@@ -31,6 +31,14 @@ vi.mock('../../apps/desktop/renderer/src/bridge/use-bridge-resource.js', () => (
   }),
 }));
 
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: async ({ title, message }: { title: string; message?: string }) =>
+    window.confirm(message ?? title),
+  authorConfirmName: async ({ expectedName }: { expectedName: string }) =>
+    window.prompt(`输入实体名称“${expectedName}”确认永久删除：`) === expectedName,
+  authorSelect: vi.fn(),
+}));
+
 const rendererRequire = createRequire(
   new URL('../../apps/desktop/renderer/package.json', import.meta.url),
 );

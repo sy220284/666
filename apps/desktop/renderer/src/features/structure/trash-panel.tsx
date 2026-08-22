@@ -5,6 +5,7 @@ import type { TrashEntry } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { authorConfirmName } from '../../runtime/author-dialog.js';
 
 interface TrashPanelProps {
   readonly bridge: RendererBridgeAdapter;
@@ -47,11 +48,15 @@ export function TrashPanel({
       );
       return;
     }
-    const confirmationTitle = window.prompt(
-      `永久删除不可撤销。请输入完整标题“${entry.title}”确认：`,
-    );
-    if (confirmationTitle !== entry.title) {
-      setStatus('标题确认不匹配，已取消永久删除；未创建恢复点。');
+    const confirmed = await authorConfirmName({
+      title: '永久删除',
+      message: '永久删除不可撤销；确认后仍会创建恢复点并由本地服务校验影响。',
+      expectedName: entry.title,
+      confirmLabel: '永久删除',
+      danger: true,
+    });
+    if (!confirmed) {
+      setStatus('标题确认不匹配或已取消永久删除；未创建恢复点。');
       return;
     }
     const result = await command.run(() =>
@@ -59,7 +64,7 @@ export function TrashPanel({
         projectId,
         trashEntryId: entry.id,
         planHash: preview.planHash,
-        confirmationTitle,
+        confirmationTitle: entry.title,
       }),
     );
     if (result)

@@ -6,6 +6,7 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorJsonValue } from '../../presentation/author-value-format.js';
+import { authorConfirm, authorConfirmName } from '../../runtime/author-dialog.js';
 import {
   confirmRegisteredUnsavedChanges,
   useUnsavedChangesGuard,
@@ -58,9 +59,9 @@ export function EntityCanonPanel({
   const factUnsaved = useUnsavedChangesGuard('设定事实');
   const selected = resource.data?.entities.find((entity) => entity.id === selectedId) ?? null;
 
-  const confirmEditorDiscard = (action: string): boolean => {
+  const confirmEditorDiscard = async (action: string): Promise<boolean> => {
     if (!entityUnsaved.dirty && !factUnsaved.dirty) return true;
-    if (!confirmRegisteredUnsavedChanges(action)) {
+    if (!(await confirmRegisteredUnsavedChanges(action))) {
       setNotice('已保留当前设定的未保存修改。');
       return false;
     }
@@ -155,7 +156,7 @@ export function EntityCanonPanel({
   };
 
   const archive = async (): Promise<void> => {
-    if (!selected || !window.confirm(`归档“${selected.name}”？`)) return;
+    if (!selected || !(await authorConfirm({ title: `归档“${selected.name}”？` }))) return;
     const result = await command.run(() =>
       bridge.canon.archive({ projectId, authority: 'author', entityId: selected.id }),
     );
@@ -172,8 +173,14 @@ export function EntityCanonPanel({
       setNotice(`禁止删除：${preview.blockers.join('；')}`);
       return;
     }
-    const confirmation = window.prompt(`输入实体名称“${selected.name}”确认永久删除：`);
-    if (confirmation !== selected.name) {
+    const confirmed = await authorConfirmName({
+      title: '确认永久删除设定条目',
+      message: '此操作不可撤销；必须输入完整名称才能继续。',
+      expectedName: selected.name,
+      confirmLabel: '永久删除',
+      danger: true,
+    });
+    if (!confirmed) {
       setNotice('名称确认不匹配，已取消永久删除。');
       return;
     }
@@ -203,11 +210,13 @@ export function EntityCanonPanel({
             data-new-entity
             disabled={readOnly}
             type="button"
-            onClick={() => {
-              if (!confirmEditorDiscard('新建设定条目')) return;
-              setNewEntity(true);
-              setSelectedId(null);
-            }}
+            onClick={() =>
+              void (async () => {
+                if (!(await confirmEditorDiscard('新建设定条目'))) return;
+                setNewEntity(true);
+                setSelectedId(null);
+              })()
+            }
           >
             新建
           </button>
@@ -218,9 +227,12 @@ export function EntityCanonPanel({
             data-canon-entity-select
             value={selectedId ?? ''}
             onChange={(event) => {
-              if (!confirmEditorDiscard('切换设定条目')) return;
-              setNewEntity(false);
-              setSelectedId(event.target.value || null);
+              const nextEntityId = event.target.value || null;
+              void (async () => {
+                if (!(await confirmEditorDiscard('切换设定条目'))) return;
+                setNewEntity(false);
+                setSelectedId(nextEntityId);
+              })();
             }}
           >
             <option value="">未选择</option>

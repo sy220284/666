@@ -16,6 +16,11 @@ const controls = vi.hoisted(() => ({
   queryLoad: null as null | (() => Promise<unknown>),
   resourceData: undefined as undefined | { entries: TrashEntry[] },
   resourceRefresh: vi.fn(),
+  authorConfirmName: vi.fn(),
+}));
+
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirmName: controls.authorConfirmName,
 }));
 
 vi.mock('../../apps/desktop/renderer/src/bridge/use-bridge-resource.js', () => ({
@@ -150,7 +155,7 @@ beforeEach(() => {
   controls.queryLoad = null;
   controls.resourceData = undefined;
   controls.resourceRefresh.mockReset().mockResolvedValue(undefined);
-  vi.stubGlobal('window', { prompt: vi.fn() });
+  controls.authorConfirmName.mockReset().mockResolvedValue(true);
 });
 
 afterEach(async () => {
@@ -244,7 +249,7 @@ describe('TrashPanel destructive-operation coverage', () => {
       click(dataNode(renderer.root, 'data-permanent-delete'));
       await flushPromises();
     });
-    expect(window.prompt as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+    expect(controls.authorConfirmName).not.toHaveBeenCalled();
     expect(harness.permanentDelete).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -260,11 +265,10 @@ describe('TrashPanel destructive-operation coverage', () => {
   it('requires an exact title, handles a cancelled delete result and reports successful backup evidence', async () => {
     const harness = createBridge();
     controls.resourceData = { entries: [entry()] };
-    const prompt = window.prompt as ReturnType<typeof vi.fn>;
-    prompt
-      .mockReturnValueOnce('错误标题')
-      .mockReturnValueOnce('被删除的章节')
-      .mockReturnValueOnce('被删除的章节');
+    controls.authorConfirmName
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
     harness.permanentDelete.mockResolvedValueOnce({ state: 'cancelled' }).mockResolvedValueOnce({
       state: 'success',
       data: { backupId: '12345678-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
@@ -275,7 +279,7 @@ describe('TrashPanel destructive-operation coverage', () => {
       click(dataNode(renderer.root, 'data-permanent-delete'));
       await flushPromises();
     });
-    expect(textContent(renderer.root)).toContain('标题确认不匹配，已取消永久删除');
+    expect(textContent(renderer.root)).toContain('标题确认不匹配或已取消永久删除');
     expect(harness.permanentDelete).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -288,7 +292,7 @@ describe('TrashPanel destructive-operation coverage', () => {
       planHash: 'plan-1',
       confirmationTitle: '被删除的章节',
     });
-    expect(textContent(renderer.root)).toContain('标题确认不匹配，已取消永久删除');
+    expect(textContent(renderer.root)).toContain('标题确认不匹配或已取消永久删除');
 
     await act(async () => {
       click(dataNode(renderer.root, 'data-permanent-delete'));

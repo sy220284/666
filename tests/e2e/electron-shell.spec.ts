@@ -13,6 +13,7 @@ import {
 import type { AppearancePreferences, WorldforgeBridge } from '@worldforge/contracts';
 
 import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+import { confirmAuthorDialog } from './author-dialog.js';
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
@@ -470,8 +471,8 @@ test('creates, reopens, moves, and protects a future-schema project through the 
       page.locator('[data-volume-title="第二卷"] [data-chapter-title="第二章"]'),
     ).toContainText('写作中 · 2000—3000 字');
 
-    page.once('dialog', (dialog) => dialog.accept());
     await page.locator('[data-chapter-title="第二章"] [data-delete-chapter]').click();
+    await confirmAuthorDialog(page);
     await expect(page.locator('[data-chapter-title="第二章"]')).toHaveCount(0);
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-entry-id]')).toHaveCount(1);

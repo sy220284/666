@@ -210,6 +210,7 @@ export function WritingWorkbench({
       chapterSessionPhase={chapterSession.state.phase}
       composing={composing}
       contextVisible={contextVisible}
+      disclosureMode={disclosureMode}
       draft={draft}
       editor={editor}
       editorHost={editorHost}

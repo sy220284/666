@@ -40,3 +40,20 @@ export type AuthorStatusKey = keyof typeof AUTHOR_STATUS_LABELS;
 export function authorStatusLabel(status: string): string {
   return AUTHOR_STATUS_LABELS[status as AuthorStatusKey] ?? '状态未知';
 }
+
+export function authorGenerationStageLabel(stage: string, status?: string): string {
+  if (status === 'failed' || stage === 'failed') return '失败';
+  if (status === 'cancelled' || stage === 'cancelled') return '已取消';
+  if (status === 'succeeded' || stage === 'completed') return '已完成';
+  if (status === 'queued' || stage === 'queued') return '等待开始';
+  if (stage === 'assembling_constraints' || stage === 'preparing') return '准备上下文';
+  if (stage === 'calling_model' || stage === 'receiving_output' || stage === 'generating')
+    return '生成建议稿';
+  if (
+    stage === 'parsing_output' ||
+    stage === 'saving_candidate' ||
+    stage === 'validating_candidate'
+  )
+    return '整理结果';
+  return '正在处理';
+}

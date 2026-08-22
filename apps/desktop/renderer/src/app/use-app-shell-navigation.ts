@@ -126,7 +126,7 @@ export function useAppShellNavigation({
   const transitionToRoute = useCallback(
     async (nextRoute: RendererRouteId): Promise<boolean> => {
       if (route === nextRoute) return true;
-      if (!confirmRegisteredUnsavedChanges('离开当前页面')) {
+      if (!(await confirmRegisteredUnsavedChanges('离开当前页面'))) {
         setMessage('已保留当前页面的未保存修改。');
         return false;
       }
@@ -180,7 +180,7 @@ export function useAppShellNavigation({
           setMessage('目标不属于当前项目，已阻止跨项目跳转。');
           return;
         }
-        if (!confirmRegisteredUnsavedChanges('打开目标内容')) {
+        if (!(await confirmRegisteredUnsavedChanges('打开目标内容'))) {
           setMessage('已保留当前页面的未保存修改。');
           return;
         }
@@ -223,7 +223,7 @@ export function useAppShellNavigation({
 
   const returnToAuthorSource = useCallback(async (): Promise<void> => {
     if (!returnLocation) return;
-    if (!confirmRegisteredUnsavedChanges('返回来源页面')) {
+    if (!(await confirmRegisteredUnsavedChanges('返回来源页面'))) {
       setMessage('已保留当前页面的未保存修改。');
       return;
     }

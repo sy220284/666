@@ -8,6 +8,10 @@ import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/brid
 import { ResearchWorkbench } from '../../apps/desktop/renderer/src/features/research/research-workbench.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: async ({ message }: { message: string }) => window.confirm(message),
+}));
+
 const rendererRequire = createRequire(
   new URL('../../apps/desktop/renderer/package.json', import.meta.url),
 );
@@ -55,6 +59,13 @@ const catalog: ResearchCatalog = {
   links: [],
 };
 
+const emptyCatalog: ResearchCatalog = {
+  projectId,
+  notes: [],
+  attachments: [],
+  links: [],
+};
+
 function success<T>(data: T) {
   return {
     state: 'success' as const,
@@ -91,15 +102,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('research discard restoration', () => {
-  it('restores persisted note fields before a same-note filter reload and prevents discarded text from being saved later', async () => {
+describe('research draft preservation across filtering', () => {
+  it('keeps the current unsaved note across every author filter and saves the preserved draft', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const confirm = vi.fn(() => true);
     vi.stubGlobal('window', { confirm });
     const updateNote = vi.fn(async () => success(catalog));
+    const list = vi.fn(async (input: { readonly query?: string }) =>
+      success(input.query ? emptyCatalog : catalog),
+    );
     const bridge = contractInput<RendererBridgeAdapter>({
       research: {
-        list: vi.fn(async () => success(catalog)),
+        list,
         updateNote,
       },
     });
@@ -137,9 +151,36 @@ describe('research discard restoration', () => {
       await flushPromises();
     });
 
-    expect(confirm).toHaveBeenCalledOnce();
-    expect(controlByLabel(renderer.root, '标题').props.value).toBe('原始资料标题');
-    expect(textContent(renderer.root)).not.toContain('有未保存修改');
+    for (const [label, target] of [
+      ['按标签筛选', { value: '城防' }],
+      ['按来源筛选', { value: 'book' }],
+      ['显示已归档', { checked: true }],
+      ['故事对象筛选', { value: 'chapter' }],
+    ] as const) {
+      await act(async () => {
+        (controlByLabel(renderer.root, label).props.onChange as (event: unknown) => void)({
+          target,
+        });
+        await flushPromises();
+      });
+      expect(confirm).not.toHaveBeenCalled();
+      expect(controlByLabel(renderer.root, '标题').props.value).toBe('准备放弃的标题');
+    }
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(controlByLabel(renderer.root, '标题').props.value).toBe('准备放弃的标题');
+    expect(textContent(renderer.root)).toContain('有未保存修改');
+    expect(textContent(renderer.root)).toContain('当前编辑的笔记不在本次筛选结果中');
+    expect(list).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: '城门',
+        tags: ['城防'],
+        noteSourceType: 'book',
+        includeArchived: true,
+        targetType: 'chapter',
+      }),
+      expect.anything(),
+    );
 
     const save = renderer.root.findAll(
       (node) => node.type === 'button' && textContent(node) === '保存笔记',
@@ -150,7 +191,7 @@ describe('research discard restoration', () => {
       await flushPromises();
     });
     expect(updateNote).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '原始资料标题', body: '原始正文' }),
+      expect.objectContaining({ title: '准备放弃的标题', body: '原始正文' }),
       expect.anything(),
     );
 

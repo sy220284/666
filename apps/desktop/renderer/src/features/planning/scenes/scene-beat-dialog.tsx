@@ -91,7 +91,13 @@ export function SceneBeatDialog({
             type="button"
             disabled={command.pending}
             onClick={() => {
-              if (unsaved.confirmDiscard('关闭场景编辑')) onClose();
+              if (!unsaved.dirty) {
+                onClose();
+                return;
+              }
+              void (async () => {
+                if (await unsaved.confirmDiscard('关闭场景编辑')) onClose();
+              })();
             }}
           >
             关闭

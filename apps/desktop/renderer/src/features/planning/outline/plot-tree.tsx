@@ -5,6 +5,7 @@ import type { PlotNode } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../../bridge/use-bridge-resource.js';
 import { authorPlotNodeTypeLabel } from '../../../presentation/author-value-format.js';
+import { authorConfirm } from '../../../runtime/author-dialog.js';
 import { interactionLocked } from '../../../runtime/interaction-locks.js';
 import { lifecycleStatusLabel, sortedPlotNodes } from '../planning-form-values.js';
 
@@ -108,16 +109,22 @@ export function PlotTree({
             <button
               type="button"
               disabled={blocked}
-              onClick={() => {
-                if (window.confirm(`删除“${node.title}”及其子节点？`)) {
-                  void (async () => {
-                    const result = await command.run(() =>
-                      bridge.planning.deletePlotNode({ projectId, nodeId: node.id }),
-                    );
-                    if (result) await onRefresh();
-                  })();
-                }
-              }}
+              onClick={() =>
+                void (async () => {
+                  if (
+                    !(await authorConfirm({
+                      title: `删除“${node.title}”及其子节点？`,
+                      confirmLabel: '删除节点',
+                      danger: true,
+                    }))
+                  )
+                    return;
+                  const result = await command.run(() =>
+                    bridge.planning.deletePlotNode({ projectId, nodeId: node.id }),
+                  );
+                  if (result) await onRefresh();
+                })()
+              }
             >
               删除
             </button>

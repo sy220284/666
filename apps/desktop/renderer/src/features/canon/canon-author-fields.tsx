@@ -3,6 +3,7 @@ import { useEffect, useState, useSyncExternalStore, type SelectHTMLAttributes } 
 import type { Entity } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { authorSelect } from '../../runtime/author-dialog.js';
 
 export type AuthorValueType = 'text' | 'number' | 'boolean' | 'list' | 'json';
 
@@ -303,15 +304,16 @@ export function arcTypeLabel(type: string): string {
   return labels[type] ?? type;
 }
 
-export function promptChapterId(
+export async function promptChapterId(
   chapters: readonly CanonChapterReference[],
   title: string,
-): string | null {
+): Promise<string | null> {
   if (!chapters.length) return null;
-  const answer = window.prompt(
-    `${title}\n${chapters.map((chapter, index) => `${index + 1}. ${chapter.label}`).join('\n')}`,
-    '1',
-  );
-  if (!answer) return null;
-  return chapters[Number(answer) - 1]?.id ?? null;
+  const answer = await authorSelect({
+    title,
+    options: chapters.map((chapter) => ({ value: chapter.id, label: chapter.label })),
+    initialValue: chapters[0]?.id ?? '',
+    confirmLabel: '选择章节',
+  });
+  return chapters.some((chapter) => chapter.id === answer) ? answer : null;
 }

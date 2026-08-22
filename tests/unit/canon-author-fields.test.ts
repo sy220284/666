@@ -14,6 +14,12 @@ import {
   type CanonAuthorReferences,
 } from '../../apps/desktop/renderer/src/features/canon/canon-author-fields.js';
 
+const authorDialogs = vi.hoisted(() => ({ authorSelect: vi.fn() }));
+
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorSelect: authorDialogs.authorSelect,
+}));
+
 const references: CanonAuthorReferences = {
   state: 'ready',
   entities: [],
@@ -81,16 +87,15 @@ describe('设定结构化字段', () => {
     expect(authorStateLabel('custom-state')).toBe('custom-state');
   });
 
-  it('用作者选择的章节名称返回内部章节标识', () => {
-    expect(promptChapterId([], '选择章节')).toBeNull();
+  it('用作者选择的章节名称返回内部章节标识', async () => {
+    expect(await promptChapterId([], '选择章节')).toBeNull();
 
-    const prompt = vi.fn();
-    vi.stubGlobal('window', { prompt });
-    prompt.mockReturnValueOnce(null);
-    expect(promptChapterId(references.chapters, '选择章节')).toBeNull();
-    prompt.mockReturnValueOnce('1');
-    expect(promptChapterId(references.chapters, '选择章节')).toBe(references.chapters[0]?.id);
-    prompt.mockReturnValueOnce('9');
-    expect(promptChapterId(references.chapters, '选择章节')).toBeNull();
+    authorDialogs.authorSelect
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(references.chapters[0]?.id)
+      .mockResolvedValueOnce('不存在的章节');
+    expect(await promptChapterId(references.chapters, '选择章节')).toBeNull();
+    expect(await promptChapterId(references.chapters, '选择章节')).toBe(references.chapters[0]?.id);
+    expect(await promptChapterId(references.chapters, '选择章节')).toBeNull();
   });
 });

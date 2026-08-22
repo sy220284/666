@@ -127,7 +127,7 @@ test('commits selected Candidate content through the desktop transaction', async
     await expect(page.locator('[data-candidate-apply-status]')).toContainText('已准备采用');
     await expect(page.locator('[data-candidate-apply-mode]')).toHaveValue('all');
     await page.locator('[data-apply-candidate]').click();
-    await expect(page.locator('[data-candidate-apply-status]')).toContainText('采用成功');
+    await expect(page.locator('[data-candidate-apply-status]')).toContainText('建议稿已采用');
     await captureAcceptanceScreenshot(page, 'M2-03', 'candidate-apply-success.png');
 
     const current = await page.evaluate(async (input) => {

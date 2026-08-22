@@ -24,8 +24,17 @@ async function launch(userDataPath: string, createParent: string): Promise<Elect
 
 async function closeGracefully(application: ElectronApplication): Promise<void> {
   const closed = application.waitForEvent('close');
-  await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
-  await closed;
+  const request = application
+    .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close())
+    .catch((error: unknown) => {
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes('Resulting promise was garbage collected')
+      ) {
+        throw error;
+      }
+    });
+  await Promise.all([closed, request]);
 }
 
 async function getNativeWindowHandle(application: ElectronApplication): Promise<string> {

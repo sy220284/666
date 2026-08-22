@@ -85,7 +85,7 @@ test('长篇作者可用命令面板进入生成，并管理记忆、文风和�
       '',
     );
     await studio.locator('[data-generation-advanced-settings] summary').click();
-    await expect(studio.locator('[data-generation-provider]')).toContainText('按任务自动选择');
+    await expect(studio.locator('[data-generation-provider]')).toHaveCount(0);
     await expect(studio.locator('[data-generation-mode]')).toHaveValue('chapter');
 
     await page.locator('[data-open-settings]').click();

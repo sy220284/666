@@ -117,6 +117,7 @@ export function AppShellPages(props: AppShellPagesProps) {
           }}
           onMoveProject={(projectId) => void props.onMoveProject(projectId)}
           onNavigate={props.onNavigate}
+          onWritingAction={props.onNavigateToAuthorTarget}
           onOpenRecent={(projectId) => void props.onOpenRecent(projectId)}
           onOpenRecovery={() => void props.onTransitionToRoute('recovery')}
           onOpenSelected={(recover) => void props.onOpenSelected(recover)}

@@ -12,6 +12,8 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { authorConfirm } from '../../runtime/author-dialog.js';
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import {
   rendererCommandCoordinatorFor,
   type RendererCommandScope,
@@ -21,6 +23,7 @@ const CANDIDATE_MUTATION_COMMAND = 'candidate-mutation';
 
 export interface CandidateActionContext {
   readonly bridge: RendererBridgeAdapter;
+  readonly disclosureMode?: AppDisclosureMode;
   readonly projectId: string;
   readonly chapterId: string;
   readonly commandPrefix: string;
@@ -71,13 +74,14 @@ export async function discardCandidate(
   input: CandidateActionContext,
   candidate: CandidateDocument | null,
 ): Promise<void> {
-  if (
-    input.readOnly ||
-    !candidate ||
-    candidate.status !== 'pending' ||
-    !window.confirm('丢弃后不能再采用，当前稿不会改变。继续吗？')
-  )
-    return;
+  if (input.readOnly || !candidate || candidate.status !== 'pending') return;
+  const confirmed = await authorConfirm({
+    title: '丢弃建议稿',
+    message: '丢弃后不能再采用，当前稿不会改变。继续吗？',
+    confirmLabel: '丢弃建议稿',
+    danger: true,
+  });
+  if (!confirmed) return;
   await runCandidateMutation(input, async (scope) => {
     const outcome = await input.bridge.candidate.discard({
       projectId: input.projectId,
@@ -142,7 +146,12 @@ export async function applyCandidate(
       input.setStatus(`发现${outcome.data.conflictSet.conflicts.length}项冲突，当前稿未改变。`);
       return;
     }
-    input.onDraftReplace(outcome.data.draft, `采用成功 · 保存序号 ${outcome.data.draft.revision}`);
+    input.onDraftReplace(
+      outcome.data.draft,
+      input.disclosureMode === 'beginner'
+        ? '建议稿已采用并保存。'
+        : `采用成功 · 保存序号 ${outcome.data.draft.revision}`,
+    );
     const nextPreview: CandidatePreview = {
       ...preview,
       candidate: {
@@ -157,7 +166,11 @@ export async function applyCandidate(
     if (!scope.isCurrent()) return;
     await input.refreshList(scope.isCurrent);
     if (scope.isCurrent())
-      input.setStatus(`采用成功 · 采用记录 ${outcome.data.record.applyRecordId.slice(0, 8)}…`);
+      input.setStatus(
+        input.disclosureMode === 'beginner'
+          ? '建议稿已采用；可以随时撤销本次修改。'
+          : `采用成功 · 采用记录 ${outcome.data.record.applyRecordId.slice(0, 8)}…`,
+      );
   });
 }
 
@@ -192,7 +205,12 @@ export async function undoCandidate(
       return;
     }
     const restoredDraft = outcome.data.draft;
-    input.onDraftReplace(restoredDraft, `已撤销本次应用 · 保存序号 ${restoredDraft.revision}`);
+    input.onDraftReplace(
+      restoredDraft,
+      input.disclosureMode === 'beginner'
+        ? '已撤销本次采用并恢复正文。'
+        : `已撤销本次应用 · 保存序号 ${restoredDraft.revision}`,
+    );
     input.setPreview((current) => (current ? { ...current, draft: restoredDraft } : current));
     input.setUndoPreview(null);
     input.setConflicts([]);

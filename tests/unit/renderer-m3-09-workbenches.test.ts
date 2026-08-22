@@ -209,7 +209,7 @@ describe('M3 final React business workbenches', () => {
     expect(structure).toContain('previewMoveBlocks');
     expect(structure).toContain('previewPermanentDelete');
     expect(structure).toContain('planHash: preview.planHash');
-    expect(structure).toContain('confirmationTitle = window.prompt');
+    expect(structure).toContain('await authorConfirmName');
     expect(canonCore).toContain("from './entity-canon-panel.js'");
     expect(canonCore).toContain("from './continuity-panel.js'");
     expect(canonCore).toContain("from './narrative-planning-panel.js'");
@@ -218,7 +218,7 @@ describe('M3 final React business workbenches', () => {
     expect(canonCore).not.toContain('useBridgeQuery');
     expect(canonCore).not.toContain('useState');
     expect(entityCanon).toContain("selected.status !== 'archived'");
-    expect(entityCanon).toContain('输入实体名称');
+    expect(entityCanon).toContain('await authorConfirmName');
     expect(continuityPanel).toContain('export function ContinuityPanel');
     expect(narrativePanel).toContain('export function NarrativePlanningPanel');
     expect(stateProposalPanel).toContain('export function StateProposalPanel');

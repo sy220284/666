@@ -306,6 +306,32 @@ describe('CandidateReviewDisplay author interaction coverage', () => {
     expect(textContent(renderer.root)).toContain('prompt-1 · 第 3 版');
   });
 
+  it('keeps technical generation identifiers behind professional disclosure', async () => {
+    const selectedRun = generationRun();
+    const renderer = await renderDisplay(baseProps({ disclosureMode: 'beginner', selectedRun }));
+
+    expect(textContent(renderer.root)).not.toContain('run-1');
+    expect(textContent(renderer.root)).not.toContain('prompt-1');
+    expect(
+      renderer.root.findAll(
+        (instance) => instance.props['data-candidate-technical-details'] !== undefined,
+      ),
+    ).toHaveLength(0);
+
+    await act(async () => {
+      renderer.update(
+        createElement(
+          CandidateReviewDisplay,
+          baseProps({ disclosureMode: 'professional', selectedRun }),
+        ),
+      );
+    });
+
+    expect(textContent(renderer.root)).toContain('run-1');
+    expect(textContent(renderer.root)).toContain('prompt-1 · 第 3 版');
+    expect(nodeByData(renderer.root, 'data-candidate-technical-details').type).toBe('details');
+  });
+
   it('keeps partial candidates constrained and allows explicit continuation or manual return', async () => {
     const partialCandidate = proseDocument({
       completeness: 'partial',

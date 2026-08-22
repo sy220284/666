@@ -151,7 +151,7 @@ test('reopens a persisted ApplyRecord and safely restores its checkpoint', async
     await page.locator('[data-open-candidate-preview]').click();
     await expect(page.locator('[data-candidate-apply-status]')).toContainText('已准备采用');
     await page.locator('[data-apply-candidate]').click();
-    await expect(page.locator('[data-candidate-apply-status]')).toContainText('采用成功');
+    await expect(page.locator('[data-candidate-apply-status]')).toContainText('建议稿已采用');
     await expect(page.locator('[data-undo-candidate-apply]')).toBeVisible();
   } finally {
     await closeGracefully(first);

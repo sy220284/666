@@ -54,7 +54,6 @@ export function PlanningWorkbench({
     loadNarrative,
   );
   const [briefSkipped, setBriefSkipped] = useState(false);
-  const [professional, setProfessional] = useState(false);
   const [plotEditor, setPlotEditor] = useState<{ node?: PlotNode; parentId: string | null } | null>(
     null,
   );
@@ -69,22 +68,6 @@ export function PlanningWorkbench({
           <p>卷章与大纲、作品核心、场景及相关设定在同一上下文中协作。</p>
         </div>
         <div className="feature-heading__actions">
-          <button
-            className={!professional ? 'quiet-button is-active' : 'quiet-button'}
-            data-planning-mode="beginner"
-            type="button"
-            onClick={() => setProfessional(false)}
-          >
-            简明
-          </button>
-          <button
-            className={professional ? 'quiet-button is-active' : 'quiet-button'}
-            data-planning-mode="professional"
-            type="button"
-            onClick={() => setProfessional(true)}
-          >
-            完整
-          </button>
           <button className="quiet-button" data-close-planning type="button" onClick={onClose}>
             返回写作
           </button>

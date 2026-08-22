@@ -3,7 +3,7 @@
   "id": "M12-04",
   "source": "docs/tasks/M12/M12-04_AUTHOR_EXPERIENCE_CONVERGENCE.md",
   "priority": "P1",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "startedAt": "2026-08-21T12:29:40+08:00",
   "baseline": "b2dd6aa30c76ef9d8277098c54761b9b5ab9697b",
   "executionBranch": "work",
@@ -44,5 +44,10 @@
     "pnpm ci:policy",
     "pnpm release:check"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 432,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M12-04"
+  },
+  "implementedAt": "2026-08-22T11:04:49+08:00"
 }

@@ -1,0 +1,25 @@
+{
+  "taskId": "M12-04",
+  "implementationCommit": "ff40812c8171b905501f8d5c4bfc7126c5a5406b",
+  "workflowRun": 32547402128,
+  "storage": "真实 SQLite 项目数据库与 DraftService.applyPatch 写事务",
+  "sampleLanguage": "简体中文长章节",
+  "budgetsMs": {
+    "statisticsP95": 50,
+    "autosaveP95": 150
+  },
+  "measurements": [
+    {
+      "characters": 8000,
+      "samples": 16,
+      "statisticsP95Ms": 1.3086780000003273,
+      "autosaveP95Ms": 11.7329450000002
+    },
+    {
+      "characters": 20000,
+      "samples": 16,
+      "statisticsP95Ms": 12.987141999999949,
+      "autosaveP95Ms": 32.384645999999975
+    }
+  ]
+}

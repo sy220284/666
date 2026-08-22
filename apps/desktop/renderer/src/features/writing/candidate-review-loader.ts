@@ -11,6 +11,7 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import {
   rendererCommandCoordinatorFor,
   type RendererCommandScope,
@@ -26,6 +27,7 @@ function commandKey(prefix: string, command: string): string {
 
 export interface CandidateReviewLoader {
   readonly bridge: RendererBridgeAdapter;
+  readonly disclosureMode?: AppDisclosureMode;
   readonly projectId: string;
   readonly chapterId: string;
   readonly commandPrefix: string;
@@ -135,10 +137,11 @@ export async function loadCandidatePreview(
       );
       const canUndo = await loadCandidateUndo(input, outcome.data, scope.isCurrent);
       if (!scope.isCurrent()) return;
+      const readyMessage = canUndo ? '可整体撤销' : '已准备采用';
       input.setStatus(
-        canUndo
-          ? `可整体撤销 · 基础保存序号 ${outcome.data.candidate.baseDraftRevision}`
-          : `已准备采用 · 基础保存序号 ${outcome.data.candidate.baseDraftRevision}`,
+        input.disclosureMode === 'beginner'
+          ? readyMessage
+          : `${readyMessage} · 基础保存序号 ${outcome.data.candidate.baseDraftRevision}`,
       );
     },
   });

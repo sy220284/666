@@ -1,6 +1,8 @@
 import type { GenerationRun } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { authorGenerationStageLabel } from '../../presentation/author-status-labels.js';
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import { loadCandidateList, type CandidateReviewLoader } from './candidate-review-loader.js';
 
 interface GenerationEpoch {
@@ -10,6 +12,7 @@ interface GenerationEpoch {
 export interface CandidateGenerationRefreshInput {
   readonly activeRun: GenerationRun | null;
   readonly bridge: RendererBridgeAdapter;
+  readonly disclosureMode?: AppDisclosureMode;
   readonly projectId: string;
   readonly loader: CandidateReviewLoader;
   readonly generationEpoch: GenerationEpoch;
@@ -36,10 +39,11 @@ export async function refreshCandidateGenerationRun(
   }
 
   input.setActiveRun(outcome.data);
+  const stage = authorGenerationStageLabel(outcome.data.stage, outcome.data.status);
   input.setGenerationStatus(
-    `${outcome.data.stage} · ${outcome.data.status}${
-      outcome.data.outputTokens === null ? '' : ` · 输出 ${outcome.data.outputTokens} tokens`
-    }`,
+    input.disclosureMode === 'professional' && outcome.data.outputTokens !== null
+      ? `${stage} · 输出用量 ${outcome.data.outputTokens}`
+      : stage,
   );
   if (
     outcome.data.status !== 'succeeded' &&

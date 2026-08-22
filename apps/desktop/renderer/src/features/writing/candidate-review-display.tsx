@@ -12,6 +12,7 @@ import type {
   VersionDocument,
 } from '@worldforge/contracts';
 
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import { candidateConflictLabel } from './candidate-conflicts.js';
 import { CandidateSkeletonReview } from './candidate-skeleton-review.js';
 import { toggleSelectionSet, type CandidateSelectionMode } from './candidate-selection.js';
@@ -27,6 +28,7 @@ import {
 
 interface CandidateReviewDisplayProps {
   readonly apply: () => Promise<void>;
+  readonly disclosureMode?: AppDisclosureMode;
   readonly baseVersion: VersionDocument | null;
   readonly cancel: () => Promise<void>;
   readonly candidateId: string;
@@ -161,34 +163,37 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
       >
         {status}
       </p>
-      {selectedRun ? (
-        <dl className="generation-provenance" data-selected-candidate-provenance>
-          <div>
-            <dt>来源任务</dt>
-            <dd>{selectedRun.runId}</dd>
-          </div>
-          <div>
-            <dt>智能连接 / 模型</dt>
-            <dd>
-              {providers.find((provider) => provider.id === selectedRun.providerId)?.name ??
-                selectedRun.providerId}{' '}
-              / {selectedRun.actualModel}
-            </dd>
-          </div>
-          <div>
-            <dt>生成指令版本</dt>
-            <dd>
-              {selectedRun.promptId} · 第 {selectedRun.promptVersion} 版
-            </dd>
-          </div>
-          <div>
-            <dt>输出方式</dt>
-            <dd>
-              {generationOutputModeLabel(selectedRun.outputMode)} ·{' '}
-              {generationSupportLabel(selectedRun.supportStatus)}
-            </dd>
-          </div>
-        </dl>
+      {selectedRun && props.disclosureMode !== 'beginner' ? (
+        <details data-candidate-technical-details>
+          <summary>技术详情</summary>
+          <dl className="generation-provenance" data-selected-candidate-provenance>
+            <div>
+              <dt>来源任务</dt>
+              <dd>{selectedRun.runId}</dd>
+            </div>
+            <div>
+              <dt>智能连接 / 模型</dt>
+              <dd>
+                {providers.find((provider) => provider.id === selectedRun.providerId)?.name ??
+                  selectedRun.providerId}{' '}
+                / {selectedRun.actualModel}
+              </dd>
+            </div>
+            <div>
+              <dt>生成指令版本</dt>
+              <dd>
+                {selectedRun.promptId} · 第 {selectedRun.promptVersion} 版
+              </dd>
+            </div>
+            <div>
+              <dt>输出方式</dt>
+              <dd>
+                {generationOutputModeLabel(selectedRun.outputMode)} ·{' '}
+                {generationSupportLabel(selectedRun.supportStatus)}
+              </dd>
+            </div>
+          </dl>
+        </details>
       ) : null}
       {selectedDocument?.candidateType === 'skeleton' ? (
         <CandidateSkeletonReview

@@ -13,6 +13,7 @@ import {
 import type { ContinuityBridge, WorldforgeBridge } from '@worldforge/contracts';
 
 import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+import { confirmAuthorDialog } from './author-dialog.js';
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
@@ -119,17 +120,14 @@ test('previews split and permanent delete, blocks current chapter references, an
     // Destructive structure operations live in the full planning workspace, not the compact writing outline.
     await openCompletePlanning(page);
 
-    // Exercise the real UI command and verify stale structure reads cannot overwrite its result.
-    await page.evaluate(() => {
-      window.prompt = () => '拆出章节';
-      window.confirm = () => true;
-    });
-
+    // Exercise the author dialog and verify stale structure reads cannot overwrite its result.
     await page.locator('.chapter-node').first().locator('[data-split-chapter]').click();
+    await confirmAuthorDialog(page, { value: '拆出章节' });
     const splitPicker = page.locator('[data-draft-block-picker]');
     await expect(splitPicker).toBeVisible();
     await expect(splitPicker.locator('[data-draft-block-choice]')).toHaveCount(1);
     await splitPicker.locator('[data-confirm-draft-block-picker]').click();
+    await confirmAuthorDialog(page);
     await expect(splitPicker).not.toBeVisible();
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
@@ -183,13 +181,9 @@ test('previews split and permanent delete, blocks current chapter references, an
       };
     });
 
-    // Reinstall deterministic confirmation after reload for delete and permanent-delete UI actions.
-    await page.evaluate(() => {
-      window.confirm = () => true;
-      window.prompt = () => '拆出章节';
-    });
     const splitChapter = page.locator('.chapter-node').filter({ hasText: '拆出章节' });
     await splitChapter.locator('[data-delete-chapter]').click();
+    await confirmAuthorDialog(page);
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-entry-id]')).toHaveCount(1);
 
@@ -225,6 +219,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     }, anchor);
 
     await page.locator('[data-trash-entry-id]').locator('[data-permanent-delete]').click();
+    await confirmAuthorDialog(page, { value: '拆出章节' });
     await expect(page.locator('[data-trash-empty]')).toBeVisible();
     await expect(page.locator('[data-trash-status]')).toContainText('已永久删除 · 恢复点');
     await captureAcceptanceScreenshot(page, 'M2-04', 'permanent-delete-checkpoint.png');

@@ -101,7 +101,7 @@ export function NarrativePlanningEditors({
     status: 'hit' | 'skipped',
   ): Promise<void> => {
     const actualChapterId =
-      status === 'hit' ? promptChapterId(references.chapters, '选择实际命中章节序号：') : null;
+      status === 'hit' ? await promptChapterId(references.chapters, '选择实际命中章节：') : null;
     if (status === 'hit' && !actualChapterId) return;
     await command.run(() =>
       bridge.narrativePlanning.transitionArcMilestone({

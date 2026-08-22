@@ -13,6 +13,13 @@ import type * as ChecksReactHooks from '../../apps/desktop/renderer/src/features
 import type { AuthorNavigationTarget } from '../../apps/desktop/renderer/src/shell/navigation-target.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorPrompt: async ({ title, initialValue }: { title: string; initialValue?: string }) =>
+    window.prompt(title, initialValue),
+  authorSelect: async ({ title, initialValue }: { title: string; initialValue?: string }) =>
+    window.prompt(title, initialValue),
+}));
+
 const hookHarness = vi.hoisted(() => ({
   effects: [] as Array<() => void | (() => void)>,
   stateIndex: 0,
@@ -199,6 +206,70 @@ async function invoke(
 }
 
 describe('M11 内容检查工作台交互覆盖', () => {
+  it('keeps four author sections mounted while switching the visible work area', async () => {
+    const bridge = contractInput<RendererBridgeAdapter>({});
+    resetHooks([
+      structure,
+      catalog,
+      [provider],
+      provider.id,
+      chapterId,
+      true,
+      false,
+      null,
+      '检查已就绪。',
+      'open',
+      'validation',
+      '伏笔',
+      'timeline',
+      '主角',
+      new Set([catalog.comments[0]!.commentId]),
+      'checks',
+    ]);
+
+    const tree = ChecksWorkbench({ bridge, projectId, readOnly: false, onNavigate: vi.fn() });
+    const sectionButtons = elements(tree, 'button').filter(
+      (button) => button.props['data-checks-section'] !== undefined,
+    );
+    expect(sectionButtons.map((button) => button.props['data-checks-section'])).toEqual([
+      'checks',
+      'search',
+      'rhythm',
+      'review',
+    ]);
+
+    const sectionPanels = [...elements(tree, 'section'), ...elements(tree, 'div')].filter(
+      (panel) => panel.props['data-checks-section-panel'] !== undefined,
+    );
+    expect(
+      sectionPanels.map((panel) => ({
+        section: panel.props['data-checks-section-panel'],
+        hidden: panel.props.hidden,
+      })),
+    ).toEqual([
+      { section: 'search', hidden: true },
+      { section: 'rhythm', hidden: true },
+      { section: 'review', hidden: true },
+      { section: 'checks', hidden: false },
+    ]);
+
+    for (const button of sectionButtons) await invoke(button);
+    expect(hookHarness.setters[15]?.mock.calls).toEqual([
+      ['checks'],
+      ['search'],
+      ['rhythm'],
+      ['review'],
+    ]);
+    expect(hookHarness.stateValues.slice(9, 15)).toEqual([
+      'open',
+      'validation',
+      '伏笔',
+      'timeline',
+      '主角',
+      new Set([catalog.comments[0]!.commentId]),
+    ]);
+  });
+
   it('贯通加载、检查、问题处置、例外、待办、批注与原文跳转', async () => {
     const listStructure = vi.fn(async () => ({ state: 'success' as const, data: structure }));
     const listProviders = vi.fn(async () => ({

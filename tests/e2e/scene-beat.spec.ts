@@ -5,6 +5,8 @@ import path from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import type { WorldforgeBridge } from '@worldforge/contracts';
 
+import { confirmAuthorDialog } from './author-dialog.js';
+
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
 
@@ -145,11 +147,11 @@ test('creates and deletes a SceneBeat with entity selectors while preserving Dra
       locationIds: [before.locationId],
     });
 
-    page.once('dialog', (prompt) => prompt.accept());
     await page
       .locator('[data-scene-beat-list] .scene-beat-card')
       .getByRole('button', { name: '删除' })
       .click();
+    await confirmAuthorDialog(page);
     await expect(page.locator('[data-scene-beat-list]')).toContainText('当前章节尚无场景');
     await expect(page.locator('[data-deleted-scene-beat-list]')).toContainText('发现第一条反证');
 

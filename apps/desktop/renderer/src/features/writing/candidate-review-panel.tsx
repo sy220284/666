@@ -17,6 +17,7 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { rendererCommandCoordinatorFor } from '../../runtime/command-coordinator.js';
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import { refreshCandidateGenerationRun } from './candidate-generation-refresh.js';
 import { CandidateReviewDisplay } from './candidate-review-display.js';
 import {
@@ -52,6 +53,7 @@ import { useGenerationRunActions } from './use-generation-run-actions.js';
 export function CandidateReviewPanel({
   bridge,
   chapter,
+  disclosureMode = 'professional',
   draft,
   project,
   flush,
@@ -62,6 +64,7 @@ export function CandidateReviewPanel({
 }: {
   readonly bridge: RendererBridgeAdapter;
   readonly chapter: Chapter;
+  readonly disclosureMode?: AppDisclosureMode;
   readonly draft: DraftDocument;
   readonly project: ProjectWorkspaceSummary;
   readonly flush: () => Promise<boolean>;
@@ -80,7 +83,9 @@ export function CandidateReviewPanel({
   const [selectedBeats, setSelectedBeats] = useState<Set<string>>(new Set());
   const [conflicts, setConflicts] = useState<readonly CandidateConflictItem[]>([]);
   const [status, setStatus] = useState(
-    `预览只读取已保存的当前稿（保存序号 ${draft.revision}），不会写入作品数据库。`,
+    disclosureMode === 'beginner'
+      ? '预览只读取已保存的当前稿，不会写入作品数据库。'
+      : `预览只读取已保存的当前稿（保存序号 ${draft.revision}），不会写入作品数据库。`,
   );
   const [pending, setPending] = useState(false);
   const documentRequest = useRef(0);
@@ -134,6 +139,7 @@ export function CandidateReviewPanel({
   const loader = useMemo<CandidateReviewLoader>(
     () => ({
       bridge,
+      disclosureMode,
       projectId: project.projectId,
       chapterId: chapter.id,
       commandPrefix,
@@ -154,7 +160,7 @@ export function CandidateReviewPanel({
       setStatus,
       setPending,
     }),
-    [bridge, chapter.id, commandPrefix, project.projectId],
+    [bridge, chapter.id, commandPrefix, disclosureMode, project.projectId],
   );
   const refreshList = useCallback(
     (canCommit?: () => boolean) => loadCandidateList(loader, canCommit),
@@ -241,6 +247,7 @@ export function CandidateReviewPanel({
       refreshCandidateGenerationRun({
         activeRun,
         bridge,
+        disclosureMode,
         projectId: project.projectId,
         loader,
         generationEpoch,
@@ -250,7 +257,7 @@ export function CandidateReviewPanel({
         setCandidateId,
         setActiveTaskId,
       }),
-    [activeRun, bridge, loadCandidate, loader, project.projectId],
+    [activeRun, bridge, disclosureMode, loadCandidate, loader, project.projectId],
   );
 
   useGenerationTaskSubscription({
@@ -278,6 +285,7 @@ export function CandidateReviewPanel({
   const actionContext = useMemo<CandidateActionContext>(
     () => ({
       bridge,
+      disclosureMode,
       projectId: project.projectId,
       chapterId: chapter.id,
       commandPrefix,
@@ -293,7 +301,16 @@ export function CandidateReviewPanel({
       setStatus,
       setPending,
     }),
-    [bridge, chapter.id, commandPrefix, onDraftReplace, project.projectId, readOnly, refreshList],
+    [
+      bridge,
+      chapter.id,
+      commandPrefix,
+      disclosureMode,
+      onDraftReplace,
+      project.projectId,
+      readOnly,
+      refreshList,
+    ],
   );
   const discard = () => discardCandidate(actionContext, selectedDocument);
   const apply = () => applyCandidate({ ...actionContext, flush, loadUndo }, preview, selection);
@@ -371,6 +388,7 @@ export function CandidateReviewPanel({
       </header>
       <GenerationStudio
         activeRun={activeRun}
+        disclosureMode={disclosureMode}
         acknowledgeStaleSkeleton={acknowledgeStaleSkeleton}
         candidateCount={candidateCount}
         chapterGoal={chapterGoal}
@@ -421,6 +439,7 @@ export function CandidateReviewPanel({
       />
       <CandidateReviewDisplay
         apply={apply}
+        disclosureMode={disclosureMode}
         baseVersion={baseVersion}
         cancel={cancel}
         candidateId={candidateId}

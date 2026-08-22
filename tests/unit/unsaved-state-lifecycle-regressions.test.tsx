@@ -19,6 +19,14 @@ import {
 import { registeredUnsavedChangeLabels } from '../../apps/desktop/renderer/src/runtime/unsaved-changes.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: async ({ title, message }: { title: string; message?: string }) =>
+    window.confirm(message ?? title),
+  authorConfirmName: async ({ expectedName }: { expectedName: string }) =>
+    window.prompt(`输入名称“${expectedName}”确认：`) === expectedName,
+  authorSelect: vi.fn(),
+}));
+
 const entityControls = vi.hoisted(() => ({
   resource: {
     state: 'success' as const,

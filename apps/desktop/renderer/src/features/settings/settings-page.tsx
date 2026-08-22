@@ -78,7 +78,7 @@ export function SettingsPage(props: SettingsPageProps) {
     availability: sectionAvailability,
   });
 
-  const navigate = (candidate: string): void => {
+  const navigate = async (candidate: string): Promise<void> => {
     const resolution = resolveSettingsNavigationIntent(candidate, {
       disclosureMode: props.disclosureMode,
       currentSection: section,
@@ -86,7 +86,7 @@ export function SettingsPage(props: SettingsPageProps) {
     });
     if (
       resolution.accepted &&
-      (resolution.section === section || confirmRegisteredUnsavedChanges('切换设置分区'))
+      (resolution.section === section || (await confirmRegisteredUnsavedChanges('切换设置分区')))
     ) {
       setSection(resolution.section);
     }
@@ -267,9 +267,12 @@ function GeneralSettings(props: SettingsPageProps) {
           className="quiet-button"
           disabled={Boolean(props.pendingKey)}
           type="button"
-          onClick={() => {
-            if (!dirty || confirmRegisteredUnsavedChanges('恢复默认设置')) props.onResetSettings();
-          }}
+          onClick={() =>
+            void (async () => {
+              if (!dirty || (await confirmRegisteredUnsavedChanges('恢复默认设置')))
+                props.onResetSettings();
+            })()
+          }
         >
           恢复默认
         </button>

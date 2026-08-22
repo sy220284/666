@@ -4,6 +4,12 @@ import { StateProposalSchema, type StateProposal } from '@worldforge/contracts';
 
 import { editProposalValue } from '../../apps/desktop/renderer/src/features/canon/state-proposal-author-edit.js';
 
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorPrompt: async ({ title, initialValue }: { title: string; initialValue?: string }) =>
+    window.prompt(title, initialValue),
+  authorSelect: vi.fn(),
+}));
+
 const ids = {
   proposal: '11111111-1111-4111-8111-111111111111',
   batch: '22222222-2222-4222-8222-222222222222',
@@ -120,82 +126,85 @@ function prompt(...values: Array<string | null>): ReturnType<typeof vi.fn> {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('StateProposal author edit edge coverage', () => {
-  it('edits optional knowledge notes and covers cancellation/non-object structured input', () => {
+  it('edits optional knowledge notes and covers cancellation/non-object structured input', async () => {
     let ask = prompt('  新说明  ', null);
-    expect(editProposalValue(knowledge())).toEqual({
+    expect(await editProposalValue(knowledge())).toEqual({
       state: 'ready',
       value: { knowledgeStatus: 'knows', validUntilChapterId: null, notes: '新说明' },
     });
     expect(ask).toHaveBeenLastCalledWith('知情状态说明：请填写作者确认后的说明。', '旧说明');
-    expect(editProposalValue(knowledge())).toEqual({ state: 'cancelled' });
+    expect(await editProposalValue(knowledge())).toEqual({ state: 'cancelled' });
 
     ask = prompt('  ');
     expect(
-      editProposalValue(
+      await editProposalValue(
         knowledge({ knowledgeStatus: 'knows', validUntilChapterId: null, notes: 42 }),
       ),
     ).toMatchObject({ state: 'ready', value: { notes: '' } });
     expect(ask).toHaveBeenLastCalledWith('知情状态说明：请填写作者确认后的说明。', '');
 
-    expect(editProposalValue(knowledge('invalid'))).toEqual({
+    expect(await editProposalValue(knowledge('invalid'))).toEqual({
       state: 'invalid',
       message: '当前建议暂不支持直接修改，可以接受或忽略。',
     });
   });
 
-  it('enforces required titles, relationship labels and entity names', () => {
+  it('enforces required titles, relationship labels and entity names', async () => {
     let ask = prompt(' 新事件 ', '   ', null);
-    expect(editProposalValue(timeline())).toMatchObject({
+    expect(await editProposalValue(timeline())).toMatchObject({
       state: 'ready',
       value: { title: '新事件' },
     });
-    expect(editProposalValue(timeline())).toEqual({ state: 'invalid', message: '内容不能为空。' });
-    expect(editProposalValue(timeline())).toEqual({ state: 'cancelled' });
+    expect(await editProposalValue(timeline())).toEqual({
+      state: 'invalid',
+      message: '内容不能为空。',
+    });
+    expect(await editProposalValue(timeline())).toEqual({ state: 'cancelled' });
     expect(ask).toHaveBeenCalledWith('时间线事件标题：请填写作者确认后的标题。', '旧标题');
 
     prompt(' 敌手 ', '   ');
-    expect(editProposalValue(relationship())).toMatchObject({
+    expect(await editProposalValue(relationship())).toMatchObject({
       state: 'ready',
       value: { label: '敌手' },
     });
-    expect(editProposalValue(relationship())).toEqual({
+    expect(await editProposalValue(relationship())).toEqual({
       state: 'invalid',
       message: '内容不能为空。',
     });
 
     ask = prompt(' 新人物 ', '');
-    expect(editProposalValue(entityCreate())).toMatchObject({
+    expect(await editProposalValue(entityCreate())).toMatchObject({
       state: 'ready',
       value: { name: '新人物' },
     });
-    expect(editProposalValue(entityCreate())).toEqual({
+    expect(await editProposalValue(entityCreate())).toEqual({
       state: 'invalid',
       message: '内容不能为空。',
     });
     expect(ask).toHaveBeenCalledWith('人物或设定名称：请填写作者确认后的名称。', '阿灯');
   });
 
-  it('covers canon-fact current-value fallback, cancellation, blank rejection and success', () => {
+  it('covers canon-fact current-value fallback, cancellation, blank rejection and success', async () => {
     prompt(null, '   ', ' 新事实 ');
-    expect(editProposalValue(canonFact())).toEqual({ state: 'cancelled' });
-    expect(editProposalValue(canonFact())).toEqual({
+    expect(await editProposalValue(canonFact())).toEqual({ state: 'cancelled' });
+    expect(await editProposalValue(canonFact())).toEqual({
       state: 'invalid',
       message: '设定事实不能为空。',
     });
-    expect(editProposalValue(canonFact())).toEqual({
+    expect(await editProposalValue(canonFact())).toEqual({
       state: 'ready',
       value: { value: '新事实', description: '' },
     });
 
     const ask = prompt('替换数字事实');
-    expect(editProposalValue(canonFact({ value: 42, description: '' }))).toMatchObject({
+    expect(await editProposalValue(canonFact({ value: 42, description: '' }))).toMatchObject({
       state: 'ready',
       value: { value: '替换数字事实' },
     });
     expect(ask).toHaveBeenLastCalledWith('设定事实：请填写作者确认后的内容。', '');
   });
 
-  it('covers foreshadowing cancellation, invalid status and all allowed status values', () => {
+  it('covers foreshadowing cancellation, invalid status and all allowed status values', async () => {
     const allowed = [
       'planned',
       'planted',
@@ -205,13 +214,13 @@ describe('StateProposal author edit edge coverage', () => {
       'cancelled',
     ];
     const ask = prompt(null, 'unknown', ...allowed);
-    expect(editProposalValue(foreshadowing())).toEqual({ state: 'cancelled' });
-    expect(editProposalValue(foreshadowing())).toEqual({
+    expect(await editProposalValue(foreshadowing())).toEqual({ state: 'cancelled' });
+    expect(await editProposalValue(foreshadowing())).toEqual({
       state: 'invalid',
       message: '伏笔进度填写不正确。',
     });
     for (const status of allowed) {
-      expect(editProposalValue(foreshadowing())).toMatchObject({
+      expect(await editProposalValue(foreshadowing())).toMatchObject({
         state: 'ready',
         value: { status },
       });
@@ -220,35 +229,35 @@ describe('StateProposal author edit edge coverage', () => {
 
     const nonString = prompt('revealed');
     expect(
-      editProposalValue(foreshadowing({ foreshadowingId: ids.foreshadowing, status: 7 })),
+      await editProposalValue(foreshadowing({ foreshadowingId: ids.foreshadowing, status: 7 })),
     ).toMatchObject({ state: 'ready', value: { status: 'revealed' } });
     expect(nonString).toHaveBeenLastCalledWith(expect.stringContaining('伏笔进度'), '');
   });
 
-  it('covers inferred text and configured default-value branches for entity state', () => {
+  it('covers inferred text and configured default-value branches for entity state', async () => {
     let ask = prompt(' 新文本 ');
-    expect(editProposalValue(entityState('custom-string', '旧文本'))).toMatchObject({
+    expect(await editProposalValue(entityState('custom-string', '旧文本'))).toMatchObject({
       state: 'ready',
       value: { value: '新文本' },
     });
     expect(ask).toHaveBeenLastCalledWith('最终内容：直接填写最终内容', '旧文本');
 
     ask = prompt('是');
-    expect(editProposalValue(entityState('alive', true))).toMatchObject({
+    expect(await editProposalValue(entityState('alive', true))).toMatchObject({
       state: 'ready',
       value: { value: true },
     });
     expect(ask).toHaveBeenLastCalledWith(expect.stringContaining('请输入“是”或“否”'), '是');
 
     ask = prompt('否');
-    expect(editProposalValue(entityState('alive', false))).toMatchObject({
+    expect(await editProposalValue(entityState('alive', false))).toMatchObject({
       state: 'ready',
       value: { value: false },
     });
     expect(ask).toHaveBeenLastCalledWith(expect.stringContaining('请输入“是”或“否”'), '否');
 
     ask = prompt('临安');
-    expect(editProposalValue(entityState('location', null))).toMatchObject({
+    expect(await editProposalValue(entityState('location', null))).toMatchObject({
       state: 'ready',
       value: { value: '临安' },
     });

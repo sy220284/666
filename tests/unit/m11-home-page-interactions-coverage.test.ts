@@ -249,6 +249,51 @@ afterEach(() => {
 });
 
 describe('M11 首页交互与创建边界覆盖', () => {
+  it('让三条创作路径分别进入正文、章节骨架协作和章节建议稿', async () => {
+    const scenarios = [
+      { path: 'autonomous', primary: '继续写作', mode: null, order: ['planning', 'canon'] },
+      { path: 'hybrid', primary: '规划本章并协作', mode: 'skeleton', order: ['planning', 'canon'] },
+      {
+        path: 'ai-first',
+        primary: '生成本章建议稿',
+        mode: 'chapter',
+        order: ['canon', 'planning'],
+      },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      const onWritingAction = vi.fn();
+      const props = baseProps({
+        activeProject,
+        continuation,
+        providerAvailable: true,
+        settings: { ...settings, creativePath: scenario.path },
+        onWritingAction,
+      });
+      const renderer = await mount(props);
+      const primary = control(
+        renderer.root,
+        'button',
+        (node) => node.props['data-creative-path-primary'] === scenario.path,
+      );
+      expect(textContent(primary)).toBe(scenario.primary);
+      const recommendations = renderer.root
+        .findAll((node) => Boolean(node.props['data-creative-path-recommendation']))
+        .map((node) => node.props['data-creative-path-recommendation']);
+      expect(recommendations).toEqual(scenario.order);
+
+      await invoke(primary, 'onClick');
+      if (scenario.mode === null) expect(props.onContinue).toHaveBeenCalledOnce();
+      else
+        expect(onWritingAction).toHaveBeenCalledWith({
+          type: 'writing-action',
+          projectId,
+          generationMode: scenario.mode,
+        });
+      renderer.unmount();
+    }
+  });
+
   it('执行首页、最近作品与活动作品动作', async () => {
     const props = baseProps({
       recentProjects: [

@@ -26,6 +26,10 @@ vi.mock('@worldforge/editor-core', () => ({
   undoWorldforgeEditor: capture.undo,
   redoWorldforgeEditor: capture.redo,
 }));
+vi.mock('../../packages/editor-core/dist/index.js', () => ({
+  undoWorldforgeEditor: capture.undo,
+  redoWorldforgeEditor: capture.redo,
+}));
 vi.mock('../../apps/desktop/renderer/src/features/writing/editor-selection.js', () => ({
   captureRewriteSelectionAnchor: capture.rewriteAnchor,
   capturePersistedRewriteSelectionAnchor: capture.persistedRewriteAnchor,
@@ -174,6 +178,7 @@ interface ViewOptions {
 function view(options: ViewOptions = {}): ReactElement {
   return createElement(WritingWorkbenchView, {
     bridge,
+    disclosureMode: 'professional',
     project,
     panel: options.panel ?? 'editor',
     chapterSessionPhase: 'ready',

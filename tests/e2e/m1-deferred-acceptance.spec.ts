@@ -12,6 +12,8 @@ import {
 } from '@playwright/test';
 import type { WorldforgeBridge } from '@worldforge/contracts';
 
+import { confirmAuthorDialog } from './author-dialog.js';
+
 const root = process.cwd();
 const temporaryDirectories: string[] = [];
 
@@ -135,8 +137,8 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await page.locator('input[name="targetWordMin"]').fill('2000');
     await page.locator('input[name="targetWordMax"]').fill('3000');
     await page.locator('[data-save-structure]').click();
-    page.once('dialog', (dialog) => dialog.accept());
     await page.locator('[data-chapter-title="第二章"] [data-delete-chapter]').click();
+    await confirmAuthorDialog(page);
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-entry-id]')).toHaveCount(1);
     await page.locator('[data-restore-original]').click();

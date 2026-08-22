@@ -18,6 +18,13 @@ const controls = vi.hoisted(() => ({
   previewRun: vi.fn(),
   pickMultipleBlocks: vi.fn(),
   pickBlockAnchor: vi.fn(),
+  authorConfirm: vi.fn(),
+  authorPrompt: vi.fn(),
+}));
+
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: controls.authorConfirm,
+  authorPrompt: controls.authorPrompt,
 }));
 
 vi.mock('../../apps/desktop/renderer/src/bridge/use-bridge-resource.js', () => ({
@@ -215,6 +222,8 @@ beforeEach(() => {
   }
   controls.pickMultipleBlocks.mockReset();
   controls.pickBlockAnchor.mockReset();
+  controls.authorConfirm.mockReset().mockResolvedValue(true);
+  controls.authorPrompt.mockReset().mockResolvedValue('第二章（下）');
 });
 
 afterEach(async () => {
@@ -227,8 +236,7 @@ afterEach(async () => {
 describe('StructureOperationDialog destructive-operation coverage', () => {
   it('never deletes when confirmation or pre-write saving is refused', async () => {
     const harness = createBridge();
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValue(true);
-    vi.stubGlobal('window', { confirm, prompt: vi.fn() });
+    controls.authorConfirm.mockResolvedValueOnce(false);
     const beforeWrite = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true);
     const status = vi.fn();
     const operations = await renderOperations({
@@ -252,9 +260,7 @@ describe('StructureOperationDialog destructive-operation coverage', () => {
 
   it('splits only after a valid block anchor, executable preview and final confirmation', async () => {
     const harness = createBridge();
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true);
-    const prompt = vi.fn().mockReturnValue('第二章（下）');
-    vi.stubGlobal('window', { confirm, prompt });
+    controls.authorConfirm.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     const beforeWrite = vi.fn().mockResolvedValue(true);
     const status = vi.fn();
     const operations = await renderOperations({
@@ -274,11 +280,11 @@ describe('StructureOperationDialog destructive-operation coverage', () => {
     });
     await operations.splitChapter(sourceChapter);
     expect(harness.splitChapter).not.toHaveBeenCalled();
-    expect(confirm).not.toHaveBeenCalled();
+    expect(controls.authorConfirm).not.toHaveBeenCalled();
 
     controls.pickBlockAnchor.mockResolvedValueOnce('source-2');
     await operations.splitChapter(sourceChapter);
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(controls.authorConfirm).toHaveBeenCalledOnce();
     expect(harness.splitChapter).not.toHaveBeenCalled();
 
     controls.pickBlockAnchor.mockResolvedValueOnce('source-2');
@@ -297,7 +303,6 @@ describe('StructureOperationDialog destructive-operation coverage', () => {
 
   it('does not merge when either draft cannot be read and preserves revision provenance on success', async () => {
     const harness = createBridge();
-    vi.stubGlobal('window', { confirm: vi.fn().mockReturnValue(true), prompt: vi.fn() });
     const status = vi.fn();
     const operations = await renderOperations({
       bridge: harness.bridge,
@@ -351,7 +356,6 @@ describe('StructureOperationDialog destructive-operation coverage', () => {
 
   it('requires explicit block selection and insertion anchor before cross-chapter movement', async () => {
     const harness = createBridge();
-    vi.stubGlobal('window', { confirm: vi.fn().mockReturnValue(true), prompt: vi.fn() });
     const status = vi.fn();
     const operations = await renderOperations({
       bridge: harness.bridge,

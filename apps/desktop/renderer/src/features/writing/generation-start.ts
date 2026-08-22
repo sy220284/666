@@ -138,7 +138,7 @@ export async function startGenerationTask(input: GenerationStartInput): Promise<
         return;
       }
       input.onStarted(outcome.data.run, outcome.data.taskId);
-      input.setStatus(`任务已启动 · ${outcome.data.run.stage}`);
+      input.setStatus('任务已启动 · 等待开始');
     },
   });
 

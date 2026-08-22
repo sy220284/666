@@ -79,7 +79,7 @@ export function useProjectSessionController({
 
   const prepareProjectTransition = useCallback(
     async (blockedMessage: string, scope?: RendererCommandScope): Promise<boolean> => {
-      if (!confirmRegisteredUnsavedChanges('继续当前作品操作')) {
+      if (!(await confirmRegisteredUnsavedChanges('继续当前作品操作'))) {
         if (scope?.isCurrent() ?? true) setMessage('已保留当前页面的未保存修改。');
         return false;
       }

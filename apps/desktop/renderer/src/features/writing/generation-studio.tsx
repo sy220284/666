@@ -6,6 +6,7 @@ import type {
   SceneBeat,
 } from '@worldforge/contracts';
 
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import { candidateTypeLabel } from './review-diff.js';
 
 export type GenerationMode = 'skeleton' | 'chapter' | 'rewrite' | 'merge';
@@ -15,6 +16,7 @@ export type MergeMappingMode = 'beat' | 'segment';
 
 interface GenerationStudioProps {
   readonly activeRun: GenerationRun | null;
+  readonly disclosureMode?: AppDisclosureMode;
   readonly acknowledgeStaleSkeleton: boolean;
   readonly candidateCount: number;
   readonly chapterGoal: string;
@@ -137,21 +139,23 @@ export function GenerationStudio(props: GenerationStudioProps) {
               <option value="merge">融合建议稿</option>
             </select>
           </label>
-          <label>
-            智能连接
-            <select
-              data-generation-provider
-              value={providerId}
-              onChange={(event) => props.onProviderIdChange(event.target.value)}
-            >
-              <option value="">按任务自动选择</option>
-              {providers.map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.name} · {provider.model}
-                </option>
-              ))}
-            </select>
-          </label>
+          {props.disclosureMode !== 'beginner' ? (
+            <label>
+              智能连接
+              <select
+                data-generation-provider
+                value={providerId}
+                onChange={(event) => props.onProviderIdChange(event.target.value)}
+              >
+                <option value="">按任务自动选择</option>
+                {providers.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.name} · {provider.model}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           {generationMode === 'chapter' ? (
             <label>
               正文来源
@@ -402,27 +406,30 @@ export function GenerationStudio(props: GenerationStudioProps) {
           </button>
         ) : null}
       </div>
-      {activeRun ? (
-        <dl className="generation-provenance" data-active-generation-run>
-          <div>
-            <dt>生成记录</dt>
-            <dd>{activeRun.runId}</dd>
-          </div>
-          <div>
-            <dt>生成指令版本</dt>
-            <dd>
-              {activeRun.promptId} · 第 {activeRun.promptVersion} 版
-            </dd>
-          </div>
-          <div>
-            <dt>模型</dt>
-            <dd>{activeRun.actualModel}</dd>
-          </div>
-          <div>
-            <dt>兼容状态</dt>
-            <dd>{activeRun.supportStatus}</dd>
-          </div>
-        </dl>
+      {activeRun && props.disclosureMode !== 'beginner' ? (
+        <details data-generation-technical-details>
+          <summary>技术详情</summary>
+          <dl className="generation-provenance" data-active-generation-run>
+            <div>
+              <dt>生成记录</dt>
+              <dd>{activeRun.runId}</dd>
+            </div>
+            <div>
+              <dt>生成指令版本</dt>
+              <dd>
+                {activeRun.promptId} · 第 {activeRun.promptVersion} 版
+              </dd>
+            </div>
+            <div>
+              <dt>模型</dt>
+              <dd>{activeRun.actualModel}</dd>
+            </div>
+            <div>
+              <dt>兼容状态</dt>
+              <dd>{activeRun.supportStatus}</dd>
+            </div>
+          </dl>
+        </details>
       ) : null}
     </section>
   );

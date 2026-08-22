@@ -22,6 +22,10 @@ vi.mock('../../apps/desktop/renderer/src/bridge/use-bridge-resource.js', () => (
   }),
 }));
 
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: async ({ title }: { title: string }) => window.confirm(title),
+}));
+
 import { PlotTree } from '../../apps/desktop/renderer/src/features/planning/outline/plot-tree.js';
 
 const rendererRequire = createRequire(

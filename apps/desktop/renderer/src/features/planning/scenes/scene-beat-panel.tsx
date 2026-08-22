@@ -5,6 +5,7 @@ import type { Entity, PlotNode, SceneBeat } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../../bridge/use-bridge-resource.js';
 import { authorSceneBeatTypeLabel } from '../../../presentation/author-value-format.js';
+import { authorConfirm, authorSelect } from '../../../runtime/author-dialog.js';
 import { interactionLocked } from '../../../runtime/interaction-locks.js';
 import { useDraftBlockPicker } from '../../writing/draft-block-picker.js';
 import { SceneBeatDialog } from './scene-beat-dialog.js';
@@ -46,7 +47,15 @@ export function SceneBeatPanel({
   const blocked = interactionLocked(readOnly, command.pending, previewCommand.pending);
 
   const remove = async (beat: SceneBeat): Promise<void> => {
-    if (!window.confirm(`删除场景“${beat.title}”？正文不会变化。`)) return;
+    if (
+      !(await authorConfirm({
+        title: `删除场景“${beat.title}”？`,
+        message: '正文不会变化。',
+        confirmLabel: '删除场景',
+        danger: true,
+      }))
+    )
+      return;
     const result = await command.run(() =>
       bridge.planning.deleteSceneBeat({ projectId, sceneBeatId: beat.id }),
     );
@@ -117,13 +126,16 @@ export function SceneBeatPanel({
       onStatus('需要至少两个章节才能跨章移动场景。');
       return;
     }
-    const choice = window.prompt(
-      `选择目标章节序号：\n${targets
-        .map(({ chapter, volumeTitle }, index) => `${index + 1}. ${volumeTitle} / ${chapter.title}`)
-        .join('\n')}`,
-      '1',
-    );
-    const target = targets[Number(choice) - 1]?.chapter;
+    const choice = await authorSelect({
+      title: '选择目标章节',
+      options: targets.map(({ chapter, volumeTitle }) => ({
+        value: chapter.id,
+        label: `${volumeTitle} / ${chapter.title}`,
+      })),
+      initialValue: targets[0]?.chapter.id ?? '',
+      confirmLabel: '选择章节',
+    });
+    const target = targets.find(({ chapter }) => chapter.id === choice)?.chapter;
     if (!target) return;
     const input = {
       projectId,
@@ -137,9 +149,11 @@ export function SceneBeatPanel({
     onStatus(`场景跨章预览：${impact}`);
     if (
       !preview.canExecute ||
-      !window.confirm(
-        `将“${beat.title}”移动到“${target.title}”？\n${impact}\n此步骤只移动规划；正文段落如需移动必须另行确认。`,
-      )
+      !(await authorConfirm({
+        title: `将“${beat.title}”移动到“${target.title}”？`,
+        message: `${impact}\n此步骤只移动规划；正文段落如需移动必须另行确认。`,
+        confirmLabel: '确认移动',
+      }))
     )
       return;
     const result = await command.run(() =>

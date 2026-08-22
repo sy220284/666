@@ -1,5 +1,6 @@
 import type { StateProposal } from '@worldforge/contracts';
 
+import { authorPrompt } from '../../runtime/author-dialog.js';
 import {
   COMMON_STATE_FIELDS,
   parseAuthorValue,
@@ -11,7 +12,7 @@ export type ProposalEditResult =
   | { readonly state: 'invalid'; readonly message: string }
   | { readonly state: 'ready'; readonly value: unknown };
 
-export function editProposalValue(proposal: StateProposal): ProposalEditResult {
+export async function editProposalValue(proposal: StateProposal): Promise<ProposalEditResult> {
   if (proposal.proposalType === 'arc_milestone') {
     return editArcMilestoneProposal(proposal);
   }
@@ -32,10 +33,12 @@ export function editProposalValue(proposal: StateProposal): ProposalEditResult {
 
   const fieldLabel =
     COMMON_STATE_FIELDS.find((field) => field.key === target.stateKey)?.label ?? '最终内容';
-  const input = window.prompt(
-    `${fieldLabel}：${authorValueInputHint(valueType)}`,
-    authorValueInputDefault(valueType, innerValue),
-  );
+  const input = await authorPrompt({
+    title: `${fieldLabel}：${authorValueInputHint(valueType)}`,
+    initialValue: authorValueInputDefault(valueType, innerValue),
+    multiline: valueType === 'list',
+    confirmLabel: '确认修改',
+  });
   if (input === null) return { state: 'cancelled' };
 
   try {
@@ -51,7 +54,7 @@ export function editProposalValue(proposal: StateProposal): ProposalEditResult {
   }
 }
 
-function editStructuredProposal(proposal: StateProposal): ProposalEditResult {
+async function editStructuredProposal(proposal: StateProposal): Promise<ProposalEditResult> {
   const value = objectValue(proposal.proposedValue);
   if (!value) return unsupportedProposalEdit();
   switch (proposal.proposalType) {
@@ -65,16 +68,22 @@ function editStructuredProposal(proposal: StateProposal): ProposalEditResult {
       return promptField(value, 'name', '人物或设定名称：请填写作者确认后的名称。', true);
     case 'canon_fact': {
       const current = typeof value['value'] === 'string' ? value['value'] : '';
-      const input = window.prompt('设定事实：请填写作者确认后的内容。', current);
+      const input = await authorPrompt({
+        title: '设定事实：请填写作者确认后的内容。',
+        initialValue: current,
+        confirmLabel: '确认修改',
+      });
       if (input === null) return { state: 'cancelled' };
       if (!input.trim()) return { state: 'invalid', message: '设定事实不能为空。' };
       return { state: 'ready', value: { ...value, value: input.trim() } };
     }
     case 'foreshadowing': {
-      const input = window.prompt(
-        '伏笔进度：填写 planned、planted、reinforced、partially_revealed、revealed 或 cancelled。',
-        typeof value['status'] === 'string' ? value['status'] : '',
-      );
+      const input = await authorPrompt({
+        title:
+          '伏笔进度：填写 planned、planted、reinforced、partially_revealed、revealed 或 cancelled。',
+        initialValue: typeof value['status'] === 'string' ? value['status'] : '',
+        confirmLabel: '确认修改',
+      });
       if (input === null) return { state: 'cancelled' };
       const status = input.trim();
       const allowed = new Set([
@@ -94,13 +103,17 @@ function editStructuredProposal(proposal: StateProposal): ProposalEditResult {
   }
 }
 
-function promptField(
+async function promptField(
   value: Record<string, unknown>,
   field: string,
   message: string,
   required = false,
-): ProposalEditResult {
-  const input = window.prompt(message, typeof value[field] === 'string' ? value[field] : '');
+): Promise<ProposalEditResult> {
+  const input = await authorPrompt({
+    title: message,
+    initialValue: typeof value[field] === 'string' ? value[field] : '',
+    confirmLabel: '确认修改',
+  });
   if (input === null) return { state: 'cancelled' };
   const normalized = input.trim();
   if (required && !normalized) return { state: 'invalid', message: '内容不能为空。' };
@@ -126,12 +139,13 @@ export function proposalConfidenceLabel(confidence: number): '高' | '中' | '�
   return '低';
 }
 
-function editArcMilestoneProposal(proposal: StateProposal): ProposalEditResult {
+async function editArcMilestoneProposal(proposal: StateProposal): Promise<ProposalEditResult> {
   const currentStatus = arcMilestoneStatus(proposal.proposedValue);
-  const input = window.prompt(
-    '成长节点最终状态：请输入“已发生”或“已跳过”。',
-    currentStatus === 'skipped' ? '已跳过' : '已发生',
-  );
+  const input = await authorPrompt({
+    title: '成长节点最终状态：请输入“已发生”或“已跳过”。',
+    initialValue: currentStatus === 'skipped' ? '已跳过' : '已发生',
+    confirmLabel: '确认修改',
+  });
   if (input === null) return { state: 'cancelled' };
 
   const normalized = input.trim();

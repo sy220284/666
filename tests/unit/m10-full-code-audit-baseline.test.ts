@@ -64,11 +64,15 @@ describe('M10-02 full-code audit baseline', () => {
       const source = await readFile(path.join(root, file), 'utf8');
       if (source.includes('setInterval(')) intervalUsers.push(file);
     }
-    expect(intervalUsers.sort()).toEqual(
-      [
-        'apps/desktop/renderer/src/features/writing/generation-task-subscription.ts',
-        'apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts',
-      ].sort(),
+    expect(intervalUsers.sort()).toEqual([
+      'apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts',
+    ]);
+    const generationPolling = await readFile(
+      path.join(root, 'apps/desktop/renderer/src/features/writing/generation-task-subscription.ts'),
+      'utf8',
     );
+    expect(generationPolling).toContain('startSingleFlightPolling');
+    expect(generationPolling).toContain('15_000');
+    expect(generationPolling).not.toContain('setInterval(');
   });
 });

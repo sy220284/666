@@ -98,9 +98,7 @@ export function ResearchWorkbench({
 }: ResearchWorkbenchProps) {
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
   const [catalog, setCatalog] = useState<ResearchCatalog | null>(null);
-  const [editingSnapshot, setEditingSnapshot] = useState<ResearchEditingSnapshot | null>(
-    null,
-  );
+  const [editingSnapshot, setEditingSnapshot] = useState<ResearchEditingSnapshot | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const knownNoteIds = useRef<Set<string>>(new Set());
   const filterChangePending = useRef(false);
@@ -167,12 +165,9 @@ export function ResearchWorkbench({
     [catalog?.notes, selectedNoteId],
   );
   const selected =
-    filteredSelected ??
-    (editingSnapshot?.note.id === selectedNoteId ? editingSnapshot.note : null);
+    filteredSelected ?? (editingSnapshot?.note.id === selectedNoteId ? editingSnapshot.note : null);
   const selectedAttachments = filteredSelected
-    ? (catalog?.attachments.filter(
-        (attachment) => attachment.noteId === selectedNoteId,
-      ) ?? [])
+    ? (catalog?.attachments.filter((attachment) => attachment.noteId === selectedNoteId) ?? [])
     : editingSnapshot?.note.id === selectedNoteId
       ? editingSnapshot.attachments
       : [];
@@ -217,9 +212,7 @@ export function ResearchWorkbench({
     setCatalog(outcome.data);
     for (const note of outcome.data.notes) knownNoteIds.current.add(note.id);
     if (selectedNoteId && !outcome.data.notes.some((note) => note.id === selectedNoteId)) {
-      const hasLoadedEditingContext = loadedNoteIdentity.current?.startsWith(
-        `${selectedNoteId}:`,
-      );
+      const hasLoadedEditingContext = loadedNoteIdentity.current?.startsWith(`${selectedNoteId}:`);
       const preserveSelection = restrictiveFiltersActive || filterChangePending.current;
       if (!preserveSelection || !hasLoadedEditingContext) {
         onSelectNote(outcome.data.notes[0]?.id ?? null);
@@ -234,7 +227,6 @@ export function ResearchWorkbench({
     onSelectNote,
     projectId,
     query,
-    refreshVersion,
     selectedNoteId,
     showArchived,
     sourceFilter,
@@ -245,7 +237,7 @@ export function ResearchWorkbench({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshVersion]);
 
   useEffect(() => {
     setSelectedReferenceIds(selectedReferenceKeys(projectId));
@@ -261,12 +253,10 @@ export function ResearchWorkbench({
     if (!note) return;
     setEditingSnapshot({
       note,
-      attachments:
-        catalog?.attachments.filter((attachment) => attachment.noteId === note.id) ?? [],
+      attachments: catalog?.attachments.filter((attachment) => attachment.noteId === note.id) ?? [],
       links:
-        catalog?.links.filter(
-          (link) => link.sourceType === 'note' && link.sourceId === note.id,
-        ) ?? [],
+        catalog?.links.filter((link) => link.sourceType === 'note' && link.sourceId === note.id) ??
+        [],
     });
   }, [catalog, selectedNoteId]);
 
@@ -302,9 +292,9 @@ export function ResearchWorkbench({
     filterChangePending.current = true;
   };
 
-  const confirmDiscardUnsaved = (action: string): boolean => {
+  const confirmDiscardUnsaved = async (action: string): Promise<boolean> => {
     if (!dirty) return true;
-    if (!confirmDiscard(action)) {
+    if (!(await confirmDiscard(action))) {
       setNotice('已保留当前研究笔记的未保存修改。');
       return false;
     }
@@ -328,9 +318,7 @@ export function ResearchWorkbench({
       if (note) {
         setEditingSnapshot({
           note,
-          attachments: next.attachments.filter(
-            (attachment) => attachment.noteId === note.id,
-          ),
+          attachments: next.attachments.filter((attachment) => attachment.noteId === note.id),
           links: next.links.filter(
             (link) => link.sourceType === 'note' && link.sourceId === note.id,
           ),
@@ -345,7 +333,7 @@ export function ResearchWorkbench({
   };
 
   const createNote = async (): Promise<void> => {
-    if (readOnly || pending || !catalog || !confirmDiscardUnsaved('新建笔记')) return;
+    if (readOnly || pending || !catalog || !(await confirmDiscardUnsaved('新建笔记'))) return;
     const existingNoteIds = new Set(knownNoteIds.current);
     setPending('create');
     const outcome = await bridge.research.createNote(
@@ -400,7 +388,7 @@ export function ResearchWorkbench({
   };
 
   const toggleArchived = async (): Promise<void> => {
-    if (!selected || readOnly || pending || !confirmDiscardUnsaved('切换归档状态')) return;
+    if (!selected || readOnly || pending || !(await confirmDiscardUnsaved('切换归档状态'))) return;
     setPending('status');
     const outcome = await bridge.research.setNoteStatus(
       {
@@ -421,7 +409,7 @@ export function ResearchWorkbench({
   };
 
   const deleteNote = async (): Promise<void> => {
-    if (!selected || readOnly || pending || !confirmDiscardUnsaved('删除笔记')) return;
+    if (!selected || readOnly || pending || !(await confirmDiscardUnsaved('删除笔记'))) return;
     setPending('delete-note');
     const outcome = await bridge.research.deleteNote(
       {
@@ -557,9 +545,11 @@ export function ResearchWorkbench({
           <span>已从来源页面打开研究资料。</span>
           <button
             type="button"
-            onClick={() => {
-              if (confirmDiscardUnsaved('返回来源页面')) onReturn();
-            }}
+            onClick={() =>
+              void (async () => {
+                if (await confirmDiscardUnsaved('返回来源页面')) onReturn();
+              })()
+            }
           >
             返回来源页面
           </button>
@@ -575,9 +565,11 @@ export function ResearchWorkbench({
           <button
             type="button"
             className="button secondary"
-            onClick={() => {
-              if (confirmDiscardUnsaved('离开研究资料')) onClose();
-            }}
+            onClick={() =>
+              void (async () => {
+                if (await confirmDiscardUnsaved('离开研究资料')) onClose();
+              })()
+            }
           >
             返回写作
           </button>
@@ -660,9 +652,7 @@ export function ResearchWorkbench({
               value={targetFilterType}
               onChange={(event) => {
                 markFilterChange();
-                setTargetFilterType(
-                  event.target.value as ResearchTargetType | 'all',
-                );
+                setTargetFilterType(event.target.value as ResearchTargetType | 'all');
                 setTargetFilterId('');
               }}
             >
@@ -699,11 +689,12 @@ export function ResearchWorkbench({
                 key={note.id}
                 type="button"
                 className={note.id === selectedNoteId ? 'list-card is-active' : 'list-card'}
-                onClick={() => {
-                  if (note.id === selectedNoteId || confirmDiscardUnsaved('切换研究笔记')) {
-                    onSelectNote(note.id);
-                  }
-                }}
+                onClick={() =>
+                  void (async () => {
+                    if (note.id === selectedNoteId || (await confirmDiscardUnsaved('切换研究笔记')))
+                      onSelectNote(note.id);
+                  })()
+                }
               >
                 <strong>{note.title}</strong>
                 <span>
@@ -720,11 +711,7 @@ export function ResearchWorkbench({
 
         <section className="panel research-workbench__editor">
           {selectedOutsideCurrentFilter ? (
-            <p
-              className="feature-status"
-              data-research-selection-outside-filter
-              role="status"
-            >
+            <p className="feature-status" data-research-selection-outside-filter role="status">
               当前编辑的笔记不在本次筛选结果中；未保存修改仍保留在右侧。
             </p>
           ) : null}

@@ -22,10 +22,20 @@ export function AuthorDialogHost() {
   const primaryInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null>(
     null,
   );
+  const confirmButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(
     () =>
       subscribeAuthorDialog((next) => {
+        if (next && !previousFocusRef.current) {
+          previousFocusRef.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }
+        if (!next) {
+          previousFocusRef.current?.focus();
+          previousFocusRef.current = null;
+        }
         setPending(next);
         if (next) setValue(initialValue(next));
       }),
@@ -34,7 +44,7 @@ export function AuthorDialogHost() {
 
   useEffect(() => {
     if (!pending) return;
-    primaryInputRef.current?.focus();
+    (primaryInputRef.current ?? confirmButtonRef.current)?.focus();
   }, [pending]);
 
   useEffect(() => {
@@ -65,7 +75,11 @@ export function AuthorDialogHost() {
   };
 
   return (
-    <div className="react-dialog-backdrop" data-author-dialog>
+    <div
+      className="react-dialog-backdrop"
+      data-author-dialog
+      data-author-dialog-kind={request.kind}
+    >
       <section
         aria-describedby={request.message ? 'author-dialog-description' : undefined}
         aria-labelledby="author-dialog-title"
@@ -81,6 +95,7 @@ export function AuthorDialogHost() {
             <span>输入内容</span>
             {request.multiline ? (
               <textarea
+                data-author-dialog-input
                 ref={(node) => {
                   primaryInputRef.current = node;
                 }}
@@ -91,6 +106,7 @@ export function AuthorDialogHost() {
               />
             ) : (
               <input
+                data-author-dialog-input
                 ref={(node) => {
                   primaryInputRef.current = node;
                 }}
@@ -109,6 +125,7 @@ export function AuthorDialogHost() {
           <label className="field">
             <span>选择一项</span>
             <select
+              data-author-dialog-input
               ref={(node) => {
                 primaryInputRef.current = node;
               }}
@@ -130,6 +147,7 @@ export function AuthorDialogHost() {
           <label className="field">
             <span>输入“{request.expectedName}”以确认</span>
             <input
+              data-author-dialog-input
               ref={(node) => {
                 primaryInputRef.current = node;
               }}
@@ -146,14 +164,17 @@ export function AuthorDialogHost() {
         <div className="inline-actions">
           <button
             className={request.danger ? 'text-button danger' : undefined}
+            data-author-dialog-confirm
             type="button"
             disabled={confirmDisabled}
+            ref={confirmButtonRef}
             onClick={confirm}
           >
             {request.confirmLabel ?? '确认'}
           </button>
           <button
             className="quiet-button"
+            data-author-dialog-cancel
             type="button"
             onClick={() => resolveAuthorDialog(pending.id, cancelResult(pending))}
           >

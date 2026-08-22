@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { authorGenerationStageLabel } from '../../presentation/author-status-labels.js';
+import { startSingleFlightPolling } from '../../runtime/single-flight-polling.js';
+
+export const GENERATION_FALLBACK_POLL_INTERVAL_MS = 15_000;
 
 export interface GenerationTaskSubscriptionInput {
   readonly activeTaskId: string;
@@ -20,8 +24,9 @@ export function subscribeGenerationTask({
   let disposed = false;
   let refreshInFlight: Promise<void> | null = null;
 
-  const refresh = (): void => {
-    if (disposed || refreshInFlight) return;
+  const refresh = (): Promise<void> => {
+    if (disposed) return Promise.resolve();
+    if (refreshInFlight) return refreshInFlight;
     const current = Promise.resolve()
       .then(onTerminal)
       .catch(() => {
@@ -31,6 +36,7 @@ export function subscribeGenerationTask({
         if (refreshInFlight === current) refreshInFlight = null;
       });
     refreshInFlight = current;
+    return current;
   };
 
   const unsubscribe = bridge.task.subscribe((update) => {
@@ -39,7 +45,7 @@ export function subscribeGenerationTask({
     if (taskId !== activeTaskId) return;
     if (update.kind === 'event') {
       if (update.event.type === 'ai.stage') {
-        onStatus(`${update.event.payload.message} · ${update.event.payload.stage}`);
+        onStatus(authorGenerationStageLabel(update.event.payload.stage));
       } else if (update.event.type === 'ai.delta') {
         onStatus(`正在接收建议稿 · ${update.event.payload.receivedChars} 字符`);
       } else if (
@@ -47,26 +53,33 @@ export function subscribeGenerationTask({
         update.event.type === 'ai.failed' ||
         update.event.type === 'ai.cancelled'
       ) {
-        refresh();
+        void refresh();
       }
     } else {
+      const stage = authorGenerationStageLabel(update.snapshot.stage, update.snapshot.status);
       onStatus(
-        `${update.snapshot.stage} · ${update.snapshot.status} · ${update.snapshot.receivedChars} 字符`,
+        update.snapshot.receivedChars
+          ? `${stage} · 已接收 ${update.snapshot.receivedChars} 字`
+          : stage,
       );
       if (
         update.snapshot.status === 'succeeded' ||
         update.snapshot.status === 'failed' ||
         update.snapshot.status === 'cancelled'
       ) {
-        refresh();
+        void refresh();
       }
     }
   }, projectId);
-  const timer = setInterval(refresh, 1_000);
+  const stopFallbackPolling = startSingleFlightPolling({
+    intervalMs: GENERATION_FALLBACK_POLL_INTERVAL_MS,
+    poll: refresh,
+    onResult: () => undefined,
+  });
 
   return () => {
     disposed = true;
-    clearInterval(timer);
+    stopFallbackPolling();
     unsubscribe();
   };
 }

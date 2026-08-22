@@ -177,7 +177,7 @@ export function StateProposalPanel({
       RendererBridgeAdapter['stateProposal']['resolve']
     >[0]['resolutions'][number]['editedValue'];
     if (decision === 'edit_accept') {
-      const edited = editProposalValue(proposal);
+      const edited = await editProposalValue(proposal);
       if (edited.state === 'cancelled') return;
       if (edited.state === 'invalid') {
         setNotice(edited.message);

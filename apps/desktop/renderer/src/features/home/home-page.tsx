@@ -17,6 +17,7 @@ import {
 } from '../../shell/home-dashboard-model.js';
 import type { ProjectCapabilities } from '../../runtime/capability-matrix.js';
 import type { AppDisclosureMode, PrimaryNavigationId } from '../../shell/app-shell-model.js';
+import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 
 export interface HomePageProps {
   readonly disclosureMode: AppDisclosureMode;
@@ -35,6 +36,7 @@ export interface HomePageProps {
   readonly onCreate: (plan: OnboardingProjectPlan) => Promise<boolean>;
   readonly onSaveSettings: (update: AppSettingsUpdate) => Promise<boolean>;
   readonly onContinue: () => void;
+  readonly onWritingAction?: (target: AuthorNavigationTarget) => void;
   readonly onOpenSelected: (recover: boolean) => void;
   readonly onOpenRecent: (projectId: string) => void;
   readonly onRelocateRecent: (projectId: string) => void;
@@ -165,6 +167,7 @@ export function HomePage(props: HomePageProps) {
             providerAvailable={props.providerAvailable}
             onContinue={props.onContinue}
             onNavigate={props.onNavigate}
+            {...(props.onWritingAction ? { onWritingAction: props.onWritingAction } : {})}
             onClose={() => props.onCloseProject(props.activeProject?.projectId ?? '')}
             onMove={() => props.onMoveProject(props.activeProject?.projectId ?? '')}
             onOpenRecovery={props.onOpenRecovery}
@@ -297,6 +300,7 @@ interface ActiveProjectCardProps {
   readonly projectCapabilities: ProjectCapabilities;
   readonly onContinue: () => void;
   readonly onNavigate: (navigation: PrimaryNavigationId) => void;
+  readonly onWritingAction?: (target: AuthorNavigationTarget) => void;
   readonly onClose: () => void;
   readonly onMove: () => void;
   readonly onOpenRecovery: () => void;
@@ -312,12 +316,49 @@ function ActiveProjectCard({
   projectCapabilities,
   onContinue,
   onNavigate,
+  onWritingAction,
   onClose,
   onMove,
   onOpenRecovery,
   onSaveSettings,
 }: ActiveProjectCardProps) {
   const readOnly = project.databaseMode === 'read-only';
+  const intelligentActionAvailable = providerAvailable && Boolean(onWritingAction);
+  const primaryLabel =
+    creativePath === 'ai-first' && intelligentActionAvailable
+      ? '生成本章建议稿'
+      : creativePath === 'hybrid'
+        ? intelligentActionAvailable
+          ? '规划本章并协作'
+          : '先规划本章'
+        : '继续写作';
+  const runPrimaryAction = (): void => {
+    if (creativePath === 'hybrid') {
+      if (!intelligentActionAvailable) {
+        onNavigate('planning');
+        return;
+      }
+      onWritingAction?.({
+        type: 'writing-action',
+        projectId: project.projectId,
+        generationMode: 'skeleton',
+      });
+      return;
+    }
+    if (creativePath === 'ai-first' && intelligentActionAvailable) {
+      onWritingAction?.({
+        type: 'writing-action',
+        projectId: project.projectId,
+        generationMode: 'chapter',
+      });
+      return;
+    }
+    onContinue();
+  };
+  const recommendations =
+    creativePath === 'ai-first'
+      ? (['canon', 'planning'] as const)
+      : (['planning', 'canon'] as const);
   return (
     <article className="react-active-project" data-react-active-project>
       <div>
@@ -353,12 +394,19 @@ function ActiveProjectCard({
             智能优先{providerAvailable ? '' : '（需先配置智能连接）'}
           </option>
         </select>
-        <small id="creative-path-note">只改变推荐入口和说明，不改变作品数据或可用功能。</small>
+        <small id="creative-path-note">
+          {creativePath === 'autonomous'
+            ? '先继续正文，需要时再查看作品规划和人物设定。'
+            : creativePath === 'hybrid'
+              ? '先确定本章规划，再由你决定是否生成和采用建议稿。'
+              : '先生成本章建议稿，再由你审阅、修改并决定是否采用。'}
+        </small>
       </label>
       <div className="react-card-actions">
         <button
           className="primary-button"
-          data-continue-writing
+          data-continue-writing={creativePath === 'autonomous' ? '' : undefined}
+          data-creative-path-primary={creativePath}
           disabled={!projectCapabilities.draftReadable || pending}
           title={
             projectCapabilities.draftReadable
@@ -366,26 +414,37 @@ function ActiveProjectCard({
               : '当前作品仅允许恢复与安全导出，正文暂不可读取。'
           }
           type="button"
-          onClick={onContinue}
+          onClick={runPrimaryAction}
         >
-          继续写作
+          {primaryLabel}
         </button>
-        <button
-          className="quiet-button"
-          disabled={!projectCapabilities.structureReadable || pending}
-          type="button"
-          onClick={() => onNavigate('planning')}
-        >
-          作品规划
-        </button>
-        <button
-          className="quiet-button"
-          disabled={!projectCapabilities.canonReadable || pending}
-          type="button"
-          onClick={() => onNavigate('canon')}
-        >
-          人物与设定
-        </button>
+        {creativePath !== 'autonomous' ? (
+          <button
+            className="quiet-button"
+            data-continue-writing
+            disabled={!projectCapabilities.draftReadable || pending}
+            type="button"
+            onClick={onContinue}
+          >
+            继续写作
+          </button>
+        ) : null}
+        {recommendations.map((navigation) => (
+          <button
+            className="quiet-button"
+            data-creative-path-recommendation={navigation}
+            disabled={
+              navigation === 'planning'
+                ? !projectCapabilities.structureReadable || pending
+                : !projectCapabilities.canonReadable || pending
+            }
+            key={navigation}
+            type="button"
+            onClick={() => onNavigate(navigation)}
+          >
+            {navigation === 'planning' ? '作品规划' : '人物与设定'}
+          </button>
+        ))}
         <button
           className="quiet-button"
           disabled={

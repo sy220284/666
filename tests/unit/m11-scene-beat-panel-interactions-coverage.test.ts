@@ -7,6 +7,14 @@ import type { createElement as createReactElement, ReactElement, ReactNode } fro
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: async ({ title }: { title: string }) => window.confirm(title),
+  authorSelect: async ({ options }: { options: readonly { value: string }[] }) => {
+    const selected = window.prompt('选择目标章节', '1');
+    return options[Number(selected) - 1]?.value ?? null;
+  },
+}));
+
 const rendererRequire = createRequire(
   new URL('../../apps/desktop/renderer/package.json', import.meta.url),
 );

@@ -6,6 +6,7 @@ import { redoWorldforgeEditor, undoWorldforgeEditor } from '@worldforge/editor-c
 import type { DraftAutosaveCoordinator, Editor } from '@worldforge/editor-core';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { StructureNavigator } from '../structure/structure-navigator.js';
 import { CandidateReviewPanel } from './candidate-review-panel.js';
@@ -25,6 +26,7 @@ import type { WritingPanel } from './writing-workbench-types.js';
 
 interface WritingWorkbenchViewProps {
   readonly bridge: RendererBridgeAdapter;
+  readonly disclosureMode: AppDisclosureMode;
   readonly project: ProjectWorkspaceSummary;
   readonly panel: WritingPanel;
   readonly chapterSessionPhase: ChapterSessionPhase;
@@ -70,6 +72,7 @@ interface WritingWorkbenchViewProps {
 
 export function WritingWorkbenchView({
   bridge,
+  disclosureMode,
   project,
   panel,
   chapterSessionPhase,
@@ -467,6 +470,7 @@ export function WritingWorkbenchView({
             <CandidateReviewPanel
               bridge={bridge}
               chapter={chapter}
+              disclosureMode={disclosureMode}
               draft={draft}
               project={project}
               flush={flush}

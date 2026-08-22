@@ -13,6 +13,11 @@ import { contractInput } from '../testkit/strict-test-doubles.js';
 const coordinator = vi.hoisted(() => ({
   latest: true,
   current: vi.fn<() => boolean>(() => true),
+  authorConfirm: vi.fn(async () => true),
+}));
+
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorConfirm: coordinator.authorConfirm,
 }));
 
 vi.mock('../../apps/desktop/renderer/src/runtime/command-coordinator.js', () => ({
@@ -94,6 +99,7 @@ const undoPreview = contractInput({ record: { applyRecordId: 'record-a' } });
 beforeEach(() => {
   coordinator.latest = true;
   coordinator.current.mockReset().mockReturnValue(true);
+  coordinator.authorConfirm.mockReset().mockResolvedValue(true);
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: { confirm: vi.fn(() => true) },

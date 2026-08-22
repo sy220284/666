@@ -14,6 +14,12 @@ import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/brid
 import { StateProposalPanel } from '../../apps/desktop/renderer/src/features/canon/state-proposal-panel.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
+vi.mock('../../apps/desktop/renderer/src/runtime/author-dialog.js', () => ({
+  authorPrompt: async ({ title, initialValue }: { title: string; initialValue?: string }) =>
+    window.prompt(title, initialValue),
+  authorSelect: vi.fn(),
+}));
+
 const controls = vi.hoisted(() => ({
   queryLoad: null as null | (() => Promise<unknown>),
   resource: {

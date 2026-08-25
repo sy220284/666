@@ -76,9 +76,7 @@ function configureWriter(database: DatabaseSync, kind: DatabaseKind): void {
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 5000;
   `);
-  database.exec(
-    kind === 'project' ? 'PRAGMA synchronous = FULL;' : 'PRAGMA synchronous = NORMAL;',
-  );
+  database.exec(kind === 'project' ? 'PRAGMA synchronous = FULL;' : 'PRAGMA synchronous = NORMAL;');
 }
 
 function configureReader(database: DatabaseSync): void {

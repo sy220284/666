@@ -79,7 +79,7 @@ describe('Electron security boundary', () => {
     });
 
     const navigationEvent = { preventDefault: () => opened.push('navigation-blocked') };
-    navigationListener?.(navigationEvent, 'https://example.com/docs');
+    navigationListener?.(navigationEvent, 'https://github.com/sy220284/666');
     expect(openHandler?.({ url: 'https://example.com/help' })).toEqual({ action: 'deny' });
     expect(openHandler?.({ url: 'worldforge://unsafe' })).toEqual({ action: 'deny' });
     downloadListener?.({ preventDefault: () => opened.push('download-blocked') });
@@ -87,8 +87,7 @@ describe('Electron security boundary', () => {
 
     expect(opened).toEqual([
       'navigation-blocked',
-      'https://example.com/docs',
-      'https://example.com/help',
+      'https://github.com/sy220284/666',
       'download-blocked',
     ]);
   });

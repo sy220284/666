@@ -63,6 +63,8 @@ describe('post-audit streaming file hashing', () => {
     await writeFile(path.join(directory, 'project.sqlite'), Buffer.from([0, 1, 2, 3, 4]));
     await writeFile(path.join(nested, '正文.txt'), '第一章\n第二段\n', 'utf8');
 
-    await expect(defaultHashWorkspace(directory)).resolves.toBe(await legacyWorkspaceHash(directory));
+    await expect(defaultHashWorkspace(directory)).resolves.toBe(
+      await legacyWorkspaceHash(directory),
+    );
   });
 });

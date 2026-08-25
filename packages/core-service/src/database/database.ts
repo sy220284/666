@@ -70,13 +70,15 @@ function integrityReport(
   return { ok: messages.length === 1 && messages[0] === 'ok', messages };
 }
 
-function configureWriter(database: DatabaseSync): void {
+function configureWriter(database: DatabaseSync, kind: DatabaseKind): void {
   database.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 5000;
-    PRAGMA synchronous = NORMAL;
   `);
+  database.exec(
+    kind === 'project' ? 'PRAGMA synchronous = FULL;' : 'PRAGMA synchronous = NORMAL;',
+  );
 }
 
 function configureReader(database: DatabaseSync): void {
@@ -231,7 +233,7 @@ async function openDatabaseState(
   let writerCapabilities: SqliteCapabilities | undefined;
   let migrationStartVersion = 0;
   try {
-    configureWriter(writer);
+    configureWriter(writer, kind);
     const capabilities = detectCapabilities(writer);
     writerCapabilities = capabilities;
     if (!capabilities.trigram) {

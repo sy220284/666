@@ -23,6 +23,7 @@ import {
 } from '@worldforge/contracts';
 
 import type { DatabaseClock } from '../database/index.js';
+import { sha256File } from '../file-hash.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { stableJson } from '../stable-json.js';
 import type { FileLeaseTiming } from './file-lease-types.js';
@@ -151,9 +152,7 @@ async function defaultOnlineBackup(
 }
 
 export async function hashFile(filePath: string): Promise<string> {
-  return createHash('sha256')
-    .update(await readFile(filePath))
-    .digest('hex');
+  return sha256File(filePath);
 }
 
 function stable(value: unknown): string {

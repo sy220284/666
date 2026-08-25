@@ -17,10 +17,17 @@ export interface NavigationWebContents {
 
 export type OpenExternal = (url: string) => Promise<void>;
 
+const TRUSTED_EXTERNAL_HOSTS = new Set(['github.com']);
+
 export function isExternalWebUrl(rawUrl: string): boolean {
   try {
-    const protocol = new URL(rawUrl).protocol;
-    return protocol === 'https:' || protocol === 'http:';
+    const url = new URL(rawUrl);
+    return (
+      url.protocol === 'https:' &&
+      url.username === '' &&
+      url.password === '' &&
+      TRUSTED_EXTERNAL_HOSTS.has(url.hostname.toLocaleLowerCase('en-US'))
+    );
   } catch {
     return false;
   }

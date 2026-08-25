@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
-import { cp, readFile, readdir, rename, rm, stat, statfs } from 'node:fs/promises';
+import { cp, readdir, rename, rm, stat, statfs } from 'node:fs/promises';
 import path from 'node:path';
 
 import { type ProjectWorkspaceSummary } from '@worldforge/contracts';
 
+import { updateHashWithFile } from '../file-hash.js';
 import {
   existingDirectory,
   isInside,
@@ -64,7 +65,7 @@ export async function defaultHashWorkspace(directory: string): Promise<string> {
         await visit(entryPath, relativePath);
       } else if (entry.isFile()) {
         hash.update(`file\0${relativePath}\0`, 'utf8');
-        hash.update(await readFile(entryPath));
+        await updateHashWithFile(hash, entryPath);
         hash.update('\0', 'utf8');
       } else {
         throw new ProjectWorkspaceError(

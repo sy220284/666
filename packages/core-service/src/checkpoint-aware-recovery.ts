@@ -1,9 +1,8 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   access,
   constants,
   lstat,
-  readFile,
   realpath,
   rename,
   rm,
@@ -24,18 +23,13 @@ import {
   type RecoveryVersionSummary,
 } from '@worldforge/contracts';
 
+import { sha256File } from './file-hash.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { RecoveryService, RecoveryServiceError, type RecoveryServiceOptions } from './recovery.js';
 import { safeFileName, safeTemporaryName } from './recovery/path-name.js';
 
 function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
-
-async function hashFile(filePath: string): Promise<string> {
-  return createHash('sha256')
-    .update(await readFile(filePath))
-    .digest('hex');
 }
 
 async function existingWritableDirectory(directory: string): Promise<string> {
@@ -92,7 +86,7 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
       if (!details.isFile() || details.isSymbolicLink() || details.size !== record.sizeBytes) {
         return null;
       }
-      if ((await hashFile(backupPath)) !== record.sha256) return null;
+      if ((await sha256File(backupPath)) !== record.sha256) return null;
       database = new DatabaseSync(backupPath, {
         readOnly: true,
         allowExtension: false,
@@ -225,7 +219,7 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
         fileName,
         filePath,
         sizeBytes: (await stat(filePath)).size,
-        sha256: await hashFile(filePath),
+        sha256: await sha256File(filePath),
       });
     } catch (error) {
       await rm(temporaryPath, { force: true });

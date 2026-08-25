@@ -118,6 +118,16 @@ function requestIdFrom(raw: unknown): string {
 export function createIpcHandlerContext(options: IpcHandlerOptions) {
   const invokeChannels = new Set<string>();
 
+  const rejectUntrusted = (event: IpcMainInvokeEvent, raw: unknown): CommandFailure | null => {
+    if (trustedSender(event, options.rendererUrl)) return null;
+    return failure(
+      requestIdFrom(raw),
+      'COMMON_INVALID_INPUT_001',
+      'The request origin is not trusted.',
+      false,
+    );
+  };
+
   const register: IpcInvokeRegister = (channel, handler): void => {
     invokeChannels.add(channel);
     if (
@@ -127,6 +137,8 @@ export function createIpcHandlerContext(options: IpcHandlerOptions) {
       return;
     }
     options.ipcMain.handle(channel, async (event, input) => {
+      const rejected = rejectUntrusted(event, input);
+      if (rejected) return rejected;
       try {
         return await handler(event, input);
       } catch {
@@ -154,16 +166,6 @@ export function createIpcHandlerContext(options: IpcHandlerOptions) {
         );
       }
     });
-  };
-
-  const rejectUntrusted = (event: IpcMainInvokeEvent, raw: unknown): CommandFailure | null => {
-    if (trustedSender(event, options.rendererUrl)) return null;
-    return failure(
-      requestIdFrom(raw),
-      'COMMON_INVALID_INPUT_001',
-      'The request origin is not trusted.',
-      false,
-    );
   };
 
   const invalidRequest = (raw: unknown): CommandFailure =>

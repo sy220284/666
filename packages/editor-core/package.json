@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@tiptap/core": "3.27.3",
+    "@tiptap/core": "3.30.4",
     "@tiptap/pm": "3.27.3"
   }
 }

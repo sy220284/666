@@ -108,6 +108,8 @@ export async function moveProjectWorkspace(
   }
 
   const staging = `${target}.move-${runtime.idFactory()}`;
+  const sourceRetirement = `${source}.move-source-${runtime.idFactory()}`;
+  let sourceRetired = false;
   let targetCreated = false;
   try {
     try {
@@ -135,6 +137,18 @@ export async function moveProjectWorkspace(
         'The copied project did not match the source workspace.',
       );
     }
+
+    await rename(source, sourceRetirement);
+    sourceRetired = true;
+    if ((await runtime.hashWorkspace(sourceRetirement)) !== targetHash) {
+      await rename(sourceRetirement, source);
+      sourceRetired = false;
+      throw new ProjectWorkspaceError(
+        'PROJECT_MOVE_FAILED',
+        'The source project changed before the move could be finalized.',
+      );
+    }
+
     const verification = await loadWorkspace(runtime, staging);
     await closeProjectContext(verification);
     await rename(staging, target);
@@ -145,18 +159,39 @@ export async function moveProjectWorkspace(
     runtime.active = moved;
     let sourceRetained = false;
     try {
-      const finalSourceHash = await runtime.hashWorkspace(source);
+      const finalSourceHash = await runtime.hashWorkspace(sourceRetirement);
       if (finalSourceHash !== targetHash) {
+        await rename(sourceRetirement, source);
+        sourceRetired = false;
         sourceRetained = true;
       } else {
-        await rm(source, { recursive: true });
+        await rm(sourceRetirement, { recursive: true });
+        sourceRetired = false;
       }
     } catch {
-      sourceRetained = await workspaceExists(source);
+      if (sourceRetired && !(await workspaceExists(source))) {
+        try {
+          await rename(sourceRetirement, source);
+          sourceRetired = false;
+        } catch {
+          // The isolated source remains intact for manual recovery.
+        }
+      }
+      sourceRetained =
+        (await workspaceExists(source)) ||
+        (sourceRetired && (await workspaceExists(sourceRetirement)));
     }
     return { ...moved.summary, sourceRetained };
   } catch (error) {
     await rm(staging, { recursive: true, force: true });
+    if (sourceRetired && !runtime.active && !(await workspaceExists(source))) {
+      try {
+        await rename(sourceRetirement, source);
+        sourceRetired = false;
+      } catch {
+        // Preserve the isolated source and the original move error for manual recovery.
+      }
+    }
     if (targetCreated && !runtime.active) {
       await rm(target, { recursive: true, force: true });
     }

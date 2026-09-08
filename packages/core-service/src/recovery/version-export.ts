@@ -1,4 +1,4 @@
-import { lstat, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { lstat, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -8,6 +8,7 @@ import {
   type RecoveryVersionExport,
 } from '@worldforge/contracts';
 
+import { publishFileNoReplace } from '../file-publish.js';
 import {
   RecoveryServiceError,
   existingWritableDirectory,
@@ -82,7 +83,7 @@ export class VersionExportOperations {
         mode: 0o600,
         flag: 'wx',
       });
-      await rename(temporaryPath, filePath);
+      await publishFileNoReplace(temporaryPath, filePath);
       const sha256 = await hashFile(filePath);
       const sizeBytes = (await stat(filePath)).size;
       return RecoveryVersionExportSchema.parse({
@@ -96,6 +97,11 @@ export class VersionExportOperations {
     } catch (error) {
       await rm(temporaryPath, { force: true });
       if (error instanceof RecoveryServiceError) throw error;
+      if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
+        throw new RecoveryServiceError('EXPORT_TARGET_EXISTS', 'The export target already exists.', {
+          cause: error,
+        });
+      }
       throw new RecoveryServiceError('EXPORT_WRITE_FAILED', 'The Version could not be exported.', {
         cause: error,
       });

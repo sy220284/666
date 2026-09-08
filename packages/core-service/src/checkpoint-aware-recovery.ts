@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { access, constants, lstat, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { access, constants, lstat, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -15,6 +15,7 @@ import {
 } from '@worldforge/contracts';
 
 import { sha256File } from './file-hash.js';
+import { publishFileNoReplace } from './file-publish.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { RecoveryService, RecoveryServiceError, type RecoveryServiceOptions } from './recovery.js';
 import { safeFileName, safeTemporaryName } from './recovery/path-name.js';
@@ -203,7 +204,7 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
         mode: 0o600,
         flag: 'wx',
       });
-      await rename(temporaryPath, filePath);
+      await publishFileNoReplace(temporaryPath, filePath);
       return RecoveryVersionExportSchema.parse({
         projectId: input.projectId,
         versionId: input.versionId,
@@ -215,6 +216,13 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
     } catch (error) {
       await rm(temporaryPath, { force: true });
       if (error instanceof RecoveryServiceError) throw error;
+      if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
+        throw new RecoveryServiceError(
+          'EXPORT_TARGET_EXISTS',
+          'The export target already exists.',
+          { cause: error },
+        );
+      }
       throw new RecoveryServiceError('EXPORT_WRITE_FAILED', 'The Version could not be exported.', {
         cause: error,
       });

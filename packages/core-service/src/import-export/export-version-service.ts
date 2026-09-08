@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { readFile, rename, rm, stat } from 'node:fs/promises';
+import { readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -12,6 +12,7 @@ import {
 } from '@worldforge/contracts';
 
 import { parseDocx } from '../docx-transfer.js';
+import { publishFileNoReplace } from '../file-publish.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import {
   durableWrite,
@@ -160,11 +161,18 @@ export class ExportVersionService {
           );
         }
       }
-      await rename(temporaryPath, finalPath);
+      await publishFileNoReplace(temporaryPath, finalPath);
       await syncDirectory(directory);
     } catch (error) {
       await rm(temporaryPath, { force: true });
       if (error instanceof ImportExportServiceError) throw error;
+      if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
+        throw new ImportExportServiceError(
+          'EXPORT_TARGET_EXISTS',
+          'The export target already exists and will not be overwritten.',
+          { cause: error },
+        );
+      }
       throw new ImportExportServiceError(
         'EXPORT_WRITE_FAILED',
         'The export could not be written atomically.',

@@ -25,11 +25,26 @@ describe('AR-12 Project Workspace path-policy branches', () => {
   });
 
   it('rejects unsafe workspace names and preserves safe names', () => {
-    for (const name of ['.', '..', 'bad.', 'bad?', `bad${String.fromCharCode(1)}`]) {
+    for (const name of ['', '.', '..', 'bad.', 'bad?', `bad${String.fromCharCode(1)}`]) {
       expect(() => validWorkspaceName(name)).toThrow(ProjectWorkspaceError);
     }
 
     expect(validWorkspaceName('safe-project')).toBe('safe-project.worldforge');
     expect(validWorkspaceName(' safe-project ')).toBe('safe-project.worldforge');
+  });
+
+  it('bounds UTF-8 workspace directory names and avoids Windows device names', () => {
+    const longName = '界'.repeat(240);
+    const workspaceName = validWorkspaceName(longName);
+    const stagingName = `.${workspaceName}.create-${'0'.repeat(36)}`;
+
+    expect(Buffer.byteLength(workspaceName, 'utf8')).toBeLessThanOrEqual(200);
+    expect(Buffer.byteLength(stagingName, 'utf8')).toBeLessThanOrEqual(255);
+    expect(workspaceName).toMatch(/-[0-9a-f]{10}\.worldforge$/u);
+    expect(validWorkspaceName(longName)).toBe(workspaceName);
+
+    for (const deviceName of ['CON', 'NUL', 'PRN', 'AUX', 'COM1', 'LPT9', 'con.txt']) {
+      expect(validWorkspaceName(deviceName)).toBe(`WorldForge-${deviceName}.worldforge`);
+    }
   });
 });

@@ -145,9 +145,14 @@ export async function moveProjectWorkspace(
     runtime.active = moved;
     let sourceRetained = false;
     try {
-      await rm(source, { recursive: true });
+      const finalSourceHash = await runtime.hashWorkspace(source);
+      if (finalSourceHash !== targetHash) {
+        sourceRetained = true;
+      } else {
+        await rm(source, { recursive: true });
+      }
     } catch {
-      sourceRetained = true;
+      sourceRetained = await workspaceExists(source);
     }
     return { ...moved.summary, sourceRetained };
   } catch (error) {

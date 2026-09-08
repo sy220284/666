@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { access, constants, lstat, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -44,12 +45,44 @@ export function isInside(root: string, candidate: string): boolean {
   );
 }
 
+const WORKSPACE_EXTENSION = '.worldforge';
+const MAX_WORKSPACE_COMPONENT_BYTES = 200;
+
+function utf8Bytes(value: string): number {
+  return Buffer.byteLength(value, 'utf8');
+}
+
+function truncateUtf8(value: string, maximumBytes: number): string {
+  let result = '';
+  for (const character of value) {
+    if (utf8Bytes(result) + utf8Bytes(character) > maximumBytes) break;
+    result += character;
+  }
+  return result.replace(/[. ]+$/u, '');
+}
+
+function isWindowsDeviceName(value: string): boolean {
+  const stem = value.split('.', 1)[0]?.toLowerCase() ?? '';
+  return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/u.test(stem);
+}
+
+function boundedWorkspaceBase(value: string): string {
+  const portable = isWindowsDeviceName(value) ? `WorldForge-${value}` : value;
+  const maximumBaseBytes = MAX_WORKSPACE_COMPONENT_BYTES - utf8Bytes(WORKSPACE_EXTENSION);
+  if (utf8Bytes(portable) <= maximumBaseBytes) return portable;
+
+  const suffix = `-${createHash('sha256').update(portable, 'utf8').digest('hex').slice(0, 10)}`;
+  const prefix = truncateUtf8(portable, maximumBaseBytes - utf8Bytes(suffix));
+  return `${prefix || 'WorldForge'}${suffix}`;
+}
+
 export function validWorkspaceName(name: string): string {
   const trimmed = name.trim();
   const containsControlCharacter = [...trimmed].some(
     (character) => (character.codePointAt(0) ?? 0) < 32,
   );
   if (
+    !trimmed ||
     trimmed === '.' ||
     trimmed === '..' ||
     /[<>:"/\\|?*]/u.test(trimmed) ||
@@ -61,7 +94,7 @@ export function validWorkspaceName(name: string): string {
       'The project name cannot be represented as a safe workspace directory.',
     );
   }
-  return `${trimmed}.worldforge`;
+  return `${boundedWorkspaceBase(trimmed)}${WORKSPACE_EXTENSION}`;
 }
 
 export async function existingDirectory(

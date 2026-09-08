@@ -103,9 +103,9 @@ describe('post-audit filesystem race hardening', () => {
       expect(moved.sourceRetained).toBe(true);
       expect(await exists(sourcePath)).toBe(true);
       expect(await exists(moved.workspacePath)).toBe(true);
-      await expect(readFile(path.join(sourcePath, 'external-after-hash.txt'), 'utf8')).resolves.toBe(
-        'preserve me',
-      );
+      await expect(
+        readFile(path.join(sourcePath, 'external-after-hash.txt'), 'utf8'),
+      ).resolves.toBe('preserve me');
       expect(await exists(path.join(moved.workspacePath, 'external-after-hash.txt'))).toBe(false);
     } finally {
       await workspace.shutdown();

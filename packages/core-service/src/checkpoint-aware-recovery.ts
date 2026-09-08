@@ -217,9 +217,11 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
       await rm(temporaryPath, { force: true });
       if (error instanceof RecoveryServiceError) throw error;
       if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
-        throw new RecoveryServiceError('EXPORT_TARGET_EXISTS', 'The export target already exists.', {
-          cause: error,
-        });
+        throw new RecoveryServiceError(
+          'EXPORT_TARGET_EXISTS',
+          'The export target already exists.',
+          { cause: error },
+        );
       }
       throw new RecoveryServiceError('EXPORT_WRITE_FAILED', 'The Version could not be exported.', {
         cause: error,
